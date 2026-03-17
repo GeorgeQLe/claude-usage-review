@@ -150,7 +150,8 @@ struct ContentView: View {
             } else if viewModel.usageData != nil {
                 VStack(spacing: 16) {
                     ForEach(Array(viewModel.displayLimits.enumerated()), id: \.offset) { _, item in
-                        UsageBar(name: item.name, limit: item.limit)
+                        UsageBar(name: item.name, limit: item.limit,
+                                 paceDetail: item.name == "Weekly" ? viewModel.weeklyBudgetPerDay : nil)
                     }
                 }
                 .padding(.horizontal, 16)

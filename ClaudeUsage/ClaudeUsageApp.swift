@@ -12,13 +12,16 @@ struct ClaudeUsageApp: App {
     }
 
     private var menuBarText: String {
-        let pct = Int(viewModel.usageData?.fiveHour.utilization ?? 0)
+        let sessionPct = Int(viewModel.usageData?.fiveHour.utilization ?? 0)
+        let weeklyPct = Int(viewModel.usageData?.sevenDay.utilization ?? 0)
         let resetDate: Date? = viewModel.usageData?.fiveHour.resetsAt
-        if let date = resetDate {
+        if resetDate != nil {
             let timeText = viewModel.menuBarTimeString
-            return "\(pct)% · \(timeText)"
+            let pace = viewModel.weeklyPaceIndicator
+            return "\(sessionPct)% · \(weeklyPct)%W\(pace) · \(timeText)"
         }
-        return "\(pct)%"
+        let pace = viewModel.weeklyPaceIndicator
+        return "\(sessionPct)% · \(weeklyPct)%W\(pace)"
     }
 
     var body: some Scene {

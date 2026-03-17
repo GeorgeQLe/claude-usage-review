@@ -3,6 +3,7 @@ import SwiftUI
 struct UsageBar: View {
     let name: String
     let limit: UsageLimit
+    var paceDetail: String? = nil
 
     private var percentage: Double {
         min(max(limit.utilization, 0), 100)
@@ -61,6 +62,12 @@ struct UsageBar: View {
 
             if !resetTimeString.isEmpty {
                 Text(resetTimeString)
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+
+            if let paceDetail = paceDetail {
+                Text(paceDetail)
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }

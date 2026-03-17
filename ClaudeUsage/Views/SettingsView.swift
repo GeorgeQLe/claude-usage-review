@@ -239,6 +239,11 @@ struct SettingsView: View {
     }
 
     private func saveCredentials() {
+        // Auto-create an account if none exists
+        if accountStore.activeAccountId == nil {
+            let account = accountStore.add(email: "Account 1")
+            accountStore.setActive(id: account.id)
+        }
         guard let accountId = accountStore.activeAccountId else { return }
         accountStore.saveSessionKey(sessionKeyInput, for: accountId)
         accountStore.saveOrgId(orgIdInput, for: accountId)

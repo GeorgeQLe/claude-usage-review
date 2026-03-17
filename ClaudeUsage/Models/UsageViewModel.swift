@@ -288,4 +288,56 @@ class UsageViewModel: ObservableObject {
             return remainingTimeString
         }
     }
+
+    // MARK: - Weekly Pace
+
+    /// Returns actual/expected ratio, or nil if too early/late in the window.
+    private func paceRatio(for limit: UsageLimit, windowSeconds: TimeInterval) -> Double? {
+        guard let resetsAt = limit.resetsAt else { return nil }
+        let now = Date()
+        let timeRemaining = resetsAt.timeIntervalSince(now)
+        let timeElapsed = windowSeconds - timeRemaining
+
+        // Ratio is unstable in the first 6 hours or last hour
+        guard timeElapsed >= 6 * 3600, timeRemaining >= 3600 else { return nil }
+
+        let expected = (timeElapsed / windowSeconds) * 100
+        guard expected > 0 else { return nil }
+        return limit.utilization / expected
+    }
+
+    /// Arrow indicator for the menu bar: ▲ (ahead), ▼ (behind), or "" (on pace).
+    var weeklyPaceIndicator: String {
+        guard let ratio = paceRatio(for: usageData?.sevenDay ?? UsageLimit(utilization: 0, resetsAt: nil),
+                                     windowSeconds: 7 * 86400) else {
+            return ""
+        }
+        if ratio > 1.15 { return "▲" }
+        if ratio < 0.85 { return "▼" }
+        return ""
+    }
+
+    /// Daily budget text shown under the Weekly bar, e.g. "~12%/day remaining (4d left)".
+    var weeklyBudgetPerDay: String? {
+        guard let sevenDay = usageData?.sevenDay,
+              let resetsAt = sevenDay.resetsAt else { return nil }
+
+        let now = Date()
+        let timeRemaining = resetsAt.timeIntervalSince(now)
+        let timeElapsed = 7 * 86400.0 - timeRemaining
+
+        // Too early in window — ratio unstable
+        guard timeElapsed >= 6 * 3600 else { return nil }
+        // Less than 1 hour left — budget per day meaningless
+        guard timeRemaining >= 3600 else { return nil }
+
+        let remaining = 100.0 - sevenDay.utilization
+        if remaining <= 0 { return "Weekly limit reached" }
+
+        let daysRemaining = timeRemaining / 86400.0
+        let budgetPerDay = remaining / daysRemaining
+        let daysLeft = Int(daysRemaining.rounded(.down))
+
+        return "~\(Int(budgetPerDay.rounded()))%/day remaining (\(daysLeft)d left)"
+    }
 }
