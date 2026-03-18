@@ -35,7 +35,7 @@
 
 ## Phase 6: Polish
 - [x] Tauri capabilities/permissions for IPC commands
-- [ ] Icon: proper .ico file for Windows (multi-resolution)
+- [x] Icon: proper .ico file for Windows (multi-resolution)
 - [ ] DPI awareness: popover positioning relative to tray
 - [ ] Autostart verification on Windows
 - [ ] Error handling edge cases: empty states, Set-Cookie refresh in UI
@@ -44,22 +44,20 @@
 
 ---
 
-## Next Step Plan: Phase 6 — Polish (Windows Icon)
+## Next Step Plan: Phase 6 — Polish (DPI Awareness)
 
 ### What needs to be done
-Create a proper multi-resolution .ico file for the Windows app. The current tray icons are 32x32 PNGs (green/yellow/red circles). Windows needs a proper app icon (.ico) with multiple resolutions (16x16, 32x32, 48x48, 256x256) for the taskbar, installer, and window title bar.
+Ensure popover window positioning works correctly on high-DPI / scaled Windows displays. The popover should appear anchored to the tray icon regardless of display scaling (100%, 125%, 150%, 200%).
 
-### Files to create/modify
-- **`/tmp/claude-usage-review/tauri-app/src-tauri/icons/`** — create multi-resolution .ico files
-- **`/tmp/claude-usage-review/tauri-app/src-tauri/tauri.conf.json`** — update `icon` paths in bundle config
+### Files to modify
+- **`tauri-app/src-tauri/src/lib.rs`** — tray click handler that positions the popover window; may need DPI-aware coordinate calculation
+- **`tauri-app/src-tauri/src/state.rs`** — if tray updates interact with window positioning
 
 ### Technical details
-- Tauri expects icons listed in `tauri.conf.json` under `bundle.icon`
-- For Windows: need `icon.ico` (multi-res) and optionally `icon.png`
-- Can generate from SVG or use ImageMagick `convert` to combine PNGs into .ico
-- The existing tray PNGs (`tray-green.png`, etc.) are separate from the app icon
+- Tauri 2's `PhysicalPosition` vs `LogicalPosition` — use logical coordinates for DPI independence
+- Windows scale factor available via `window.scale_factor()`
+- Test with different DPI settings in Windows Display Settings
 
 ### Acceptance criteria
-- `tauri.conf.json` `bundle.icon` references valid icon files
-- `cargo tauri build` doesn't warn about missing icons
-- .ico contains at least 32x32 and 256x256 resolutions
+- Popover appears correctly anchored to tray icon at 100%, 150%, and 200% scaling
+- No popover clipping at screen edges

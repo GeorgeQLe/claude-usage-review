@@ -18,3 +18,15 @@ Added Tauri 2 ACL declarations so frontend `invoke()` calls aren't blocked at ru
 - Created `src-tauri/capabilities/default.json` — grants app `default` + `core:default` + `core:event:default` + `core:window:*` + `autostart:default` to all windows
 - Added `tauri-app/.gitignore` for `node_modules/`, `dist/`, `target/`
 - `cargo check` passes with capabilities resolved
+
+## 2026-03-18 — Phase 6: Windows Icon (.ico)
+
+Replaced the fake `icon.ico` (was a renamed 32x32 PNG) with a proper multi-resolution MS Windows icon resource.
+
+- Generated 16x16, 32x32, 48x48, 256x256 PNGs from 128x128.png source using `sips`
+- Built proper .ico with `npx png-to-ico` containing 4 embedded resolutions
+- Upgraded `icon.png` from 32x32 to 256x256 as high-res source
+- Added `256x256.png` for high-DPI scaling
+- Updated `tauri.conf.json` bundle icon list to include new assets
+- `file icon.ico` now reports "MS Windows icon resource" (not PNG)
+- Moved project from `/tmp/claude-usage-review/` to `~/projects/apps/claude-usage-review/`
