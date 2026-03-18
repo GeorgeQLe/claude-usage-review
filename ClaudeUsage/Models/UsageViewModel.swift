@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import UserNotifications
 
 enum TimeDisplayFormat: String, CaseIterable {
     case resetTime = "reset_time"
@@ -87,8 +88,12 @@ class UsageViewModel: ObservableObject {
     let historyStore = HistoryStore()
     @Published var historySnapshots: [UsageSnapshot] = []
 
+    @Published var tick: UInt = 0
+
     private let pollingInterval: TimeInterval = 300 // 5 minutes
     private var pollingTask: Task<Void, Never>?
+    private var resetTask: Task<Void, Never>?
+    private var tickTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
     /// The email of the currently active account.
@@ -100,8 +105,8 @@ class UsageViewModel: ObservableObject {
         self.accountStore = accountStore
 
         // Initialize time display preference from UserDefaults
-        let savedFormat = UserDefaults.standard.string(forKey: "claude_time_display_format") ?? TimeDisplayFormat.resetTime.rawValue
-        timeDisplayFormat = TimeDisplayFormat(rawValue: savedFormat) ?? .resetTime
+        let savedFormat = UserDefaults.standard.string(forKey: "claude_time_display_format") ?? TimeDisplayFormat.remainingTime.rawValue
+        timeDisplayFormat = TimeDisplayFormat(rawValue: savedFormat) ?? .remainingTime
 
         let savedTheme = UserDefaults.standard.string(forKey: "claude_pace_theme") ?? PaceTheme.running.rawValue
         paceTheme = PaceTheme(rawValue: savedTheme) ?? .running
@@ -131,6 +136,14 @@ class UsageViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // Start a 1-second tick timer to drive the live countdown
+        tickTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async { self?.tick &+= 1 }
+        }
+
+        // Request notification permission for session-reset alerts
+        requestNotificationPermission()
+
         // Watch for active account changes and restart polling
         // Note: @Published fires on willSet, so we receive on next runloop tick
         // to ensure activeAccountId is already updated when we read it.
@@ -139,9 +152,11 @@ class UsageViewModel: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 guard let self = self else { return }
-                // Cancel existing polling FIRST to prevent stale fetches
+                // Cancel existing polling and reset task FIRST to prevent stale fetches
                 self.pollingTask?.cancel()
                 self.pollingTask = nil
+                self.resetTask?.cancel()
+                self.resetTask = nil
                 self.usageData = nil
                 self.lastUpdated = nil
                 self.errorState = nil
@@ -159,6 +174,8 @@ class UsageViewModel: ObservableObject {
 
     deinit {
         pollingTask?.cancel()
+        resetTask?.cancel()
+        tickTimer?.invalidate()
     }
 
     func updateAuthStatus() {
@@ -252,6 +269,11 @@ class UsageViewModel: ObservableObject {
             errorState = nil
             authStatus = .connected
 
+            // Schedule auto-fetch at session reset time
+            if let resetsAt = data.fiveHour.resetsAt {
+                scheduleResetFetch(resetsAt: resetsAt, accountId: accountId)
+            }
+
             // Record history snapshot
             let snapshot = UsageSnapshot(
                 timestamp: Date(),
@@ -273,6 +295,39 @@ class UsageViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Reset Scheduling & Notifications
+
+    private func scheduleResetFetch(resetsAt: Date, accountId: UUID) {
+        resetTask?.cancel()
+        let delay = resetsAt.timeIntervalSinceNow
+        guard delay > 0 else { return }
+
+        resetTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            guard let self = self,
+                  self.accountStore.activeAccountId == accountId,
+                  let sessionKey = self.accountStore.sessionKey(for: accountId),
+                  let orgId = self.accountStore.orgId(for: accountId) else { return }
+            await self.performFetch(sessionKey: sessionKey, orgId: orgId, accountId: accountId)
+            self.postResetNotification()
+        }
+    }
+
+    private func postResetNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "Session Reset"
+        content.body = "Your Claude session limit has reset"
+        content.sound = .default
+
+        let request = UNNotificationRequest(identifier: "session-reset", content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    private func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    }
+
     /// Returns the highest utilization percentage across all non-nil limits.
     var highestUtilization: Double {
         guard let data = usageData else { return 0 }
@@ -288,6 +343,7 @@ class UsageViewModel: ObservableObject {
 
     /// Returns a human-readable string for how long ago data was last updated.
     var lastUpdatedString: String {
+        _ = tick // Access tick so SwiftUI re-evaluates when it changes
         guard let lastUpdated = lastUpdated else { return "Never" }
         let seconds = Int(Date().timeIntervalSince(lastUpdated))
         if seconds < 60 {
@@ -319,33 +375,21 @@ class UsageViewModel: ObservableObject {
 
     /// Returns a formatted string showing time remaining until the 5-hour limit resets.
     var remainingTimeString: String {
+        _ = tick // Access tick so SwiftUI re-evaluates when it changes
         guard let resetDate = usageData?.fiveHour.resetsAt else { return "" }
 
-        let now = Date()
-        let timeInterval = resetDate.timeIntervalSince(now)
+        let remaining = Int(resetDate.timeIntervalSinceNow)
+        if remaining <= 0 { return "0:00:00" }
 
-        // If reset time is in the past, show "Now" or similar
-        if timeInterval <= 0 {
-            return "Now"
-        }
-
-        let totalMinutes = Int(timeInterval / 60)
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
-
-        if hours > 0 {
-            if minutes > 0 {
-                return "\(hours)h \(minutes)m"
-            } else {
-                return "\(hours)h"
-            }
-        } else {
-            return "\(minutes)m"
-        }
+        let hours = remaining / 3600
+        let minutes = (remaining % 3600) / 60
+        let seconds = remaining % 60
+        return String(format: "%d:%02d:%02d", hours, minutes, seconds)
     }
 
     /// Returns the formatted reset time string (existing behavior).
     var resetTimeString: String {
+        _ = tick // Access tick so SwiftUI re-evaluates when it changes
         guard let resetDate = usageData?.fiveHour.resetsAt else { return "" }
         let fmt = DateFormatter()
         fmt.dateFormat = "h:mm a"

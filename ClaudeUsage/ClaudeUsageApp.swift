@@ -14,6 +14,7 @@ struct ClaudeUsageApp: App {
     }
 
     private var menuBarText: String {
+        _ = viewModel.tick // Trigger re-evaluation every 60s for countdown updates
         let sessionPct = Int(viewModel.usageData?.fiveHour.utilization ?? 0)
         let timeText = viewModel.menuBarTimeString
         let paceEmoji = viewModel.paceTheme.emoji(for: viewModel.paceStatus)
