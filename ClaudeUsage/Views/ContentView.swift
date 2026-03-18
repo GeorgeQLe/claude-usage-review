@@ -151,7 +151,7 @@ struct ContentView: View {
                 VStack(spacing: 16) {
                     ForEach(Array(viewModel.displayLimits.enumerated()), id: \.offset) { _, item in
                         UsageBar(name: item.name, limit: item.limit,
-                                 paceDetail: item.name == "Weekly" ? viewModel.weeklyBudgetPerDay : nil)
+                                 paceDetail: item.name == "Weekly" ? viewModel.weeklyPaceDetail : nil)
                     }
                 }
                 .padding(.horizontal, 16)

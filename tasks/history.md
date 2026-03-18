@@ -30,3 +30,15 @@ Replaced the fake `icon.ico` (was a renamed 32x32 PNG) with a proper multi-resol
 - Updated `tauri.conf.json` bundle icon list to include new assets
 - `file icon.ico` now reports "MS Windows icon resource" (not PNG)
 - Moved project from `/tmp/claude-usage-review/` to `~/projects/apps/claude-usage-review/`
+
+## 2026-03-18 — Pace Emoji Themes + Popover Pace Detail (macOS)
+
+Added selectable pace emoji themes and improved weekly pace detail in the macOS menu bar app.
+
+- Added `PaceTheme` enum with 3 themes: Running (🚶🏃🔥💀), Racecar (🏎️🟡🚨🔴), F1 Quali (🟣🟢🟡🔴)
+- Added `limitHit` case to `PaceStatus` — triggers at >=100% weekly utilization
+- Theme persisted via UserDefaults `"claude_pace_theme"`, watched via NotificationCenter
+- Menu bar now shows pace emoji from selected theme instead of hardcoded colored circles
+- Replaced `weeklyBudgetPerDay` with `weeklyPaceDetail` — actionable guidance (e.g. "12%/day · 4d left · On track — room to push")
+- Added "Pace Theme" picker in Settings
+- Build verified via xcodebuild

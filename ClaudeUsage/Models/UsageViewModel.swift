@@ -4,13 +4,61 @@ import Combine
 enum TimeDisplayFormat: String, CaseIterable {
     case resetTime = "reset_time"
     case remainingTime = "remaining_time"
-    
+
     var displayName: String {
         switch self {
         case .resetTime:
             return "Reset Time"
         case .remainingTime:
             return "Time Until Reset"
+        }
+    }
+}
+
+enum PaceStatus {
+    case unknown
+    case onTrack
+    case warning
+    case critical
+    case limitHit
+}
+
+enum PaceTheme: String, CaseIterable {
+    case running = "running"
+    case racecar = "racecar"
+    case f1Quali = "f1_quali"
+
+    var displayName: String {
+        switch self {
+        case .running: return "Running 🚶"
+        case .racecar: return "Racecar 🏎️"
+        case .f1Quali: return "F1 Quali 🟣"
+        }
+    }
+
+    func emoji(for status: PaceStatus) -> String {
+        switch self {
+        case .running:
+            switch status {
+            case .unknown, .onTrack: return "🚶"
+            case .warning: return "🏃"
+            case .critical: return "🔥"
+            case .limitHit: return "💀"
+            }
+        case .racecar:
+            switch status {
+            case .unknown, .onTrack: return "🏎️"
+            case .warning: return "🟡"
+            case .critical: return "🚨"
+            case .limitHit: return "🔴"
+            }
+        case .f1Quali:
+            switch status {
+            case .unknown, .onTrack: return "🟣"
+            case .warning: return "🟢"
+            case .critical: return "🟡"
+            case .limitHit: return "🔴"
+            }
         }
     }
 }
@@ -22,6 +70,7 @@ class UsageViewModel: ObservableObject {
     @Published var refreshRequested = false
     @Published var authStatus: AuthStatus = .notConfigured
     @Published var timeDisplayFormat = TimeDisplayFormat.resetTime
+    @Published var paceTheme = PaceTheme.running
 
     enum ErrorState: Equatable {
         case authExpired
@@ -51,6 +100,9 @@ class UsageViewModel: ObservableObject {
         let savedFormat = UserDefaults.standard.string(forKey: "claude_time_display_format") ?? TimeDisplayFormat.resetTime.rawValue
         timeDisplayFormat = TimeDisplayFormat(rawValue: savedFormat) ?? .resetTime
 
+        let savedTheme = UserDefaults.standard.string(forKey: "claude_pace_theme") ?? PaceTheme.running.rawValue
+        paceTheme = PaceTheme(rawValue: savedTheme) ?? .running
+
         updateAuthStatus()
 
         // Watch for refresh requests
@@ -62,13 +114,16 @@ class UsageViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Watch for UserDefaults changes to update timeDisplayFormat
+        // Watch for UserDefaults changes to update timeDisplayFormat and paceTheme
         NotificationCenter.default
             .publisher(for: UserDefaults.didChangeNotification)
             .sink { [weak self] _ in
                 DispatchQueue.main.async {
                     let savedFormat = UserDefaults.standard.string(forKey: "claude_time_display_format") ?? TimeDisplayFormat.resetTime.rawValue
                     self?.timeDisplayFormat = TimeDisplayFormat(rawValue: savedFormat) ?? .resetTime
+
+                    let savedTheme = UserDefaults.standard.string(forKey: "claude_pace_theme") ?? PaceTheme.running.rawValue
+                    self?.paceTheme = PaceTheme(rawValue: savedTheme) ?? .running
                 }
             }
             .store(in: &cancellables)
@@ -317,8 +372,21 @@ class UsageViewModel: ObservableObject {
         return ""
     }
 
-    /// Daily budget text shown under the Weekly bar, e.g. "~12%/day remaining (4d left)".
-    var weeklyBudgetPerDay: String? {
+    /// Pace status derived from weekly utilization and pace ratio.
+    var paceStatus: PaceStatus {
+        guard let sevenDay = usageData?.sevenDay else { return .unknown }
+        if sevenDay.utilization >= 100 { return .limitHit }
+
+        guard let ratio = paceRatio(for: sevenDay, windowSeconds: 7 * 86400) else {
+            return .unknown
+        }
+        if ratio > 1.4 { return .critical }
+        if ratio > 1.15 { return .warning }
+        return .onTrack
+    }
+
+    /// Daily budget as an Int, or nil if not enough data.
+    var dailyBudgetPercent: Int? {
         guard let sevenDay = usageData?.sevenDay,
               let resetsAt = sevenDay.resetsAt else { return nil }
 
@@ -326,18 +394,48 @@ class UsageViewModel: ObservableObject {
         let timeRemaining = resetsAt.timeIntervalSince(now)
         let timeElapsed = 7 * 86400.0 - timeRemaining
 
-        // Too early in window — ratio unstable
+        guard timeElapsed >= 6 * 3600, timeRemaining >= 3600 else { return nil }
+
+        let remaining = 100.0 - sevenDay.utilization
+        if remaining <= 0 { return 0 }
+
+        let daysRemaining = timeRemaining / 86400.0
+        return Int((remaining / daysRemaining).rounded())
+    }
+
+    /// Actionable pace detail shown under the Weekly bar.
+    var weeklyPaceDetail: String? {
+        guard let sevenDay = usageData?.sevenDay,
+              let resetsAt = sevenDay.resetsAt else { return nil }
+
+        if sevenDay.utilization >= 100 { return "Weekly limit reached" }
+
+        let now = Date()
+        let timeRemaining = resetsAt.timeIntervalSince(now)
+        let timeElapsed = 7 * 86400.0 - timeRemaining
+
         guard timeElapsed >= 6 * 3600 else { return nil }
-        // Less than 1 hour left — budget per day meaningless
         guard timeRemaining >= 3600 else { return nil }
 
         let remaining = 100.0 - sevenDay.utilization
-        if remaining <= 0 { return "Weekly limit reached" }
-
         let daysRemaining = timeRemaining / 86400.0
         let budgetPerDay = remaining / daysRemaining
         let daysLeft = Int(daysRemaining.rounded(.down))
 
-        return "~\(Int(budgetPerDay.rounded()))%/day remaining (\(daysLeft)d left)"
+        let guidance: String
+        switch paceStatus {
+        case .onTrack:
+            guidance = "On track — room to push"
+        case .warning:
+            guidance = "Slightly ahead — ease up"
+        case .critical:
+            guidance = "Well ahead — slow down"
+        case .limitHit:
+            guidance = "Limit reached"
+        case .unknown:
+            guidance = "Calculating…"
+        }
+
+        return "\(Int(budgetPerDay.rounded()))%/day · \(daysLeft)d left · \(guidance)"
     }
 }

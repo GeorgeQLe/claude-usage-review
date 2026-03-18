@@ -13,27 +13,32 @@ struct ClaudeUsageApp: App {
 
     private var menuBarText: String {
         let sessionPct = Int(viewModel.usageData?.fiveHour.utilization ?? 0)
-        let weeklyPct = Int(viewModel.usageData?.sevenDay.utilization ?? 0)
-        let resetDate: Date? = viewModel.usageData?.fiveHour.resetsAt
-        if resetDate != nil {
-            let timeText = viewModel.menuBarTimeString
-            let pace = viewModel.weeklyPaceIndicator
-            return "\(sessionPct)% · \(weeklyPct)%W\(pace) · \(timeText)"
+        let timeText = viewModel.menuBarTimeString
+        let paceEmoji = viewModel.paceTheme.emoji(for: viewModel.paceStatus)
+
+        var parts = ["\(paceEmoji) \(sessionPct)%"]
+
+        if let budget = viewModel.dailyBudgetPercent {
+            parts.append("\(budget)%/day")
+        } else {
+            // Fall back to weekly % when daily budget isn't available yet
+            let weeklyPct = Int(viewModel.usageData?.sevenDay.utilization ?? 0)
+            parts.append("\(weeklyPct)%W")
         }
-        let pace = viewModel.weeklyPaceIndicator
-        return "\(sessionPct)% · \(weeklyPct)%W\(pace)"
+
+        if !timeText.isEmpty {
+            parts.append(timeText)
+        }
+
+        return parts.joined(separator: " · ")
     }
 
     var body: some Scene {
         MenuBarExtra {
             ContentView(viewModel: viewModel, accountStore: accountStore)
         } label: {
-            HStack(spacing: 3) {
-                Image("MenuBarIcon")
-                    .renderingMode(.template)
-                Text(menuBarText)
-                    .font(.system(size: 11, weight: .medium))
-            }
+            Text(menuBarText)
+                .font(.system(size: 11, weight: .medium))
         }
         .menuBarExtraStyle(.window)
     }

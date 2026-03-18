@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var sessionKeyInput = ""
     @State private var orgIdInput = ""
     @State private var timeDisplayFormat = TimeDisplayFormat.resetTime
+    @State private var paceTheme = PaceTheme.running
     @State private var isTesting = false
     @State private var testResult: TestResult?
     @State private var launchAtLogin = false
@@ -107,6 +108,20 @@ struct SettingsView: View {
                 .font(.system(size: 12))
             }
 
+            // Pace Theme
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Pace Theme")
+                    .font(.system(size: 12, weight: .medium))
+                Picker("Pace Theme", selection: $paceTheme) {
+                    ForEach(PaceTheme.allCases, id: \.self) { theme in
+                        Text(theme.displayName)
+                            .tag(theme)
+                    }
+                }
+                .pickerStyle(.menu)
+                .font(.system(size: 12))
+            }
+
             // Buttons
             HStack {
                 Button("Save") {
@@ -153,19 +168,29 @@ struct SettingsView: View {
             Divider()
 
             // Launch at Login
-            Toggle("Launch at Login", isOn: $launchAtLogin)
-                .font(.system(size: 12))
-                .onChange(of: launchAtLogin) { newValue in
-                    do {
-                        if newValue {
-                            try SMAppService.mainApp.register()
-                        } else {
-                            try SMAppService.mainApp.unregister()
+            HStack {
+                Toggle("Launch at Login", isOn: $launchAtLogin)
+                    .font(.system(size: 12))
+                    .onChange(of: launchAtLogin) { newValue in
+                        do {
+                            if newValue {
+                                try SMAppService.mainApp.register()
+                            } else {
+                                try SMAppService.mainApp.unregister()
+                            }
+                        } catch {
+                            launchAtLogin = !newValue
                         }
-                    } catch {
-                        launchAtLogin = !newValue
                     }
+
+                Spacer()
+
+                Button("Restart App") {
+                    restartApp()
                 }
+                .font(.system(size: 11))
+                .controlSize(.small)
+            }
 
             // Accounts list
             if accountStore.accounts.count > 1 {
@@ -207,6 +232,8 @@ struct SettingsView: View {
             loadActiveAccountCredentials()
             let savedFormat = UserDefaults.standard.string(forKey: "claude_time_display_format") ?? TimeDisplayFormat.resetTime.rawValue
             timeDisplayFormat = TimeDisplayFormat(rawValue: savedFormat) ?? .resetTime
+            let savedTheme = UserDefaults.standard.string(forKey: "claude_pace_theme") ?? PaceTheme.running.rawValue
+            paceTheme = PaceTheme(rawValue: savedTheme) ?? .running
             launchAtLogin = SMAppService.mainApp.status == .enabled
         }
     }
@@ -248,9 +275,23 @@ struct SettingsView: View {
         accountStore.saveSessionKey(sessionKeyInput, for: accountId)
         accountStore.saveOrgId(orgIdInput, for: accountId)
         UserDefaults.standard.set(timeDisplayFormat.rawValue, forKey: "claude_time_display_format")
+        UserDefaults.standard.set(paceTheme.rawValue, forKey: "claude_pace_theme")
         viewModel.updateAuthStatus()
         viewModel.startPollingIfConfigured()
         testResult = nil
+    }
+
+    private func restartApp() {
+        let bundlePath = Bundle.main.bundlePath
+        let task = Process()
+        task.launchPath = "/usr/bin/open"
+        task.arguments = ["-n", bundlePath, "--args", "--restarted"]
+        try? task.run()
+
+        // Give the new instance a moment to launch, then exit
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NSApplication.shared.terminate(nil)
+        }
     }
 
     private func testConnection() {
