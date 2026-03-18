@@ -22,6 +22,8 @@ enum PaceStatus {
     case warning
     case critical
     case limitHit
+    case behindPace   // underutilizing (pace-aware mode only)
+    case wayBehind    // severely underutilizing (pace-aware mode only)
 }
 
 enum PaceTheme: String, CaseIterable {
@@ -42,6 +44,8 @@ enum PaceTheme: String, CaseIterable {
         case .running:
             switch status {
             case .unknown, .onTrack: return "🚶"
+            case .behindPace: return "🦥"
+            case .wayBehind: return "🛌"
             case .warning: return "🏃"
             case .critical: return "🔥"
             case .limitHit: return "💀"
@@ -49,6 +53,8 @@ enum PaceTheme: String, CaseIterable {
         case .racecar:
             switch status {
             case .unknown, .onTrack: return "🏎️"
+            case .behindPace: return "🚗"
+            case .wayBehind: return "🅿️"
             case .warning: return "🟡"
             case .critical: return "🚨"
             case .limitHit: return "🔴"
@@ -56,6 +62,8 @@ enum PaceTheme: String, CaseIterable {
         case .f1Quali:
             switch status {
             case .unknown, .onTrack: return "🟣"
+            case .behindPace: return "🔵"
+            case .wayBehind: return "⚪"
             case .warning: return "🟢"
             case .critical: return "🟡"
             case .limitHit: return "🔴"
@@ -442,6 +450,7 @@ class UsageViewModel: ObservableObject {
     }
 
     /// Pace status derived from weekly utilization and pace ratio.
+    /// In pace-aware mode, also flags being behind pace (underutilizing).
     var paceStatus: PaceStatus {
         guard let sevenDay = usageData?.sevenDay else { return .unknown }
         if sevenDay.utilization >= 100 { return .limitHit }
@@ -449,8 +458,14 @@ class UsageViewModel: ObservableObject {
         guard let ratio = paceRatio(for: sevenDay, windowSeconds: 7 * 86400) else {
             return .unknown
         }
+        // Ahead of pace (overusing)
         if ratio > 1.4 { return .critical }
         if ratio > 1.15 { return .warning }
+        // Behind pace (underutilizing) — only in pace-aware mode
+        if weeklyColorMode == .paceAware {
+            if ratio < 0.6 { return .wayBehind }
+            if ratio < 0.85 { return .behindPace }
+        }
         return .onTrack
     }
 
@@ -495,6 +510,10 @@ class UsageViewModel: ObservableObject {
         switch paceStatus {
         case .onTrack:
             guidance = "On pace — use more"
+        case .behindPace:
+            guidance = "Behind pace — pick it up"
+        case .wayBehind:
+            guidance = "Way behind — use it or lose it"
         case .warning:
             guidance = "Ahead of pace — ease up"
         case .critical:
@@ -506,5 +525,27 @@ class UsageViewModel: ObservableObject {
         }
 
         return "\(Int(budgetPerDay.rounded()))%/day · \(daysLeft)d left · \(guidance)"
+    }
+
+    /// Just the guidance status message (e.g. "Behind pace — pick it up").
+    var paceGuidance: String? {
+        guard let sevenDay = usageData?.sevenDay,
+              let resetsAt = sevenDay.resetsAt else { return nil }
+
+        if sevenDay.utilization >= 100 { return "Weekly limit reached" }
+
+        let timeRemaining = resetsAt.timeIntervalSince(Date())
+        let timeElapsed = 7 * 86400.0 - timeRemaining
+        guard timeElapsed >= 6 * 3600, timeRemaining >= 3600 else { return nil }
+
+        switch paceStatus {
+        case .onTrack: return "On pace — use more"
+        case .behindPace: return "Behind pace — pick it up"
+        case .wayBehind: return "Way behind — use it or lose it"
+        case .warning: return "Ahead of pace — ease up"
+        case .critical: return "Way ahead — slow down"
+        case .limitHit: return "Maxed out"
+        case .unknown: return "Calculating…"
+        }
     }
 }

@@ -58,6 +58,8 @@ struct UsageBar: View {
     static func paceColor(for status: PaceStatus) -> Color {
         switch status {
         case .onTrack, .unknown: return .green
+        case .behindPace: return .yellow
+        case .wayBehind: return .red
         case .warning: return .yellow
         case .critical, .limitHit: return .red
         }
