@@ -3,19 +3,14 @@ import SwiftUI
 struct CircleProgress: View {
     let percentage: Double
     var size: CGFloat = 32
+    var colorMode: UsageColorMode = .session
 
     private var trimEnd: CGFloat {
         CGFloat(min(max(percentage, 0), 100)) / 100.0
     }
 
     private var ringColor: Color {
-        if percentage >= 80 {
-            return .red
-        } else if percentage >= 50 {
-            return .yellow
-        } else {
-            return .green
-        }
+        colorMode.color(for: percentage)
     }
 
     var body: some View {

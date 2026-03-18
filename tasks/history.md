@@ -64,3 +64,14 @@ Added usage history persistence with sparkline charts and GitHub contribution he
 - GitHubViewModel wired through ClaudeUsageApp → ContentView
 - All 7 new files added to Xcode project (pbxproj)
 - Build verified via xcodebuild
+
+## 2026-03-18 — Dual-Mode Color Logic (macOS)
+
+Implemented inverted color semantics for session vs weekly usage bars.
+
+- Added `UsageColorMode` enum (`.session` = high is bad/red, `.weekly` = high is good/green)
+- Threaded `colorMode` through `UsageBar`, `CircleProgress`, `SparklineView`
+- ContentView passes `.session` for Session bar, `.weekly` for all weekly bars
+- Updated pace guidance wording: "On pace — use more", "Ahead of pace — ease up", "Way ahead — slow down", "Maxed out"
+- Daily budget (%/day) was already implemented via `weeklyPaceDetail`
+- Build verified via xcodebuild

@@ -154,7 +154,8 @@ struct ContentView: View {
                 VStack(spacing: 16) {
                     ForEach(Array(viewModel.displayLimits.enumerated()), id: \.offset) { _, item in
                         UsageBar(name: item.name, limit: item.limit,
-                                 paceDetail: item.name == "Weekly" ? viewModel.weeklyPaceDetail : nil)
+                                 paceDetail: item.name == "Weekly" ? viewModel.weeklyPaceDetail : nil,
+                                 colorMode: item.name == "Session" ? .session : .weekly)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -172,14 +173,16 @@ struct ContentView: View {
                                     .font(.system(size: 10))
                                     .foregroundColor(.secondary)
                                 SparklineView(snapshots: viewModel.historySnapshots,
-                                              keyPath: \.sessionUtilization)
+                                              keyPath: \.sessionUtilization,
+                                              colorMode: .session)
                             }
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Weekly")
                                     .font(.system(size: 10))
                                     .foregroundColor(.secondary)
                                 SparklineView(snapshots: viewModel.historySnapshots,
-                                              keyPath: \.weeklyUtilization)
+                                              keyPath: \.weeklyUtilization,
+                                              colorMode: .weekly)
                             }
                         }
                         .padding(.top, 4)

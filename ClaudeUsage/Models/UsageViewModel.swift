@@ -443,13 +443,13 @@ class UsageViewModel: ObservableObject {
         let guidance: String
         switch paceStatus {
         case .onTrack:
-            guidance = "On track — room to push"
+            guidance = "On pace — use more"
         case .warning:
-            guidance = "Slightly ahead — ease up"
+            guidance = "Ahead of pace — ease up"
         case .critical:
-            guidance = "Well ahead — slow down"
+            guidance = "Way ahead — slow down"
         case .limitHit:
-            guidance = "Limit reached"
+            guidance = "Maxed out"
         case .unknown:
             guidance = "Calculating…"
         }

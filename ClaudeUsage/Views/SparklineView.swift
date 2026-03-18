@@ -3,13 +3,14 @@ import SwiftUI
 struct SparklineView: View {
     let snapshots: [UsageSnapshot]
     let keyPath: KeyPath<UsageSnapshot, Double>
+    var colorMode: UsageColorMode = .session
 
     private var lineColor: Color {
-        guard let last = snapshots.last else { return .green }
+        guard let last = snapshots.last else {
+            return colorMode.color(for: 0)
+        }
         let value = last[keyPath: keyPath]
-        if value >= 80 { return .red }
-        if value >= 50 { return .yellow }
-        return .green
+        return colorMode.color(for: value)
     }
 
     var body: some View {
