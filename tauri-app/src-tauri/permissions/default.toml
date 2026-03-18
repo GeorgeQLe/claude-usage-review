@@ -1,0 +1,94 @@
+[default]
+description = "Default permissions for ClaudeUsage app commands"
+permissions = [
+    "allow-get-usage",
+    "allow-refresh-now",
+    "allow-get-accounts",
+    "allow-add-account",
+    "allow-remove-account",
+    "allow-rename-account",
+    "allow-set-active-account",
+    "allow-save-credentials",
+    "allow-test-connection",
+    "allow-get-config",
+    "allow-update-config",
+    "allow-toggle-overlay",
+    "allow-set-overlay-layout",
+    "allow-set-overlay-opacity",
+    "allow-set-overlay-position",
+]
+
+[[permission]]
+identifier = "allow-get-usage"
+description = "Allows the get_usage command"
+commands.allow = ["get_usage"]
+
+[[permission]]
+identifier = "allow-refresh-now"
+description = "Allows the refresh_now command"
+commands.allow = ["refresh_now"]
+
+[[permission]]
+identifier = "allow-get-accounts"
+description = "Allows the get_accounts command"
+commands.allow = ["get_accounts"]
+
+[[permission]]
+identifier = "allow-add-account"
+description = "Allows the add_account command"
+commands.allow = ["add_account"]
+
+[[permission]]
+identifier = "allow-remove-account"
+description = "Allows the remove_account command"
+commands.allow = ["remove_account"]
+
+[[permission]]
+identifier = "allow-rename-account"
+description = "Allows the rename_account command"
+commands.allow = ["rename_account"]
+
+[[permission]]
+identifier = "allow-set-active-account"
+description = "Allows the set_active_account command"
+commands.allow = ["set_active_account"]
+
+[[permission]]
+identifier = "allow-save-credentials"
+description = "Allows the save_credentials command"
+commands.allow = ["save_credentials"]
+
+[[permission]]
+identifier = "allow-test-connection"
+description = "Allows the test_connection command"
+commands.allow = ["test_connection"]
+
+[[permission]]
+identifier = "allow-get-config"
+description = "Allows the get_config command"
+commands.allow = ["get_config"]
+
+[[permission]]
+identifier = "allow-update-config"
+description = "Allows the update_config command"
+commands.allow = ["update_config"]
+
+[[permission]]
+identifier = "allow-toggle-overlay"
+description = "Allows the toggle_overlay command"
+commands.allow = ["toggle_overlay"]
+
+[[permission]]
+identifier = "allow-set-overlay-layout"
+description = "Allows the set_overlay_layout command"
+commands.allow = ["set_overlay_layout"]
+
+[[permission]]
+identifier = "allow-set-overlay-opacity"
+description = "Allows the set_overlay_opacity command"
+commands.allow = ["set_overlay_opacity"]
+
+[[permission]]
+identifier = "allow-set-overlay-position"
+description = "Allows the set_overlay_position command"
+commands.allow = ["set_overlay_position"]

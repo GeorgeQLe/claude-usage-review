@@ -177,6 +177,102 @@
       "description": "Permission identifier",
       "oneOf": [
         {
+          "description": "Default permissions for ClaudeUsage app commands\n#### This default permission set includes:\n\n- `allow-get-usage`\n- `allow-refresh-now`\n- `allow-get-accounts`\n- `allow-add-account`\n- `allow-remove-account`\n- `allow-rename-account`\n- `allow-set-active-account`\n- `allow-save-credentials`\n- `allow-test-connection`\n- `allow-get-config`\n- `allow-update-config`\n- `allow-toggle-overlay`\n- `allow-set-overlay-layout`\n- `allow-set-overlay-opacity`\n- `allow-set-overlay-position`",
+          "type": "string",
+          "const": "default",
+          "markdownDescription": "Default permissions for ClaudeUsage app commands\n#### This default permission set includes:\n\n- `allow-get-usage`\n- `allow-refresh-now`\n- `allow-get-accounts`\n- `allow-add-account`\n- `allow-remove-account`\n- `allow-rename-account`\n- `allow-set-active-account`\n- `allow-save-credentials`\n- `allow-test-connection`\n- `allow-get-config`\n- `allow-update-config`\n- `allow-toggle-overlay`\n- `allow-set-overlay-layout`\n- `allow-set-overlay-opacity`\n- `allow-set-overlay-position`"
+        },
+        {
+          "description": "Allows the add_account command",
+          "type": "string",
+          "const": "allow-add-account",
+          "markdownDescription": "Allows the add_account command"
+        },
+        {
+          "description": "Allows the get_accounts command",
+          "type": "string",
+          "const": "allow-get-accounts",
+          "markdownDescription": "Allows the get_accounts command"
+        },
+        {
+          "description": "Allows the get_config command",
+          "type": "string",
+          "const": "allow-get-config",
+          "markdownDescription": "Allows the get_config command"
+        },
+        {
+          "description": "Allows the get_usage command",
+          "type": "string",
+          "const": "allow-get-usage",
+          "markdownDescription": "Allows the get_usage command"
+        },
+        {
+          "description": "Allows the refresh_now command",
+          "type": "string",
+          "const": "allow-refresh-now",
+          "markdownDescription": "Allows the refresh_now command"
+        },
+        {
+          "description": "Allows the remove_account command",
+          "type": "string",
+          "const": "allow-remove-account",
+          "markdownDescription": "Allows the remove_account command"
+        },
+        {
+          "description": "Allows the rename_account command",
+          "type": "string",
+          "const": "allow-rename-account",
+          "markdownDescription": "Allows the rename_account command"
+        },
+        {
+          "description": "Allows the save_credentials command",
+          "type": "string",
+          "const": "allow-save-credentials",
+          "markdownDescription": "Allows the save_credentials command"
+        },
+        {
+          "description": "Allows the set_active_account command",
+          "type": "string",
+          "const": "allow-set-active-account",
+          "markdownDescription": "Allows the set_active_account command"
+        },
+        {
+          "description": "Allows the set_overlay_layout command",
+          "type": "string",
+          "const": "allow-set-overlay-layout",
+          "markdownDescription": "Allows the set_overlay_layout command"
+        },
+        {
+          "description": "Allows the set_overlay_opacity command",
+          "type": "string",
+          "const": "allow-set-overlay-opacity",
+          "markdownDescription": "Allows the set_overlay_opacity command"
+        },
+        {
+          "description": "Allows the set_overlay_position command",
+          "type": "string",
+          "const": "allow-set-overlay-position",
+          "markdownDescription": "Allows the set_overlay_position command"
+        },
+        {
+          "description": "Allows the test_connection command",
+          "type": "string",
+          "const": "allow-test-connection",
+          "markdownDescription": "Allows the test_connection command"
+        },
+        {
+          "description": "Allows the toggle_overlay command",
+          "type": "string",
+          "const": "allow-toggle-overlay",
+          "markdownDescription": "Allows the toggle_overlay command"
+        },
+        {
+          "description": "Allows the update_config command",
+          "type": "string",
+          "const": "allow-update-config",
+          "markdownDescription": "Allows the update_config command"
+        },
+        {
           "description": "This permission set configures if your\napplication can enable or disable auto\nstarting the application on boot.\n\n#### Granted Permissions\n\nIt allows all to check, enable and\ndisable the automatic start on boot.\n\n\n#### This default permission set includes:\n\n- `allow-enable`\n- `allow-disable`\n- `allow-is-enabled`",
           "type": "string",
           "const": "autostart:default",
