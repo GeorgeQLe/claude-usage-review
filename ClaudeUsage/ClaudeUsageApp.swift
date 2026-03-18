@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct ClaudeUsageApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var accountStore = AccountStore()
     @StateObject private var viewModel: UsageViewModel
     @StateObject private var githubViewModel = GitHubViewModel()
@@ -22,11 +23,11 @@ struct ClaudeUsageApp: App {
         var parts = ["\(paceEmoji) \(sessionPct)%"]
 
         if let budget = viewModel.dailyBudgetPercent {
-            parts.append("\(budget)%/day")
+            parts.append("\(paceEmoji) \(budget)%/day")
         } else {
             // Fall back to weekly % when daily budget isn't available yet
             let weeklyPct = Int(viewModel.usageData?.sevenDay.utilization ?? 0)
-            parts.append("\(weeklyPct)%W")
+            parts.append("\(paceEmoji) \(weeklyPct)%W")
         }
 
         if !timeText.isEmpty {
@@ -40,6 +41,7 @@ struct ClaudeUsageApp: App {
         MenuBarExtra {
             ContentView(viewModel: viewModel, accountStore: accountStore, githubViewModel: githubViewModel)
         } label: {
+            let _ = { appDelegate.viewModel = viewModel }()
             Text(menuBarText)
                 .font(.system(size: 11, weight: .medium))
         }
