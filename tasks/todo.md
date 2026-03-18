@@ -34,7 +34,7 @@
 - [x] `overlay.ts` — 3 layouts (compact bar, minimal text, vertical sidebar), draggable, opacity, double-click/right-click
 
 ## Phase 6: Polish
-- [ ] Tauri capabilities/permissions for IPC commands
+- [x] Tauri capabilities/permissions for IPC commands
 - [ ] Icon: proper .ico file for Windows (multi-resolution)
 - [ ] DPI awareness: popover positioning relative to tray
 - [ ] Autostart verification on Windows
@@ -44,40 +44,22 @@
 
 ---
 
-## Next Step Plan: Phase 6 — Polish (Tauri Capabilities)
+## Next Step Plan: Phase 6 — Polish (Windows Icon)
 
 ### What needs to be done
-Tauri 2 requires explicit capability declarations for IPC commands. Without these, the frontend `invoke()` calls will be blocked at runtime. We also need to add proper window permissions.
+Create a proper multi-resolution .ico file for the Windows app. The current tray icons are 32x32 PNGs (green/yellow/red circles). Windows needs a proper app icon (.ico) with multiple resolutions (16x16, 32x32, 48x48, 256x256) for the taskbar, installer, and window title bar.
 
 ### Files to create/modify
-- **`/tmp/claude-usage-review/tauri-app/src-tauri/capabilities/default.json`** — declare all 16 IPC commands + window + event permissions
-- **`/tmp/claude-usage-review/tauri-app/src-tauri/tauri.conf.json`** — may need `capabilities` reference
+- **`/tmp/claude-usage-review/tauri-app/src-tauri/icons/`** — create multi-resolution .ico files
+- **`/tmp/claude-usage-review/tauri-app/src-tauri/tauri.conf.json`** — update `icon` paths in bundle config
 
 ### Technical details
-Create `src-tauri/capabilities/default.json` with:
-```json
-{
-  "identifier": "default",
-  "windows": ["*"],
-  "permissions": [
-    "core:default",
-    "core:event:default",
-    "core:window:default",
-    "core:window:allow-create",
-    "core:window:allow-close",
-    "core:window:allow-set-focus",
-    "core:window:allow-set-position",
-    "core:window:allow-outer-position",
-    "autostart:default",
-    // All 16 custom commands need allow entries
-  ]
-}
-```
-
-Each custom IPC command needs a permission entry. Check Tauri 2 docs for exact format — custom commands auto-generate permissions as `allow-{command-name}` (kebab-case).
+- Tauri expects icons listed in `tauri.conf.json` under `bundle.icon`
+- For Windows: need `icon.ico` (multi-res) and optionally `icon.png`
+- Can generate from SVG or use ImageMagick `convert` to combine PNGs into .ico
+- The existing tray PNGs (`tray-green.png`, etc.) are separate from the app icon
 
 ### Acceptance criteria
-- `cargo tauri dev` launches without IPC permission errors
-- Frontend can call all 16 commands successfully
-- Overlay window can be created/closed
-- Settings window opens from tray menu
+- `tauri.conf.json` `bundle.icon` references valid icon files
+- `cargo tauri build` doesn't warn about missing icons
+- .ico contains at least 32x32 and 256x256 resolutions
