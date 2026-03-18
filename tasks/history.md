@@ -1,5 +1,17 @@
 # ClaudeUsage — Session History
 
+## 2026-03-18 — Pace-Aware Weekly Bar Colors (macOS)
+
+Aligned weekly bar color logic with menu bar pace emoji so both show the same status.
+
+- Added `WeeklyColorMode` enum (`.paceAware` default, `.rawPercentage`) with UserDefaults persistence
+- In pace-aware mode: weekly bar/ring color derives from `PaceStatus` (green=onTrack, yellow=warning, red=critical/limitHit)
+- Raw percentage mode preserves original behavior (high=green, low=red)
+- Added "Weekly Bar Color" picker in Settings
+- Threaded `paceStatus` + `weeklyColorMode` through `UsageBar` and `CircleProgress`
+- `UsageViewModel` loads/watches `weeklyColorMode` from UserDefaults like other preferences
+- Build verified via xcodebuild
+
 ## 2026-03-18 — Auto-Refresh on Session Reset + Live Countdown (macOS)
 
 Added auto-fetch at session reset time with macOS notification, plus a live h:mm:ss countdown timer in the menu bar.

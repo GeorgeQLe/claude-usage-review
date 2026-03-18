@@ -72,6 +72,7 @@ class UsageViewModel: ObservableObject {
     @Published var authStatus: AuthStatus = .notConfigured
     @Published var timeDisplayFormat = TimeDisplayFormat.resetTime
     @Published var paceTheme = PaceTheme.running
+    @Published var weeklyColorMode = WeeklyColorMode.paceAware
 
     enum ErrorState: Equatable {
         case authExpired
@@ -111,6 +112,9 @@ class UsageViewModel: ObservableObject {
         let savedTheme = UserDefaults.standard.string(forKey: "claude_pace_theme") ?? PaceTheme.running.rawValue
         paceTheme = PaceTheme(rawValue: savedTheme) ?? .running
 
+        let savedColorMode = UserDefaults.standard.string(forKey: WeeklyColorMode.defaultsKey) ?? WeeklyColorMode.paceAware.rawValue
+        weeklyColorMode = WeeklyColorMode(rawValue: savedColorMode) ?? .paceAware
+
         updateAuthStatus()
 
         // Watch for refresh requests
@@ -132,6 +136,9 @@ class UsageViewModel: ObservableObject {
 
                     let savedTheme = UserDefaults.standard.string(forKey: "claude_pace_theme") ?? PaceTheme.running.rawValue
                     self?.paceTheme = PaceTheme(rawValue: savedTheme) ?? .running
+
+                    let savedColorMode = UserDefaults.standard.string(forKey: WeeklyColorMode.defaultsKey) ?? WeeklyColorMode.paceAware.rawValue
+                    self?.weeklyColorMode = WeeklyColorMode(rawValue: savedColorMode) ?? .paceAware
                 }
             }
             .store(in: &cancellables)

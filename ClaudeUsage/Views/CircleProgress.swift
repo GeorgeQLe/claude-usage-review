@@ -4,13 +4,18 @@ struct CircleProgress: View {
     let percentage: Double
     var size: CGFloat = 32
     var colorMode: UsageColorMode = .session
+    var paceStatus: PaceStatus? = nil
+    var weeklyColorMode: WeeklyColorMode = .paceAware
 
     private var trimEnd: CGFloat {
         CGFloat(min(max(percentage, 0), 100)) / 100.0
     }
 
     private var ringColor: Color {
-        colorMode.color(for: percentage)
+        if colorMode == .weekly, let status = paceStatus, weeklyColorMode == .paceAware {
+            return UsageBar.paceColor(for: status)
+        }
+        return colorMode.color(for: percentage)
     }
 
     var body: some View {

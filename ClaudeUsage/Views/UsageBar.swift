@@ -1,5 +1,20 @@
 import SwiftUI
 
+/// Controls whether the weekly bar uses pace-aware or raw-percentage coloring.
+enum WeeklyColorMode: String, CaseIterable {
+    case paceAware = "pace_aware"
+    case rawPercentage = "raw_percentage"
+
+    var displayName: String {
+        switch self {
+        case .paceAware: return "Pace-Aware"
+        case .rawPercentage: return "Raw Percentage"
+        }
+    }
+
+    static let defaultsKey = "claude_weekly_color_mode"
+}
+
 /// Controls whether high utilization is good (weekly) or bad (session).
 enum UsageColorMode {
     /// Session-style: high = red (burning too fast), low = green (pacing well)
@@ -26,13 +41,26 @@ struct UsageBar: View {
     let limit: UsageLimit
     var paceDetail: String? = nil
     var colorMode: UsageColorMode = .session
+    var paceStatus: PaceStatus? = nil
+    var weeklyColorMode: WeeklyColorMode = .paceAware
 
     private var percentage: Double {
         min(max(limit.utilization, 0), 100)
     }
 
     private var barColor: Color {
-        colorMode.color(for: percentage)
+        if colorMode == .weekly, let status = paceStatus, weeklyColorMode == .paceAware {
+            return Self.paceColor(for: status)
+        }
+        return colorMode.color(for: percentage)
+    }
+
+    static func paceColor(for status: PaceStatus) -> Color {
+        switch status {
+        case .onTrack, .unknown: return .green
+        case .warning: return .yellow
+        case .critical, .limitHit: return .red
+        }
     }
 
     private var resetTimeString: String {
@@ -57,7 +85,7 @@ struct UsageBar: View {
                 Text(name)
                     .font(.system(size: 13, weight: .medium))
                 Spacer()
-                CircleProgress(percentage: percentage, size: 20, colorMode: colorMode)
+                CircleProgress(percentage: percentage, size: 20, colorMode: colorMode, paceStatus: paceStatus, weeklyColorMode: weeklyColorMode)
                 Text("\(Int(percentage))%")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.secondary)

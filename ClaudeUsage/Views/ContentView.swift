@@ -155,7 +155,9 @@ struct ContentView: View {
                     ForEach(Array(viewModel.displayLimits.enumerated()), id: \.offset) { _, item in
                         UsageBar(name: item.name, limit: item.limit,
                                  paceDetail: item.name == "Weekly" ? viewModel.weeklyPaceDetail : nil,
-                                 colorMode: item.name == "Session" ? .session : .weekly)
+                                 colorMode: item.name == "Session" ? .session : .weekly,
+                                 paceStatus: item.name == "Session" ? nil : viewModel.paceStatus,
+                                 weeklyColorMode: viewModel.weeklyColorMode)
                     }
                 }
                 .padding(.horizontal, 16)

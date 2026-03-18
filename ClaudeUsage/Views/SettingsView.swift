@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var orgIdInput = ""
     @State private var timeDisplayFormat = TimeDisplayFormat.resetTime
     @State private var paceTheme = PaceTheme.running
+    @State private var weeklyColorMode = WeeklyColorMode.paceAware
     @State private var isTesting = false
     @State private var testResult: TestResult?
     @State private var launchAtLogin = false
@@ -119,6 +120,20 @@ struct SettingsView: View {
                     ForEach(PaceTheme.allCases, id: \.self) { theme in
                         Text(theme.displayName)
                             .tag(theme)
+                    }
+                }
+                .pickerStyle(.menu)
+                .font(.system(size: 12))
+            }
+
+            // Weekly Bar Color
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Weekly Bar Color")
+                    .font(.system(size: 12, weight: .medium))
+                Picker("Weekly Bar Color", selection: $weeklyColorMode) {
+                    ForEach(WeeklyColorMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName)
+                            .tag(mode)
                     }
                 }
                 .pickerStyle(.menu)
@@ -254,6 +269,8 @@ struct SettingsView: View {
             timeDisplayFormat = TimeDisplayFormat(rawValue: savedFormat) ?? .resetTime
             let savedTheme = UserDefaults.standard.string(forKey: "claude_pace_theme") ?? PaceTheme.running.rawValue
             paceTheme = PaceTheme(rawValue: savedTheme) ?? .running
+            let savedColorMode = UserDefaults.standard.string(forKey: WeeklyColorMode.defaultsKey) ?? WeeklyColorMode.paceAware.rawValue
+            weeklyColorMode = WeeklyColorMode(rawValue: savedColorMode) ?? .paceAware
             launchAtLogin = SMAppService.mainApp.status == .enabled
             githubUsername = UserDefaults.standard.string(forKey: "claude_github_username") ?? ""
             githubToken = KeychainService.read(key: .githubToken) ?? ""
@@ -298,6 +315,7 @@ struct SettingsView: View {
         accountStore.saveOrgId(orgIdInput, for: accountId)
         UserDefaults.standard.set(timeDisplayFormat.rawValue, forKey: "claude_time_display_format")
         UserDefaults.standard.set(paceTheme.rawValue, forKey: "claude_pace_theme")
+        UserDefaults.standard.set(weeklyColorMode.rawValue, forKey: WeeklyColorMode.defaultsKey)
 
         // Save GitHub credentials (global, not per-account)
         UserDefaults.standard.set(githubUsername, forKey: "claude_github_username")
