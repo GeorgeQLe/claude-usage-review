@@ -99,3 +99,21 @@ Implemented inverted color semantics for session vs weekly usage bars.
 - Updated pace guidance wording: "On pace — use more", "Ahead of pace — ease up", "Way ahead — slow down", "Maxed out"
 - Daily budget (%/day) was already implemented via `weeklyPaceDetail`
 - Build verified via xcodebuild
+
+## 2026-03-18 — Behind-Pace Status + Hover Tooltip (macOS)
+
+Added underutilization detection and a hover tooltip on the menu bar item.
+
+**Behind-pace status:**
+- Added `behindPace` and `wayBehind` cases to `PaceStatus` enum
+- All 3 pace themes now have emoji for behind-pace states (Running: 🦥/🛌, Racecar: 🚗/🅿️, F1: 🔵/⚪)
+- `paceStatus` checks ratio < 0.85 (behindPace) and < 0.6 (wayBehind) in pace-aware mode
+- `UsageBar.paceColor` maps new statuses to yellow/red
+- Menu bar daily budget now shows pace emoji prefix
+
+**Hover tooltip:**
+- `AppDelegate` finds `NSStatusBarButton` via `NSStatusBarWindow` view hierarchy walk
+- Custom borderless floating `NSWindow` tooltip — native `toolTip` is suppressed on status bar buttons by macOS
+- Global `NSEvent.addGlobalMonitorForEvents` tracks mouse position over the status item
+- `paceGuidance` computed property provides just the status message (e.g. "Behind pace — pick it up")
+- Tooltip updates live via Combine subscription on `$usageData`
