@@ -1,5 +1,17 @@
 # ClaudeUsage — Session History
 
+## 2026-03-18 — Auto-Refresh on Session Reset + Live Countdown (macOS)
+
+Added auto-fetch at session reset time with macOS notification, plus a live h:mm:ss countdown timer in the menu bar.
+
+- `resetTask` sleeps until `fiveHour.resetsAt`, then fetches immediately and posts a `UNUserNotification` ("Session Reset")
+- 1-second `tickTimer` drives `@Published tick` — `remainingTimeString` now shows `h:mm:ss` format updating every second
+- `_ = tick` pattern in computed properties triggers SwiftUI re-evaluation for menu bar label
+- Notification permission requested on init via `UNUserNotificationCenter`
+- Reset task cancelled on deinit and account switch
+- Default time display changed from "Reset Time" to "Time Until Reset" (countdown)
+- Deployed via `./claudeusage.sh deploy`
+
 ## 2026-03-18 — Tauri 2 Windows Port (Phases 1–5)
 
 Built the complete Tauri 2 Windows port of the macOS ClaudeUsage menu bar app.
