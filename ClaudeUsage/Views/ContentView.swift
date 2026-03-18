@@ -3,6 +3,9 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var viewModel: UsageViewModel
     @ObservedObject var accountStore: AccountStore
+    @ObservedObject var githubViewModel: GitHubViewModel
+    @AppStorage("history_expanded") private var historyExpanded = false
+    @AppStorage("github_expanded") private var githubExpanded = false
     @State private var showingAddAccount = false
     @State private var newAccountEmail = ""
 
@@ -11,7 +14,7 @@ struct ContentView: View {
     }
 
     private func openSettings() {
-        let settingsView = SettingsView(viewModel: viewModel, accountStore: accountStore)
+        let settingsView = SettingsView(viewModel: viewModel, accountStore: accountStore, githubViewModel: githubViewModel)
         let hostingController = NSHostingController(rootView: settingsView)
         let window = NSWindow(contentViewController: hostingController)
         window.title = "Claude Usage Settings"
@@ -157,6 +160,54 @@ struct ContentView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
                 .padding(.bottom, 12)
+
+                // History sparkline section
+                if !viewModel.historySnapshots.isEmpty {
+                    Divider()
+
+                    DisclosureGroup(isExpanded: $historyExpanded) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Session")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                                SparklineView(snapshots: viewModel.historySnapshots,
+                                              keyPath: \.sessionUtilization)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Weekly")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                                SparklineView(snapshots: viewModel.historySnapshots,
+                                              keyPath: \.weeklyUtilization)
+                            }
+                        }
+                        .padding(.top, 4)
+                    } label: {
+                        Text("History")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                }
+
+                // GitHub heatmap section
+                if githubViewModel.isConfigured && !githubViewModel.weeks.isEmpty {
+                    Divider()
+
+                    DisclosureGroup(isExpanded: $githubExpanded) {
+                        ContributionHeatmapView(
+                            weeks: githubViewModel.last12Weeks,
+                            totalContributions: githubViewModel.totalContributions
+                        )
+                        .padding(.top, 4)
+                    } label: {
+                        Text("GitHub")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                }
 
                 Divider()
 

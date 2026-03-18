@@ -10,6 +10,7 @@ struct KeychainService {
     enum KeychainKey: String {
         case sessionKey = "sessionKey"
         case orgId = "orgId"
+        case githubToken = "githubToken"
     }
 
     @discardableResult

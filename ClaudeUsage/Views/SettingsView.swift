@@ -4,6 +4,7 @@ import ServiceManagement
 struct SettingsView: View {
     @ObservedObject var viewModel: UsageViewModel
     @ObservedObject var accountStore: AccountStore
+    @ObservedObject var githubViewModel: GitHubViewModel
     @State private var sessionKeyInput = ""
     @State private var orgIdInput = ""
     @State private var timeDisplayFormat = TimeDisplayFormat.resetTime
@@ -13,6 +14,8 @@ struct SettingsView: View {
     @State private var launchAtLogin = false
     @State private var editingAccountId: UUID?
     @State private var editingAccountName = ""
+    @State private var githubUsername = ""
+    @State private var githubToken = ""
 
     enum TestResult {
         case success
@@ -167,6 +170,23 @@ struct SettingsView: View {
 
             Divider()
 
+            // GitHub Integration
+            VStack(alignment: .leading, spacing: 4) {
+                Text("GitHub Integration")
+                    .font(.system(size: 12, weight: .medium))
+                TextField("GitHub username", text: $githubUsername)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12))
+                SecureField("GitHub personal access token", text: $githubToken)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12))
+                Text("Token needs `read:user` scope for private contributions")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+            }
+
+            Divider()
+
             // Launch at Login
             HStack {
                 Toggle("Launch at Login", isOn: $launchAtLogin)
@@ -235,6 +255,8 @@ struct SettingsView: View {
             let savedTheme = UserDefaults.standard.string(forKey: "claude_pace_theme") ?? PaceTheme.running.rawValue
             paceTheme = PaceTheme(rawValue: savedTheme) ?? .running
             launchAtLogin = SMAppService.mainApp.status == .enabled
+            githubUsername = UserDefaults.standard.string(forKey: "claude_github_username") ?? ""
+            githubToken = KeychainService.read(key: .githubToken) ?? ""
         }
     }
 
@@ -276,6 +298,15 @@ struct SettingsView: View {
         accountStore.saveOrgId(orgIdInput, for: accountId)
         UserDefaults.standard.set(timeDisplayFormat.rawValue, forKey: "claude_time_display_format")
         UserDefaults.standard.set(paceTheme.rawValue, forKey: "claude_pace_theme")
+
+        // Save GitHub credentials (global, not per-account)
+        UserDefaults.standard.set(githubUsername, forKey: "claude_github_username")
+        if !githubToken.isEmpty {
+            KeychainService.save(key: .githubToken, value: githubToken)
+        }
+        githubViewModel.checkConfiguration()
+        githubViewModel.startPollingIfConfigured()
+
         viewModel.updateAuthStatus()
         viewModel.startPollingIfConfigured()
         testResult = nil

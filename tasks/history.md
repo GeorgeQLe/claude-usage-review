@@ -42,3 +42,25 @@ Added selectable pace emoji themes and improved weekly pace detail in the macOS 
 - Replaced `weeklyBudgetPerDay` with `weeklyPaceDetail` — actionable guidance (e.g. "12%/day · 4d left · On track — room to push")
 - Added "Pace Theme" picker in Settings
 - Build verified via xcodebuild
+
+## 2026-03-18 — Usage History + GitHub Contribution Heatmap (macOS)
+
+Added usage history persistence with sparkline charts and GitHub contribution heatmap to the macOS menu bar app.
+
+**Phase 1 — Usage History:**
+- `UsageSnapshot` model (timestamp, session/weekly utilization)
+- `HistoryStore` — JSON persistence at `~/Library/Application Support/ClaudeUsage/history-{accountId}.json` with compaction (>24h → 1/hour max, >7d → delete, ~2000 entries max)
+- `SparklineView` — 30pt Path-based line graph with gradient fill, color follows bar thresholds (green/yellow/red)
+- Hooked into `UsageViewModel.performFetch` — appends snapshot after each successful poll, reloads on account switch
+- Collapsible "History" DisclosureGroup in popover with session + weekly sparklines
+
+**Phase 2 — GitHub Contribution Heatmap:**
+- `ContributionDay` model + GraphQL response wrapper structs
+- `GitHubService` — GraphQL query to `api.github.com/graphql` for `contributionCalendar`
+- `GitHubViewModel` — separate ObservableObject, 1-hour polling interval
+- `ContributionHeatmapView` — last 12 weeks grid, 5pt cells, GitHub green color scale with tooltips
+- Added `githubToken` to KeychainService (global, not per-account)
+- GitHub username/token fields in SettingsView with helper text
+- GitHubViewModel wired through ClaudeUsageApp → ContentView
+- All 7 new files added to Xcode project (pbxproj)
+- Build verified via xcodebuild

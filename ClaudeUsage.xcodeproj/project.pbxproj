@@ -19,6 +19,13 @@
 		AA000010 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100013 /* SettingsView.swift */; };
 		AA000011 /* Account.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100014 /* Account.swift */; };
 		AA000012 /* AccountStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100015 /* AccountStore.swift */; };
+		AA000013 /* UsageSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100016 /* UsageSnapshot.swift */; };
+		AA000014 /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100017 /* HistoryStore.swift */; };
+		AA000015 /* SparklineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100018 /* SparklineView.swift */; };
+		AA000016 /* ContributionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100019 /* ContributionData.swift */; };
+		AA000017 /* GitHubViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100020 /* GitHubViewModel.swift */; };
+		AA000018 /* GitHubService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100021 /* GitHubService.swift */; };
+		AA000019 /* ContributionHeatmapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100022 /* ContributionHeatmapView.swift */; };
 		AA000030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA100030 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -48,6 +55,13 @@
 		AA100013 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		AA100014 /* Account.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Account.swift; sourceTree = "<group>"; };
 		AA100015 /* AccountStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountStore.swift; sourceTree = "<group>"; };
+		AA100016 /* UsageSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageSnapshot.swift; sourceTree = "<group>"; };
+		AA100017 /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
+		AA100018 /* SparklineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparklineView.swift; sourceTree = "<group>"; };
+		AA100019 /* ContributionData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContributionData.swift; sourceTree = "<group>"; };
+		AA100020 /* GitHubViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubViewModel.swift; sourceTree = "<group>"; };
+		AA100021 /* GitHubService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubService.swift; sourceTree = "<group>"; };
+		AA100022 /* ContributionHeatmapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContributionHeatmapView.swift; sourceTree = "<group>"; };
 		AA100030 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -115,6 +129,8 @@
 				AA100010 /* CircleProgress.swift */,
 				AA100012 /* UsageBar.swift */,
 				AA100013 /* SettingsView.swift */,
+				AA100018 /* SparklineView.swift */,
+				AA100022 /* ContributionHeatmapView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -125,6 +141,9 @@
 				AA100007 /* UsageData.swift */,
 				AA100011 /* UsageViewModel.swift */,
 				AA100014 /* Account.swift */,
+				AA100016 /* UsageSnapshot.swift */,
+				AA100019 /* ContributionData.swift */,
+				AA100020 /* GitHubViewModel.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -135,6 +154,8 @@
 				AA100008 /* KeychainService.swift */,
 				AA100009 /* UsageService.swift */,
 				AA100015 /* AccountStore.swift */,
+				AA100017 /* HistoryStore.swift */,
+				AA100021 /* GitHubService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -232,6 +253,13 @@
 				AA000010 /* SettingsView.swift in Sources */,
 				AA000011 /* Account.swift in Sources */,
 				AA000012 /* AccountStore.swift in Sources */,
+				AA000013 /* UsageSnapshot.swift in Sources */,
+				AA000014 /* HistoryStore.swift in Sources */,
+				AA000015 /* SparklineView.swift in Sources */,
+				AA000016 /* ContributionData.swift in Sources */,
+				AA000017 /* GitHubViewModel.swift in Sources */,
+				AA000018 /* GitHubService.swift in Sources */,
+				AA000019 /* ContributionHeatmapView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

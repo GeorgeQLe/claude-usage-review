@@ -84,6 +84,9 @@ class UsageViewModel: ObservableObject {
     }
 
     let accountStore: AccountStore
+    let historyStore = HistoryStore()
+    @Published var historySnapshots: [UsageSnapshot] = []
+
     private let pollingInterval: TimeInterval = 300 // 5 minutes
     private var pollingTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
@@ -143,6 +146,12 @@ class UsageViewModel: ObservableObject {
                 self.lastUpdated = nil
                 self.errorState = nil
                 self.updateAuthStatus()
+                // Reload history for new account
+                if let newId = self.accountStore.activeAccountId {
+                    self.historySnapshots = self.historyStore.snapshots(for: newId, lastHours: 24)
+                } else {
+                    self.historySnapshots = []
+                }
                 self.startPollingIfConfigured()
             }
             .store(in: &cancellables)
@@ -242,6 +251,15 @@ class UsageViewModel: ObservableObject {
             lastUpdated = Date()
             errorState = nil
             authStatus = .connected
+
+            // Record history snapshot
+            let snapshot = UsageSnapshot(
+                timestamp: Date(),
+                sessionUtilization: data.fiveHour.utilization,
+                weeklyUtilization: data.sevenDay.utilization
+            )
+            historyStore.append(snapshot, for: accountId)
+            historySnapshots = historyStore.snapshots(for: accountId, lastHours: 24)
         } catch let error as UsageServiceError {
             switch error {
             case .authError:
