@@ -104,6 +104,10 @@ Implemented inverted color semantics for session vs weekly usage bars.
 - Daily budget (%/day) was already implemented via `weeklyPaceDetail`
 - Build verified via xcodebuild
 
+## 2026-03-18 — Windows Build Script Improvements (Tauri)
+
+Replaced Start-Job heartbeat (output invisible) with Start-Process + log file tailing approach. Build output now streams to console in real-time with 30s heartbeat during quiet periods. Added todo item for PowerShell NativeCommandError (stderr treated as error).
+
 ## 2026-03-18 — Windows Build Script Fix (Tauri)
 
 Fixed `setup-windows.ps1` to work when run from WSL filesystem paths (`\\wsl$\...`). Windows npm/cargo can't handle WSL symlinks, causing EISDIR errors.

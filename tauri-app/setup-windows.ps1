@@ -147,27 +147,59 @@ Write-Host "    You will see cargo/rustc output below as it compiles." -Foregrou
 Write-Host ""
 
 $buildStart = Get-Date
+$lastHeartbeat = $buildStart
 
-# Start a background job that prints a heartbeat every 30s
-$heartbeat = Start-Job -ScriptBlock {
-    param($start)
-    while ($true) {
-        Start-Sleep -Seconds 30
-        $elapsed = [math]::Round(((Get-Date) - $start).TotalMinutes, 1)
-        Write-Output "    ... still building (${elapsed}m elapsed)"
-    }
-} -ArgumentList $buildStart
+# Stream build output line-by-line, injecting heartbeat messages during quiet periods
+$buildProcess = Start-Process -FilePath "npx" -ArgumentList "tauri","build" `
+    -NoNewWindow -PassThru -RedirectStandardOutput "$buildDir\.build-stdout.log" -RedirectStandardError "$buildDir\.build-stderr.log"
 
-try {
-    # Run build — ForEach-Object streams each line as it arrives
-    npx tauri build 2>&1 | ForEach-Object {
-        Write-Host $_
+$tailPos = 0
+$tailPosErr = 0
+while (-not $buildProcess.HasExited) {
+    Start-Sleep -Milliseconds 500
+
+    # Print any new stdout lines
+    if (Test-Path "$buildDir\.build-stdout.log") {
+        $content = Get-Content "$buildDir\.build-stdout.log" -Raw -ErrorAction SilentlyContinue
+        if ($content -and $content.Length -gt $tailPos) {
+            $newText = $content.Substring($tailPos)
+            $tailPos = $content.Length
+            Write-Host $newText -NoNewline
+            $lastHeartbeat = Get-Date
+        }
     }
-    $buildExitCode = $LASTEXITCODE
-} finally {
-    Stop-Job $heartbeat -ErrorAction SilentlyContinue
-    Remove-Job $heartbeat -Force -ErrorAction SilentlyContinue
+
+    # Print any new stderr lines (cargo writes progress to stderr)
+    if (Test-Path "$buildDir\.build-stderr.log") {
+        $contentErr = Get-Content "$buildDir\.build-stderr.log" -Raw -ErrorAction SilentlyContinue
+        if ($contentErr -and $contentErr.Length -gt $tailPosErr) {
+            $newText = $contentErr.Substring($tailPosErr)
+            $tailPosErr = $contentErr.Length
+            Write-Host $newText -NoNewline
+            $lastHeartbeat = Get-Date
+        }
+    }
+
+    # Heartbeat if no output for 30 seconds
+    if (((Get-Date) - $lastHeartbeat).TotalSeconds -ge 30) {
+        $elapsed = [math]::Round(((Get-Date) - $buildStart).TotalMinutes, 1)
+        Write-Host "    ... still building (${elapsed}m elapsed)" -ForegroundColor DarkGray
+        $lastHeartbeat = Get-Date
+    }
 }
+
+# Flush remaining output
+if (Test-Path "$buildDir\.build-stdout.log") {
+    $content = Get-Content "$buildDir\.build-stdout.log" -Raw -ErrorAction SilentlyContinue
+    if ($content -and $content.Length -gt $tailPos) { Write-Host $content.Substring($tailPos) -NoNewline }
+}
+if (Test-Path "$buildDir\.build-stderr.log") {
+    $contentErr = Get-Content "$buildDir\.build-stderr.log" -Raw -ErrorAction SilentlyContinue
+    if ($contentErr -and $contentErr.Length -gt $tailPosErr) { Write-Host $contentErr.Substring($tailPosErr) -NoNewline }
+}
+
+$buildExitCode = $buildProcess.ExitCode
+Remove-Item "$buildDir\.build-stdout.log","$buildDir\.build-stderr.log" -Force -ErrorAction SilentlyContinue
 
 $buildElapsed = [math]::Round(((Get-Date) - $buildStart).TotalMinutes, 1)
 Write-Host ""
