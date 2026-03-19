@@ -104,6 +104,16 @@ Implemented inverted color semantics for session vs weekly usage bars.
 - Daily budget (%/day) was already implemented via `weeklyPaceDetail`
 - Build verified via xcodebuild
 
+## 2026-03-18 — Windows Build Script Fix (Tauri)
+
+Fixed `setup-windows.ps1` to work when run from WSL filesystem paths (`\\wsl$\...`). Windows npm/cargo can't handle WSL symlinks, causing EISDIR errors.
+
+- Added robocopy step to sync project to `%USERPROFILE%\tauri-build\claude-usage` (excluding node_modules, target, .git)
+- npm install and tauri build now run on Windows-native path
+- Built MSI is copied back to WSL source directory
+- Added build progress output: estimated time warning, 30-second heartbeat timer, total build time report
+- Prevents "frozen" appearance during long Rust compilation
+
 ## 2026-03-18 — Behind-Pace Status + Hover Tooltip (macOS)
 
 Added underutilization detection and a hover tooltip on the menu bar item.

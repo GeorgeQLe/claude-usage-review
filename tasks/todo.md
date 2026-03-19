@@ -39,7 +39,7 @@
 - [ ] DPI awareness: popover positioning relative to tray
 - [ ] Autostart verification on Windows
 - [ ] Error handling edge cases: empty states, Set-Cookie refresh in UI
-- [ ] `cargo tauri build` producing working MSI installer
+- [ ] `cargo tauri build` producing working MSI installer (setup-windows.ps1 updated with robocopy approach)
 - [ ] End-to-end test on Windows
 
 ---
