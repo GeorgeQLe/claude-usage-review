@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-03-18 — README Update (macOS)
+
+Updated README.md to reflect all current features. Replaced outdated arrow-based pace indicator docs with emoji-based system (3 themes, 6 pace states). Added sections for hover tooltip, usage history sparklines, GitHub heatmap, and comprehensive settings list. Updated feature comparison table with 6 new entries. Fixed menu bar format example and expanded Notes section.
+
 ## 2026-03-18 — Pace-Aware Weekly Bar Colors (macOS)
 
 Aligned weekly bar color logic with menu bar pace emoji so both show the same status.

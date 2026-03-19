@@ -10,22 +10,49 @@ Forked from [linuxlewis/claude-usage](https://github.com/linuxlewis/claude-usage
 
 | Feature | Original | This fork |
 |---------|----------|-----------|
-| **Weekly pace indicator** | — | `▲`/`▼` arrow in menu bar when usage is ahead/behind linear pace |
-| **Daily budget text** | — | `~12%/day remaining (4d left)` shown under the Weekly bar in the popover |
-| **Time display toggle** | — | Choose between reset time ("3:45 PM") or remaining time ("2h 15m") in menu bar |
+| **Pace emoji indicator** | — | Animated emoji in menu bar reflecting pace status (3 selectable themes) |
+| **Daily budget text** | — | `12%/day · 4d left · On pace` shown under the Weekly bar |
+| **Live countdown timer** | — | Menu bar updates every second with h:mm:ss remaining |
+| **Time display toggle** | — | Choose between reset time ("3:45 PM") or countdown ("2:45:30") |
 | **Multi-account support** | — | Add, switch, and rename multiple Claude accounts |
+| **Hover tooltip** | — | Hover over menu bar item for pace guidance |
+| **Usage history sparklines** | — | 24-hour session & weekly utilization graphs in popover |
+| **GitHub contribution heatmap** | — | Optional 12-week contribution heatmap in popover |
+| **Session reset notifications** | — | macOS notification when your session limit resets |
+| **Pace-aware bar colors** | — | Weekly bar colored by pace status instead of raw percentage |
 
-### Weekly pace indicator
+### Pace indicator
 
-The menu bar now shows: `69% · 34%W▲ · 3:00 PM`
+The menu bar shows your session percentage, daily budget, a pace emoji, and a countdown:
 
-- `▲` — burning ahead of pace (usage/expected ratio > 1.15)
-- `▼` — under pace, room to use more (ratio < 0.85)
-- *(nothing)* — on track (within 15% of linear usage)
+`69% · 12%/day 🏃 2:45:30`
 
-The popover's Weekly bar also shows a daily budget: how much you can use per day for the rest of the window without hitting the cap.
+The pace emoji reflects how your weekly usage compares to linear pace:
+
+- **On track** (ratio 0.85–1.15) — 🏃 / 🚗 / ⚪ (depending on theme)
+- **Behind pace** — 🦥 / 🅿️ / 🔵
+- **Way behind** — 🛌 / (parked) / 🟣
+- **Warning** — 🔥 / 🚨 / 🟡
+- **Critical** — 💀 / 🔴 / 🔴
+- **Limit hit** (≥100%) — shown at cap
+
+Three emoji themes available in Settings: **Running**, **Racecar**, and **F1 Quali**.
 
 Edge cases are handled — no indicator shown in the first 6 hours of a window or the last hour before reset.
+
+The popover's Weekly bar shows actionable pace guidance: daily budget percentage, days remaining, and a recommendation (e.g., "On pace — use more", "Way ahead — slow down").
+
+### Hover tooltip
+
+Hover over the menu bar item to see a floating tooltip with pace guidance — no click needed.
+
+### Usage history
+
+The popover includes collapsible sparkline graphs showing session and weekly utilization over the last 24 hours. History is persisted per-account and compacted over time.
+
+### GitHub heatmap
+
+Optionally configure a GitHub username and personal access token (with `read:user` scope) in Settings to display a 12-week contribution heatmap in the popover.
 
 ## Getting Started
 
@@ -34,7 +61,7 @@ Edge cases are handled — no indicator shown in the first 6 hours of a window o
 3. **Open** the app (first time: right-click → Open to bypass Gatekeeper since it's not code-signed)
 4. **Click the gear icon** in the menu bar popover to open Settings
 5. **Paste your credentials** (see below) and **Save**
-6. **Choose your time display preference** — show either reset time or remaining time
+6. **Choose your preferences** — time display format, pace emoji theme, weekly bar color mode
 7. **Add more accounts** (optional) — click the **+** button in the popover
 
 ### Getting Your Credentials
@@ -52,6 +79,16 @@ You need two things from claude.ai:
 2. Copy its value — that's your org ID
 
 Paste both into the Settings panel and you're good to go.
+
+## Settings
+
+- **Time display format** — Reset time ("3:45 PM") or countdown ("2:45:30")
+- **Pace emoji theme** — Running, Racecar, or F1 Quali
+- **Weekly bar color mode** — Pace-aware (colored by pace status) or raw percentage (traditional)
+- **Launch at login** — start automatically on macOS login
+- **GitHub integration** — username + personal access token for contribution heatmap
+- **Test connection** — validate credentials without waiting for the next poll
+- **Account management** — add, rename, switch, and delete accounts
 
 ## Building from Source
 
@@ -72,7 +109,9 @@ The app will be at:
 
 - Uses an **unofficial, undocumented** Claude.ai API endpoint — may break at any time
 - Credentials are stored per-account: session keys in the macOS Keychain, org IDs and account metadata in UserDefaults
-- Usage refreshes every 5 minutes
+- Usage refreshes every 5 minutes; GitHub contributions refresh every hour
+- Session key is automatically updated if the API rotates it via `Set-Cookie`
+- Usage history is stored in `~/Library/Application Support/ClaudeUsage/`
 
 ## Disclaimer
 
