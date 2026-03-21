@@ -139,6 +139,19 @@ Added "Launch at login" checkbox to the Settings Preferences section, wired to `
 - No Rust changes needed — plugin was already initialized with capabilities granted
 - TypeScript build verified (`npm run build` passes)
 
+## 2026-03-20 — Error Handling Edge Cases (Tauri)
+
+Added try/catch error resilience to all three frontend files (main.ts, settings.ts, overlay.ts).
+
+- Popover `init()` catches backend failures and shows "Failed to load — click to retry" banner
+- Event listener callbacks wrapped in try/catch to prevent render crashes from killing the event loop
+- Fixed perpetual "Loading..." state: distinguishes "no data yet" vs "fetch returned empty" using `last_updated`
+- Network error banner now clickable with retry action
+- Settings: save/test/rename/delete operations all have error feedback (testResult banner or alert)
+- Settings: overlay/config/autostart toggle handlers wrapped to prevent UI crashes
+- Overlay: init failure and render errors show "--" fallback instead of blank widget
+- No Rust changes — backend already handles all error states correctly
+
 ## 2026-03-18 — Behind-Pace Status + Hover Tooltip (macOS)
 
 Added underutilization detection and a hover tooltip on the menu bar item.
