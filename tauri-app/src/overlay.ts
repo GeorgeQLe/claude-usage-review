@@ -12,15 +12,28 @@ let dragStartX = 0;
 let dragStartY = 0;
 
 async function init() {
-  // Get initial layout from config
-  const config = await invoke<{ overlay_layout: string; overlay_opacity: number }>("get_config");
-  document.body.style.opacity = String(config.overlay_opacity);
+  let config: { overlay_layout: string; overlay_opacity: number };
+  let state: UsageState;
 
-  const state = await invoke<UsageState>("get_usage");
+  try {
+    config = await invoke<{ overlay_layout: string; overlay_opacity: number }>("get_config");
+    document.body.style.opacity = String(config.overlay_opacity);
+    state = await invoke<UsageState>("get_usage");
+  } catch (e) {
+    console.error("Overlay init failed:", e);
+    app.innerHTML = '<div class="overlay-minimal" style="color: var(--text-muted)">--</div>';
+    return;
+  }
+
   render(state, config.overlay_layout);
 
   await listen<UsageState>("usage-updated", (event) => {
-    render(event.payload, config.overlay_layout);
+    try {
+      render(event.payload, config.overlay_layout);
+    } catch (e) {
+      console.error("Overlay render error:", e);
+      app.innerHTML = '<div class="overlay-minimal" style="color: var(--text-muted)">--</div>';
+    }
   });
 
   // Dragging

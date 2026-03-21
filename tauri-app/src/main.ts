@@ -8,11 +8,26 @@ const app = document.getElementById("app")!;
 let showAddAccount = false;
 
 async function init() {
-  const state = await invoke<UsageState>("get_usage");
+  let state: UsageState;
+  try {
+    state = await invoke<UsageState>("get_usage");
+  } catch (e) {
+    console.error("Failed to load usage state:", e);
+    app.innerHTML = `
+      <div class="popover">
+        <div class="error-banner network" id="init-retry">Failed to load — click to retry</div>
+      </div>`;
+    app.querySelector("#init-retry")?.addEventListener("click", () => init());
+    return;
+  }
   render(state);
 
   await listen<UsageState>("usage-updated", (event) => {
-    render(event.payload);
+    try {
+      render(event.payload);
+    } catch (e) {
+      console.error("Render error on usage-updated:", e);
+    }
   });
 }
 
@@ -37,7 +52,7 @@ function render(state: UsageState) {
   if (state.error_state === "auth_expired") {
     html += `<div class="error-banner auth">Session expired. Update credentials in Settings.</div>`;
   } else if (state.error_state === "network_error") {
-    html += `<div class="error-banner network">Network error. Will retry automatically.</div>`;
+    html += `<div class="error-banner network" id="network-error-retry" style="cursor:pointer">Network error. Click to retry.</div>`;
   }
 
   // Not configured
@@ -48,8 +63,10 @@ function render(state: UsageState) {
         <button class="btn-primary" id="btn-open-settings">Open Settings</button>
       </div>
     `;
-  } else if (state.display_limits.length === 0 && state.error_state === null) {
+  } else if (state.display_limits.length === 0 && state.error_state === null && !state.last_updated) {
     html += `<div class="loading">Loading usage data...</div>`;
+  } else if (state.display_limits.length === 0 && state.error_state === null && state.last_updated) {
+    html += `<div class="loading">No usage data available</div>`;
   } else {
     // Usage bars
     for (const limit of state.display_limits) {
@@ -86,8 +103,11 @@ function render(state: UsageState) {
   // Bind events
   document.getElementById("btn-open-settings")?.addEventListener("click", openSettings);
   document.getElementById("btn-settings")?.addEventListener("click", openSettings);
+  document.getElementById("network-error-retry")?.addEventListener("click", async () => {
+    try { await invoke("refresh_now"); } catch (e) { console.error("Refresh failed:", e); }
+  });
   document.getElementById("btn-refresh")?.addEventListener("click", async () => {
-    await invoke("refresh_now");
+    try { await invoke("refresh_now"); } catch (e) { console.error("Refresh failed:", e); }
   });
   document.getElementById("btn-quit")?.addEventListener("click", async () => {
     const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
@@ -100,10 +120,14 @@ function render(state: UsageState) {
   document.getElementById("btn-add-confirm")?.addEventListener("click", async () => {
     const input = document.getElementById("new-account-name") as HTMLInputElement;
     if (input.value.trim()) {
-      await invoke("add_account", { email: input.value.trim() });
-      showAddAccount = false;
-      const newState = await invoke<UsageState>("get_usage");
-      render(newState);
+      try {
+        await invoke("add_account", { email: input.value.trim() });
+        showAddAccount = false;
+        const newState = await invoke<UsageState>("get_usage");
+        render(newState);
+      } catch (e) {
+        console.error("Add account failed:", e);
+      }
     }
   });
 }

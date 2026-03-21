@@ -6,9 +6,14 @@ const app = document.getElementById("app")!;
 let testResult: { status: string; message: string } | null = null;
 
 async function init() {
-  const state = await invoke<UsageState>("get_usage");
-  const config = await invoke<AppConfig>("get_config");
-  render(state, config);
+  try {
+    const state = await invoke<UsageState>("get_usage");
+    const config = await invoke<AppConfig>("get_config");
+    render(state, config);
+  } catch (e) {
+    console.error("Failed to load settings:", e);
+    app.innerHTML = '<div class="settings"><h2>ClaudeUsage Settings</h2><p>Failed to load settings. Please close and reopen.</p></div>';
+  }
 }
 
 function render(state: UsageState, config: AppConfig) {
@@ -144,10 +149,14 @@ function bindEvents(state: UsageState, config: AppConfig) {
   document.getElementById("account-name")?.addEventListener("blur", async (e) => {
     const input = e.target as HTMLInputElement;
     if (activeAccount && input.value.trim() !== activeAccount.email) {
-      await invoke("rename_account", {
-        accountId: activeAccount.id,
-        newName: input.value.trim(),
-      });
+      try {
+        await invoke("rename_account", {
+          accountId: activeAccount.id,
+          newName: input.value.trim(),
+        });
+      } catch (e) {
+        console.error("Rename failed:", e);
+      }
     }
   });
 
@@ -157,14 +166,19 @@ function bindEvents(state: UsageState, config: AppConfig) {
     const sessionKey = (document.getElementById("session-key") as HTMLInputElement).value;
     const orgId = (document.getElementById("org-id") as HTMLInputElement).value;
     if (sessionKey && orgId) {
-      await invoke("save_credentials", {
-        accountId: activeAccount.id,
-        sessionKey,
-        orgId,
-      });
-      testResult = { status: "success", message: "Credentials saved. Fetching data..." };
-      const newState = await invoke<UsageState>("get_usage");
-      render(newState, config);
+      try {
+        await invoke("save_credentials", {
+          accountId: activeAccount.id,
+          sessionKey,
+          orgId,
+        });
+        testResult = { status: "success", message: "Credentials saved. Fetching data..." };
+        const newState = await invoke<UsageState>("get_usage");
+        render(newState, config);
+      } catch (e) {
+        testResult = { status: "error", message: `Failed to save credentials: ${e}` };
+        render(state, config);
+      }
     }
   });
 
@@ -177,13 +191,17 @@ function bindEvents(state: UsageState, config: AppConfig) {
       render(state, config);
       return;
     }
-    const result = await invoke<string>("test_connection", { sessionKey, orgId });
-    if (result === "connected") {
-      testResult = { status: "success", message: "Connection successful!" };
-    } else if (result === "auth_error") {
-      testResult = { status: "error", message: "Authentication failed. Check your credentials." };
-    } else {
-      testResult = { status: "error", message: result };
+    try {
+      const result = await invoke<string>("test_connection", { sessionKey, orgId });
+      if (result === "connected") {
+        testResult = { status: "success", message: "Connection successful!" };
+      } else if (result === "auth_error") {
+        testResult = { status: "error", message: "Authentication failed. Check your credentials." };
+      } else {
+        testResult = { status: "error", message: result };
+      }
+    } catch (e) {
+      testResult = { status: "error", message: `Connection test failed: ${e}` };
     }
     render(state, config);
   });
@@ -191,36 +209,52 @@ function bindEvents(state: UsageState, config: AppConfig) {
   // Autostart toggle
   document.getElementById("autostart-enabled")?.addEventListener("change", async (e) => {
     const checked = (e.target as HTMLInputElement).checked;
-    if (checked) {
-      await enable();
-    } else {
-      await disable();
+    try {
+      if (checked) { await enable(); } else { await disable(); }
+    } catch (err) {
+      console.error("Autostart toggle failed:", err);
     }
   });
 
   // Time format
   document.getElementById("time-format")?.addEventListener("change", async (e) => {
     const value = (e.target as HTMLSelectElement).value;
-    await invoke("update_config", { key: "time_display_format", value: JSON.parse(`"${value}"`) });
+    try {
+      await invoke("update_config", { key: "time_display_format", value: JSON.parse(`"${value}"`) });
+    } catch (err) {
+      console.error("Config update failed:", err);
+    }
   });
 
   // Overlay toggle
   document.getElementById("overlay-enabled")?.addEventListener("change", async () => {
-    await invoke("toggle_overlay");
-    const newConfig = await invoke<AppConfig>("get_config");
-    render(state, newConfig);
+    try {
+      await invoke("toggle_overlay");
+      const newConfig = await invoke<AppConfig>("get_config");
+      render(state, newConfig);
+    } catch (err) {
+      console.error("Overlay toggle failed:", err);
+    }
   });
 
   // Overlay layout
   document.getElementById("overlay-layout")?.addEventListener("change", async (e) => {
     const value = (e.target as HTMLSelectElement).value;
-    await invoke("set_overlay_layout", { layout: value });
+    try {
+      await invoke("set_overlay_layout", { layout: value });
+    } catch (err) {
+      console.error("Layout change failed:", err);
+    }
   });
 
   // Overlay opacity
   document.getElementById("overlay-opacity")?.addEventListener("input", async (e) => {
     const value = parseInt((e.target as HTMLInputElement).value);
-    await invoke("set_overlay_opacity", { opacity: value / 100 });
+    try {
+      await invoke("set_overlay_opacity", { opacity: value / 100 });
+    } catch (err) {
+      console.error("Opacity change failed:", err);
+    }
     // Update label
     const label = (e.target as HTMLInputElement).previousElementSibling;
     if (label) label.textContent = `Opacity: ${value}%`;
@@ -231,10 +265,14 @@ function bindEvents(state: UsageState, config: AppConfig) {
     btn.addEventListener("click", async () => {
       const id = (btn as HTMLElement).dataset.id!;
       if (confirm("Remove this account?")) {
-        await invoke("remove_account", { accountId: id });
-        const newState = await invoke<UsageState>("get_usage");
-        const newConfig = await invoke<AppConfig>("get_config");
-        render(newState, newConfig);
+        try {
+          await invoke("remove_account", { accountId: id });
+          const newState = await invoke<UsageState>("get_usage");
+          const newConfig = await invoke<AppConfig>("get_config");
+          render(newState, newConfig);
+        } catch (e) {
+          alert(`Failed to remove account: ${e}`);
+        }
       }
     });
   });
