@@ -137,7 +137,12 @@ Write-Ok "Project synced to $buildDir"
 # ---------- 8. npm install (on Windows-native path) ----------
 Write-Step "Installing Node dependencies..."
 Push-Location $buildDir
-npm install
+# npm writes warnings to stderr; under $ErrorActionPreference = "Stop" PowerShell
+# treats any stderr output as a terminating NativeCommandError. Temporarily relax.
+$ErrorActionPreference = "Continue"
+npm install 2>&1 | Write-Host
+$ErrorActionPreference = "Stop"
+if ($LASTEXITCODE -ne 0) { Write-Error "npm install failed with exit code $LASTEXITCODE" }
 Write-Ok "npm install complete"
 
 # ---------- 9. Build ----------
@@ -153,6 +158,9 @@ $lastHeartbeat = $buildStart
 $buildProcess = Start-Process -FilePath "npx" -ArgumentList "tauri","build" `
     -NoNewWindow -PassThru -RedirectStandardOutput "$buildDir\.build-stdout.log" -RedirectStandardError "$buildDir\.build-stderr.log"
 
+# Relax error preference during log tailing — Get-Content can throw if the log
+# file is locked by the build process, and cargo stderr output is normal.
+$ErrorActionPreference = "Continue"
 $tailPos = 0
 $tailPosErr = 0
 while (-not $buildProcess.HasExited) {
@@ -199,6 +207,7 @@ if (Test-Path "$buildDir\.build-stderr.log") {
 }
 
 $buildExitCode = $buildProcess.ExitCode
+$ErrorActionPreference = "Stop"
 Remove-Item "$buildDir\.build-stdout.log","$buildDir\.build-stderr.log" -Force -ErrorAction SilentlyContinue
 
 $buildElapsed = [math]::Round(((Get-Date) - $buildStart).TotalMinutes, 1)
@@ -206,7 +215,9 @@ Write-Host ""
 if ($buildExitCode -eq 0) {
     Write-Ok "Build completed in ${buildElapsed} minutes"
 } else {
-    Write-Host "    Build exited with code $buildExitCode after ${buildElapsed} minutes" -ForegroundColor Red
+    Write-Host "    Build FAILED with exit code $buildExitCode after ${buildElapsed} minutes" -ForegroundColor Red
+    Pop-Location
+    exit 1
 }
 
 Pop-Location
