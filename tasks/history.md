@@ -161,6 +161,10 @@ Fixed `setup-windows.ps1` to prevent PowerShell NativeCommandError from killing 
 - Restored `$ErrorActionPreference = "Stop"` after the tailing loop
 - Build failure now calls `exit 1` immediately instead of falling through to the MSI copy step
 
+## 2026-03-20 — Brainstorm: New Ideas
+
+Generated 11 new feature ideas across quick wins, medium efforts, and larger initiatives. Key themes: feature parity (sparklines, pace indicators for Tauri), UX polish (clipboard copy, keyboard shortcuts, light theme, offline mode), and new product directions (browser extension, CLI tool, unified Rust core library). Appended to `tasks/ideas.md`.
+
 ## 2026-03-18 — Behind-Pace Status + Hover Tooltip (macOS)
 
 Added underutilization detection and a hover tooltip on the menu bar item.

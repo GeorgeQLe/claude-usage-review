@@ -27,3 +27,35 @@
 - **Usage analytics dashboard** — `HistoryStore` already persists 24h of snapshots. Extend to 30 days with richer visualization (daily averages, peak usage hours, weekly trends over time) to help users understand their consumption patterns. _Start with:_ `/plan-interview usage analytics dashboard with historical trends for ClaudeUsage`
 
 - **Credential lifecycle management** — Session keys are pasted manually and only validated on 401/403. Build proactive expiration detection (track when key was saved, warn at ~25 days), one-click browser re-auth flow, and per-account GitHub credential scoping (currently global). _Start with:_ `/plan-interview credential lifecycle management with expiration warnings for ClaudeUsage`
+
+---
+
+## Brainstorm 2 (2026-03-20)
+
+### Quick wins (hours)
+
+- **Copy usage summary to clipboard** — No way to share current status. Add a "Copy" button to the popover that formats usage as text (e.g., `Session: 69% (resets 3:00 PM) | Weekly: 12%`) for pasting into Slack/chat. Both platforms lack this. _Start with:_ `/plan-interview copy usage summary to clipboard for ClaudeUsage`
+
+- **Usage threshold notifications** — macOS has `UserNotifications` imported and reset notifications, but no alerts when usage crosses 50%/80%/95% thresholds. The pace calculation in `UsageViewModel.swift` already computes these breakpoints — wire them to notifications. _Start with:_ `/plan-interview usage threshold push notifications for ClaudeUsage`
+
+- **System theme awareness for Tauri** — `styles.css` hardcodes a dark theme (`--bg-primary: #1a1a2e`). Tauri supports `prefers-color-scheme` media queries. Add a light mode variant so the popover doesn't clash on light-themed Windows desktops. _Start with:_ `/plan-interview light mode and system theme detection for Tauri ClaudeUsage`
+
+- **Keyboard shortcuts in popover** — The popover toolbar has click-only buttons (refresh, settings, quit). Add keyboard handlers (`R` to refresh, `S` for settings, `Q` to quit, `1-9` for account switching) — both `main.ts` and `ContentView.swift` handle input but have no key bindings. _Start with:_ `/plan-interview keyboard shortcuts for ClaudeUsage popover actions`
+
+### Medium efforts (days)
+
+- **Sparkline history graphs for Tauri** — macOS has `SparklineView.swift` and `HistoryStore.swift` showing 24h usage trends, but the Tauri app shows only current values. The Rust backend already has the polling loop — add snapshot persistence and a canvas-based sparkline in `main.ts`. _Start with:_ `/plan-interview port sparkline usage history graphs to Tauri app`
+
+- **Offline mode with stale data indicator** — When the network is down, both platforms show an error banner and no data. Instead, cache the last successful response and show it with a "stale" badge and timestamp. `state.rs` already stores `last_updated` — persist `usage_data` to disk alongside it. _Start with:_ `/plan-interview offline mode with cached usage data and staleness indicator`
+
+- **Linux build & packaging script** — `setup-windows.ps1` automates the full Windows build pipeline, but Linux has no equivalent. Create a `setup-linux.sh` that installs deps (Rust, Node, webkit2gtk), builds the AppImage/deb, and validates the output. _Start with:_ `/plan-interview Linux build and packaging script for Tauri ClaudeUsage`
+
+- **Pace indicators for Tauri** — macOS has rich pace tracking (3 emoji themes, daily budget, arrow indicators) while Tauri only shows basic `pace_detail` text. Port the pace emoji system and daily budget display from `UsageViewModel.swift` to `state.rs` and surface it in the Tauri popover UI. _Start with:_ `/plan-interview port pace emoji themes and daily budget to Tauri app`
+
+### Larger initiatives (weeks)
+
+- **Browser extension companion** — Inject a small usage badge directly into the claude.ai page header so users see limits while chatting. Reuse the API integration logic; the extension just needs to read the same endpoint with the existing session cookie (no credential entry needed). _Start with:_ `/plan-interview browser extension showing Claude usage limits on claude.ai`
+
+- **CLI usage checker** — A lightweight `claude-usage` terminal command that prints current limits (e.g., `Session: 69% resets in 2h45m | Weekly: 12%`). Useful for developers who live in the terminal. Could share the Rust API client from `tauri-app/src-tauri/src/api.rs` as a library crate. _Start with:_ `/plan-interview CLI tool for checking Claude usage limits from the terminal`
+
+- **Unified core library** — macOS Swift and Tauri Rust duplicate significant logic: pace calculation, time formatting, polling cadence, API parsing, multi-account management. Extract a shared Rust core (via Swift-Bridge or UniFFI) that both platforms consume, eliminating drift and cutting maintenance in half. _Start with:_ `/plan-interview shared Rust core library for ClaudeUsage across macOS and Tauri`
