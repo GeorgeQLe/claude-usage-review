@@ -15,15 +15,59 @@ use tauri::{
 };
 use tokio::sync::Mutex;
 
-fn toggle_popover(app: &tauri::AppHandle) {
+fn toggle_popover(app: &tauri::AppHandle, tray_rect: tauri::Rect) {
     if let Some(window) = app.get_webview_window("popover") {
         let _ = window.close();
         return;
     }
 
+    let popover_width = 280.0_f64;
+    let popover_height = 400.0_f64;
+    let margin = 8.0_f64;
+
+    let scale_factor = app
+        .primary_monitor()
+        .ok()
+        .flatten()
+        .map(|m| m.scale_factor())
+        .unwrap_or(1.0);
+
+    // Convert tray rect to logical pixels
+    let tray_pos: tauri::LogicalPosition<f64> = tray_rect.position.to_logical(scale_factor);
+    let tray_size: tauri::LogicalSize<f64> = tray_rect.size.to_logical(scale_factor);
+
+    // Screen bounds in logical pixels
+    let (screen_w, screen_h) = app
+        .primary_monitor()
+        .ok()
+        .flatten()
+        .map(|m| {
+            let size = m.size();
+            (
+                size.width as f64 / scale_factor,
+                size.height as f64 / scale_factor,
+            )
+        })
+        .unwrap_or((1920.0, 1080.0));
+
+    // Center popover horizontally on tray icon
+    let mut x = tray_pos.x + tray_size.width / 2.0 - popover_width / 2.0;
+    // Position above tray icon (taskbar at bottom)
+    let mut y = tray_pos.y - popover_height;
+
+    // If popover would go above screen top, flip to below tray icon
+    if y < margin {
+        y = tray_pos.y + tray_size.height;
+    }
+
+    // Clamp to screen bounds with margin
+    x = x.clamp(margin, screen_w - popover_width - margin);
+    y = y.clamp(margin, screen_h - popover_height - margin);
+
     let _window = WebviewWindowBuilder::new(app, "popover", WebviewUrl::App("index.html".into()))
         .title("Claude Usage")
-        .inner_size(280.0, 400.0)
+        .inner_size(popover_width, popover_height)
+        .position(x, y)
         .decorations(false)
         .resizable(false)
         .always_on_top(true)
@@ -79,10 +123,10 @@ pub fn run() {
 
                 let app_handle = app.handle().clone();
                 tray.on_tray_icon_event(move |_tray, event| {
-                    if let TrayIconEvent::Click { button, .. } = event {
+                    if let TrayIconEvent::Click { button, rect, .. } = event {
                         match button {
                             tauri::tray::MouseButton::Left => {
-                                toggle_popover(&app_handle);
+                                toggle_popover(&app_handle, rect);
                             }
                             _ => {}
                         }

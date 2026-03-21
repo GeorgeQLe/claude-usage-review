@@ -118,6 +118,16 @@ Fixed `setup-windows.ps1` to work when run from WSL filesystem paths (`\\wsl$\..
 - Added build progress output: estimated time warning, 30-second heartbeat timer, total build time report
 - Prevents "frozen" appearance during long Rust compilation
 
+## 2026-03-20 — DPI-Aware Popover Positioning (Tauri)
+
+Implemented DPI-aware popover positioning in `lib.rs` so the popover anchors to the tray icon on Windows at any display scaling.
+
+- `toggle_popover` now accepts `tray_rect: tauri::Rect` from the tray click event
+- Converts physical→logical pixels via `to_logical(scale_factor)` using `primary_monitor().scale_factor()`
+- Centers popover horizontally on tray icon, positions above (flips below if near screen top)
+- Clamps to screen bounds with 8px margin to prevent clipping
+- Added `.position(x, y)` to `WebviewWindowBuilder` chain
+
 ## 2026-03-18 — Behind-Pace Status + Hover Tooltip (macOS)
 
 Added underutilization detection and a hover tooltip on the menu bar item.
