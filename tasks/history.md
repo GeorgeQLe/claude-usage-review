@@ -152,6 +152,15 @@ Added try/catch error resilience to all three frontend files (main.ts, settings.
 - Overlay: init failure and render errors show "--" fallback instead of blank widget
 - No Rust changes — backend already handles all error states correctly
 
+## 2026-03-20 — PowerShell NativeCommandError Fix (Tauri)
+
+Fixed `setup-windows.ps1` to prevent PowerShell NativeCommandError from killing the build script.
+
+- Wrapped `npm install` with `$ErrorActionPreference = "Continue"` + explicit `$LASTEXITCODE` check — npm stderr warnings no longer terminate the script
+- Added `$ErrorActionPreference = "Continue"` around the build log tailing loop — prevents `Get-Content` errors on locked log files from crashing the script
+- Restored `$ErrorActionPreference = "Stop"` after the tailing loop
+- Build failure now calls `exit 1` immediately instead of falling through to the MSI copy step
+
 ## 2026-03-18 — Behind-Pace Status + Hover Tooltip (macOS)
 
 Added underutilization detection and a hover tooltip on the menu bar item.
