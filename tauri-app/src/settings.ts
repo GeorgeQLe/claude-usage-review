@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { UsageState, AccountInfo, AppConfig } from "./types";
 
 const app = document.getElementById("app")!;
@@ -70,6 +71,10 @@ function render(state: UsageState, config: AppConfig) {
           <option value="remaining_time" ${config.time_display_format === "remaining_time" ? "selected" : ""}>Remaining Time</option>
         </select>
       </div>
+      <div class="checkbox-group">
+        <input type="checkbox" id="autostart-enabled" />
+        <label for="autostart-enabled">Launch at login</label>
+      </div>
     </div>
   `;
 
@@ -124,6 +129,12 @@ function render(state: UsageState, config: AppConfig) {
 
   // Bind events
   bindEvents(state, config);
+
+  // Set autostart checkbox to current state
+  isEnabled().then((enabled) => {
+    const cb = document.getElementById("autostart-enabled") as HTMLInputElement | null;
+    if (cb) cb.checked = enabled;
+  });
 }
 
 function bindEvents(state: UsageState, config: AppConfig) {
@@ -175,6 +186,16 @@ function bindEvents(state: UsageState, config: AppConfig) {
       testResult = { status: "error", message: result };
     }
     render(state, config);
+  });
+
+  // Autostart toggle
+  document.getElementById("autostart-enabled")?.addEventListener("change", async (e) => {
+    const checked = (e.target as HTMLInputElement).checked;
+    if (checked) {
+      await enable();
+    } else {
+      await disable();
+    }
   });
 
   // Time format

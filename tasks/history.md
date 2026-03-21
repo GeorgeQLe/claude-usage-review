@@ -128,6 +128,17 @@ Implemented DPI-aware popover positioning in `lib.rs` so the popover anchors to 
 - Clamps to screen bounds with 8px margin to prevent clipping
 - Added `.position(x, y)` to `WebviewWindowBuilder` chain
 
+## 2026-03-20 — Autostart Toggle in Settings UI (Tauri)
+
+Added "Launch at login" checkbox to the Settings Preferences section, wired to `@tauri-apps/plugin-autostart` JS API.
+
+- Imported `enable`, `disable`, `isEnabled` from `@tauri-apps/plugin-autostart` in `settings.ts`
+- Added checkbox in Preferences section (reuses existing `.checkbox-group` CSS)
+- Checkbox state initialized from `isEnabled()` after render
+- Change listener calls `enable()` or `disable()` — manages Windows Registry entry directly
+- No Rust changes needed — plugin was already initialized with capabilities granted
+- TypeScript build verified (`npm run build` passes)
+
 ## 2026-03-18 — Behind-Pace Status + Hover Tooltip (macOS)
 
 Added underutilization detection and a hover tooltip on the menu bar item.
