@@ -465,12 +465,39 @@ class UsageViewModel: ObservableObject {
         return ""
     }
 
-    /// Pace status derived from session (5-hour) utilization alone.
+    /// Session pace ratio: actual/expected usage within the 5-hour window.
+    /// Uses shorter stability guards than weekly (15 min elapsed, 5 min remaining).
+    private func sessionPaceRatio() -> Double? {
+        guard let fiveHour = usageData?.fiveHour,
+              let resetsAt = fiveHour.resetsAt else { return nil }
+        let windowSeconds: TimeInterval = 5 * 3600
+        let timeRemaining = resetsAt.timeIntervalSince(Date())
+        let timeElapsed = windowSeconds - timeRemaining
+
+        // Ratio is unstable in the first 15 min or last 5 min
+        guard timeElapsed >= 15 * 60, timeRemaining >= 5 * 60 else { return nil }
+
+        let expected = (timeElapsed / windowSeconds) * 100
+        guard expected > 0 else { return nil }
+        return fiveHour.utilization / expected
+    }
+
+    /// Pace status derived from session (5-hour) utilization and pace ratio.
     var sessionPaceStatus: PaceStatus {
         guard let fiveHour = usageData?.fiveHour else { return .unknown }
         if fiveHour.utilization >= 100 { return .limitHit }
-        if fiveHour.utilization >= 80 { return .critical }
-        if fiveHour.utilization >= 60 { return .warning }
+
+        guard let ratio = sessionPaceRatio() else {
+            // Before stability window, fall back to raw thresholds
+            if fiveHour.utilization >= 80 { return .critical }
+            if fiveHour.utilization >= 60 { return .warning }
+            return .unknown
+        }
+        // Same thresholds as weekly pace
+        if ratio > 1.4 { return .critical }
+        if ratio > 1.15 { return .warning }
+        if ratio < 0.6 { return .wayBehind }
+        if ratio < 0.85 { return .behindPace }
         return .onTrack
     }
 

@@ -165,6 +165,10 @@ Fixed `setup-windows.ps1` to prevent PowerShell NativeCommandError from killing 
 
 Generated 11 new feature ideas across quick wins, medium efforts, and larger initiatives. Key themes: feature parity (sparklines, pace indicators for Tauri), UX polish (clipboard copy, keyboard shortcuts, light theme, offline mode), and new product directions (browser extension, CLI tool, unified Rust core library). Appended to `tasks/ideas.md`.
 
+## 2026-03-25 — Pace-Aware Session Emoji (macOS)
+
+Made session emoji pace-aware using time-based ratio (actual vs expected usage within 5-hour window) instead of raw utilization thresholds. Reuses same pace thresholds as weekly (1.15/1.4 ahead, 0.85/0.6 behind). Added `sessionPaceRatio()` with shorter stability guards (15 min elapsed, 5 min remaining vs 6 hours for weekly). Falls back to raw thresholds before stability window.
+
 ## 2026-03-25 — Separate Session & Weekly Pace Emojis + Menu Bar Improvements (macOS)
 
 Split the menu bar emoji into two independent indicators: session emoji (based on 5-hour utilization thresholds) and weekly emoji (based on pace ratio). Previously both used the weekly pace status, so session always showed the same emoji regardless of session utilization.
