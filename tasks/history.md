@@ -165,6 +165,17 @@ Fixed `setup-windows.ps1` to prevent PowerShell NativeCommandError from killing 
 
 Generated 11 new feature ideas across quick wins, medium efforts, and larger initiatives. Key themes: feature parity (sparklines, pace indicators for Tauri), UX polish (clipboard copy, keyboard shortcuts, light theme, offline mode), and new product directions (browser extension, CLI tool, unified Rust core library). Appended to `tasks/ideas.md`.
 
+## 2026-03-25 — Separate Session & Weekly Pace Emojis + Menu Bar Improvements (macOS)
+
+Split the menu bar emoji into two independent indicators: session emoji (based on 5-hour utilization thresholds) and weekly emoji (based on pace ratio). Previously both used the weekly pace status, so session always showed the same emoji regardless of session utilization.
+
+- Added `sessionPaceStatus` computed property: >=100% limitHit, >=80% critical, >=60% warning, else onTrack
+- Added `targetEmoji` and `weeklyEmoji` properties to `PaceTheme`
+- Added `todayUsagePercent` — delta in weekly utilization since midnight via history snapshots
+- Simplified `dailyBudgetPercent` — removed 6-hour warm-up guard, shows budget from the start
+- Updated menu bar format: `{sessionEmoji} {session}% · {target} {today}%/{budget}%/day · {weeklyEmoji} {weekly}%/w · {time}`
+- Updated `weeklyPaceDetail` popover text to include today% and weekly% with themed emojis
+
 ## 2026-03-18 — Behind-Pace Status + Hover Tooltip (macOS)
 
 Added underutilization detection and a hover tooltip on the menu bar item.

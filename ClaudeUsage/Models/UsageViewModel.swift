@@ -70,6 +70,22 @@ enum PaceTheme: String, CaseIterable {
             }
         }
     }
+
+    var targetEmoji: String {
+        switch self {
+        case .running: return "🎯"
+        case .racecar: return "🏁"
+        case .f1Quali: return "🎯"
+        }
+    }
+
+    var weeklyEmoji: String {
+        switch self {
+        case .running: return "📊"
+        case .racecar: return "📊"
+        case .f1Quali: return "📊"
+        }
+    }
 }
 
 class UsageViewModel: ObservableObject {
@@ -449,6 +465,15 @@ class UsageViewModel: ObservableObject {
         return ""
     }
 
+    /// Pace status derived from session (5-hour) utilization alone.
+    var sessionPaceStatus: PaceStatus {
+        guard let fiveHour = usageData?.fiveHour else { return .unknown }
+        if fiveHour.utilization >= 100 { return .limitHit }
+        if fiveHour.utilization >= 80 { return .critical }
+        if fiveHour.utilization >= 60 { return .warning }
+        return .onTrack
+    }
+
     /// Pace status derived from weekly utilization and pace ratio.
     /// In pace-aware mode, also flags being behind pace (underutilizing).
     var paceStatus: PaceStatus {
@@ -469,16 +494,31 @@ class UsageViewModel: ObservableObject {
         return .onTrack
     }
 
-    /// Daily budget as an Int, or nil if not enough data.
+    /// Estimated usage today: delta in weekly utilization since midnight (or earliest snapshot today).
+    var todayUsagePercent: Int? {
+        guard let currentWeekly = usageData?.sevenDay.utilization else { return nil }
+
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: Date())
+
+        // Find the earliest snapshot from today (closest to midnight)
+        let todaySnapshots = historySnapshots.filter { $0.timestamp >= startOfDay }
+        guard let earliest = todaySnapshots.first else {
+            // No snapshots from today yet — usage since we started tracking is 0
+            return 0
+        }
+
+        let delta = currentWeekly - earliest.weeklyUtilization
+        return max(0, Int(delta.rounded()))
+    }
+
+    /// Daily budget target: remaining weekly % spread over remaining days.
     var dailyBudgetPercent: Int? {
         guard let sevenDay = usageData?.sevenDay,
               let resetsAt = sevenDay.resetsAt else { return nil }
 
-        let now = Date()
-        let timeRemaining = resetsAt.timeIntervalSince(now)
-        let timeElapsed = 7 * 86400.0 - timeRemaining
-
-        guard timeElapsed >= 6 * 3600, timeRemaining >= 3600 else { return nil }
+        let timeRemaining = resetsAt.timeIntervalSince(Date())
+        guard timeRemaining > 0 else { return 0 }
 
         let remaining = 100.0 - sevenDay.utilization
         if remaining <= 0 { return 0 }
@@ -494,12 +534,8 @@ class UsageViewModel: ObservableObject {
 
         if sevenDay.utilization >= 100 { return "Weekly limit reached" }
 
-        let now = Date()
-        let timeRemaining = resetsAt.timeIntervalSince(now)
-        let timeElapsed = 7 * 86400.0 - timeRemaining
-
-        guard timeElapsed >= 6 * 3600 else { return nil }
-        guard timeRemaining >= 3600 else { return nil }
+        let timeRemaining = resetsAt.timeIntervalSince(Date())
+        guard timeRemaining > 0 else { return "Weekly limit reached" }
 
         let remaining = 100.0 - sevenDay.utilization
         let daysRemaining = timeRemaining / 86400.0
@@ -524,7 +560,9 @@ class UsageViewModel: ObservableObject {
             guidance = "Calculating…"
         }
 
-        return "\(Int(budgetPerDay.rounded()))%/day · \(daysLeft)d left · \(guidance)"
+        let todayPct = todayUsagePercent ?? 0
+        let weeklyPct = Int(sevenDay.utilization.rounded())
+        return "\(paceTheme.targetEmoji) \(todayPct)%/\(Int(budgetPerDay.rounded()))%/day · \(paceTheme.weeklyEmoji) \(weeklyPct)%/w\n\(daysLeft)d left · \(guidance)"
     }
 
     /// Just the guidance status message (e.g. "Behind pace — pick it up").

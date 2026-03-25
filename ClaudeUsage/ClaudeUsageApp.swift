@@ -15,20 +15,24 @@ struct ClaudeUsageApp: App {
     }
 
     private var menuBarText: String {
-        _ = viewModel.tick // Trigger re-evaluation every 60s for countdown updates
-        let sessionPct = Int(viewModel.usageData?.fiveHour.utilization ?? 0)
+        _ = viewModel.tick
         let timeText = viewModel.menuBarTimeString
-        let paceEmoji = viewModel.paceTheme.emoji(for: viewModel.paceStatus)
+        let sessionEmoji = viewModel.paceTheme.emoji(for: viewModel.sessionPaceStatus)
+        let sessionPct = Int(viewModel.usageData?.fiveHour.utilization ?? 0)
 
-        var parts = ["\(paceEmoji) \(sessionPct)%"]
+        var parts = ["\(sessionEmoji) \(sessionPct)%"]
 
+        let targetEmoji = viewModel.paceTheme.targetEmoji
+        let todayPct = viewModel.todayUsagePercent ?? 0
         if let budget = viewModel.dailyBudgetPercent {
-            parts.append("\(paceEmoji) \(budget)%/day")
+            parts.append("\(targetEmoji) \(todayPct)%/\(budget)%/day")
         } else {
-            // Fall back to weekly % when daily budget isn't available yet
-            let weeklyPct = Int(viewModel.usageData?.sevenDay.utilization ?? 0)
-            parts.append("\(paceEmoji) \(weeklyPct)%W")
+            parts.append("\(targetEmoji) \(todayPct)%/day")
         }
+
+        let weeklyPct = Int(viewModel.usageData?.sevenDay.utilization ?? 0)
+        let weeklyEmoji = viewModel.paceTheme.emoji(for: viewModel.paceStatus)
+        parts.append("\(weeklyEmoji) \(weeklyPct)%/w")
 
         if !timeText.isEmpty {
             parts.append(timeText)
