@@ -155,7 +155,12 @@ $buildStart = Get-Date
 $lastHeartbeat = $buildStart
 
 # Stream build output line-by-line, injecting heartbeat messages during quiet periods
-$buildProcess = Start-Process -FilePath "npx" -ArgumentList "tauri","build" `
+# Resolve npx.cmd explicitly to avoid WSL Linux binaries leaking via PATH
+$npxCmd = (Get-Command npx.cmd -ErrorAction SilentlyContinue).Source
+if (-not $npxCmd) { $npxCmd = (Get-Command npx -ErrorAction SilentlyContinue).Source }
+if (-not $npxCmd) { Write-Error "npx not found in PATH. Is Node.js installed?" }
+
+$buildProcess = Start-Process -FilePath $npxCmd -ArgumentList "tauri","build" `
     -NoNewWindow -PassThru -RedirectStandardOutput "$buildDir\.build-stdout.log" -RedirectStandardError "$buildDir\.build-stderr.log"
 
 # Relax error preference during log tailing — Get-Content can throw if the log
@@ -212,7 +217,14 @@ Remove-Item "$buildDir\.build-stdout.log","$buildDir\.build-stderr.log" -Force -
 
 $buildElapsed = [math]::Round(((Get-Date) - $buildStart).TotalMinutes, 1)
 Write-Host ""
-if ($buildExitCode -eq 0) {
+
+# Check if MSI was actually produced (tauri may exit non-zero for warnings)
+$msiProduced = (Get-ChildItem "$buildDir\src-tauri\target\release\bundle\msi\*.msi" -ErrorAction SilentlyContinue | Measure-Object).Count -gt 0
+
+if ($buildExitCode -eq 0 -or $msiProduced) {
+    if ($buildExitCode -ne 0) {
+        Write-Host "    Build exited with code $buildExitCode but MSI was produced (likely warnings only)" -ForegroundColor Yellow
+    }
     Write-Ok "Build completed in ${buildElapsed} minutes"
 } else {
     Write-Host "    Build FAILED with exit code $buildExitCode after ${buildElapsed} minutes" -ForegroundColor Red
