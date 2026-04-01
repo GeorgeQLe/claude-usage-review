@@ -180,6 +180,10 @@ Split the menu bar emoji into two independent indicators: session emoji (based o
 - Updated menu bar format: `{sessionEmoji} {session}% · {target} {today}%/{budget}%/day · {weeklyEmoji} {weekly}%/w · {time}`
 - Updated `weeklyPaceDetail` popover text to include today% and weekly% with themed emojis
 
+## 2026-03-31 — Expert Code Review
+
+Conducted full expert code review across both Swift (macOS) and Tauri (Rust + TypeScript) codebases. Reviewed all 20 Swift files, 9 Rust files, 8 TypeScript files, and configuration. Verified findings against actual source to filter false positives (dropped 5). Final findings added to `tasks/todo.md`: 3 High (DateFormatter perf, reqwest::Client reuse, silent GitHub errors), 3 Medium (GraphQL escaping, test coverage, code duplication), 5 Low (caching, migration, thread safety, tokio features, delete confirmation), 1 spec conformance note.
+
 ## 2026-03-18 — Behind-Pace Status + Hover Tooltip (macOS)
 
 Added underutilization detection and a hover tooltip on the menu bar item.

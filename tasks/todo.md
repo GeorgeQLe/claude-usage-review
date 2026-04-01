@@ -11,6 +11,34 @@
 
 ---
 
+# Expert Review Findings (2026-03-31)
+
+## High (should fix)
+
+- [ ] **UsageViewModel.swift:425-427** — `DateFormatter` allocated every second via `resetTimeString`. Cache as a static/lazy property.
+- [ ] **tauri-app/src-tauri/src/api.rs:45** — New `reqwest::Client` created per API call. Store in `AppState` and reuse.
+- [ ] **GitHubViewModel.swift:67** — Empty `catch { }` silently swallows all GitHub API errors. At minimum log; ideally expose error state to UI.
+
+## Medium (improve)
+
+- [ ] **GitHubService.swift:30** — Username interpolated into GraphQL string without escaping. A `"` in username breaks the query silently. Use GraphQL variables or escape special chars.
+- [ ] **ClaudeUsageTests/** — Test coverage limited to `UsageData` decoding and `UsageService` requests. Add tests for `paceRatio()` edge cases, account migration, and history compaction.
+- [ ] **commands.rs:131-133, 170-172, 196-198** — `drop(s); clone state_arc; start_polling()` pattern repeated 3 times. Extract to a helper function.
+
+## Low (consider)
+
+- [ ] **UsageViewModel.swift:392-405** — `displayLimits` computed property rebuilds array on every access. Could cache.
+- [ ] **AccountStore.swift:135-163** — Migration can leave orphaned keychain entries on crash. Not harmful but slightly wasteful.
+- [ ] **KeychainService.swift:8** — Static `cache` not synchronized. Safe today (all callers on MainActor) but fragile if callers change.
+- [ ] **Cargo.toml:21** — `tokio` with `features = ["full"]` includes unused features. Slim to `["rt-multi-thread", "sync", "macros", "time"]`.
+- [ ] **SettingsView.swift:250** — Account deletion has no confirmation dialog.
+
+## Spec conformance
+
+- [ ] **SPEC.md "Auth Flow" vs UsageViewModel.swift:319** — Spec says 401/403 triggers re-auth; implementation shows banner but doesn't auto-prompt. Minor divergence.
+
+---
+
 ## Next Step Plan: Phase 6 — End-to-End Test on Windows
 
 ### What needs to be done
