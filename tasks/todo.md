@@ -11,31 +11,41 @@
 
 ---
 
-# Expert Review Findings (2026-03-31)
+# Expert Review Findings (2026-04-01)
+
+## Critical (must fix)
+
+- [ ] **state.rs:331-402** — `start_polling()` never stores JoinHandle in `polling_handle`, so `stop_polling()` is a no-op. Multiple polling tasks accumulate after account switches.
+- [ ] **GitHubService.swift:28-44** — Username interpolated directly into GraphQL query string. Use GraphQL variables.
 
 ## High (should fix)
 
-- [ ] **UsageViewModel.swift:425-427** — `DateFormatter` allocated every second via `resetTimeString`. Cache as a static/lazy property.
-- [ ] **tauri-app/src-tauri/src/api.rs:45** — New `reqwest::Client` created per API call. Store in `AppState` and reuse.
-- [ ] **GitHubViewModel.swift:67** — Empty `catch { }` silently swallows all GitHub API errors. At minimum log; ideally expose error state to UI.
+- [ ] **api.rs:45** — New `reqwest::Client` created per API call. Store in `AppState` and reuse.
+- [ ] **GitHubViewModel.swift:66-68** — Empty `catch { }` silently swallows all GitHub API errors. Expose error state to UI.
+- [ ] **commands.rs:293** — `window.eval()` for opacity. Use Tauri event or DOM API instead.
+- [ ] **lib.rs:223** — `state.blocking_lock()` blocks event loop. Move overlay creation to async context.
+- [ ] **commands.rs:131-133, 170-172, 196-198** — `drop(s); clone; start_polling()` repeated 3 times. Extract helper, ensure `stop_polling()` called in all paths.
 
 ## Medium (improve)
 
-- [ ] **GitHubService.swift:30** — Username interpolated into GraphQL string without escaping. A `"` in username breaks the query silently. Use GraphQL variables or escape special chars.
-- [ ] **ClaudeUsageTests/** — Test coverage limited to `UsageData` decoding and `UsageService` requests. Add tests for `paceRatio()` edge cases, account migration, and history compaction.
-- [ ] **commands.rs:131-133, 170-172, 196-198** — `drop(s); clone state_arc; start_polling()` pattern repeated 3 times. Extract to a helper function.
+- [ ] **KeychainService.swift:8** — Static `cache` not synchronized. Add lock or serial queue.
+- [ ] **ClaudeUsageTests/** — Add tests for `paceRatio()` edge cases, account migration, history compaction.
+- [ ] **state.rs:244-246** — Magic stability thresholds need named constants with rationale.
+- [ ] **config.rs:50** — `unwrap_or_default()` silently replaces corrupted config. Log warning.
+- [ ] **main.ts:16-17, 90** — Import `escapeHtml()` for backend-sourced strings.
 
 ## Low (consider)
 
-- [ ] **UsageViewModel.swift:392-405** — `displayLimits` computed property rebuilds array on every access. Could cache.
-- [ ] **AccountStore.swift:135-163** — Migration can leave orphaned keychain entries on crash. Not harmful but slightly wasteful.
-- [ ] **KeychainService.swift:8** — Static `cache` not synchronized. Safe today (all callers on MainActor) but fragile if callers change.
-- [ ] **Cargo.toml:21** — `tokio` with `features = ["full"]` includes unused features. Slim to `["rt-multi-thread", "sync", "macros", "time"]`.
-- [ ] **SettingsView.swift:250** — Account deletion has no confirmation dialog.
+- [ ] **Cargo.toml:21** — Slim `tokio` features from `["full"]` to only needed features.
+- [ ] **SettingsView.swift:249-252** — Account deletion has no confirmation dialog.
+- [ ] **models.rs:28-32** — Rename `email` → `name`/`label` in `AccountMetadata`.
+- [ ] **state.rs:193** — `%W` reads like format specifier; use `% W`.
+- [ ] **credentials.rs:3** — Keyring service name inconsistent with app identifier.
 
 ## Spec conformance
 
-- [ ] **SPEC.md "Auth Flow" vs UsageViewModel.swift:319** — Spec says 401/403 triggers re-auth; implementation shows banner but doesn't auto-prompt. Minor divergence.
+- [ ] **SPEC.md Auth Flow §4** — 401/403 should auto-prompt re-auth in settings; both platforms only show banner.
+- [ ] **SPEC.md Polling Strategy §3** — Spec says retry with backoff; both platforms use fixed interval.
 
 ---
 

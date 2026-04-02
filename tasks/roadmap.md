@@ -42,3 +42,34 @@
 - [x] `cargo tauri build` producing working MSI installer (setup-windows.ps1 updated with robocopy approach)
 - [x] Fix PowerShell NativeCommandError during build — `npx tauri build` writes info/warning lines to stderr, which PowerShell treats as errors (red text + RemoteException). Need to suppress with `$ErrorActionPreference = "Continue"` or `2>&1` redirection around the build step.
 - [ ] End-to-end test on Windows
+
+## Phase 7: Expert Review Fixes (2026-04-01)
+
+### Critical
+- [ ] **Polling handle leak (Tauri)** — `start_polling()` never stores JoinHandle in `AppState.polling_handle`, so `stop_polling()` is a no-op. Multiple polling tasks accumulate after account switches. Fix: store handle, ensure old task is aborted before spawning new one. (`state.rs:331-402`)
+- [ ] **GraphQL injection (macOS)** — Username interpolated directly into GraphQL query string. Use GraphQL variables instead. (`GitHubService.swift:28-44`)
+
+### High
+- [ ] **Reuse reqwest::Client (Tauri)** — New client created per API call. Store in `AppState` or `Lazy<Client>`. (`api.rs:45`)
+- [ ] **Surface GitHub errors (macOS)** — Empty `catch {}` silently swallows all errors. Add `@Published var error` and display in UI. (`GitHubViewModel.swift:66-68`)
+- [ ] **Remove eval() for opacity (Tauri)** — Use Tauri event or DOM API instead of `window.eval()`. (`commands.rs:293`)
+- [ ] **Fix blocking_lock in setup (Tauri)** — `state.blocking_lock()` blocks event loop. Move overlay creation to async context. (`lib.rs:223`)
+- [ ] **Extract restart-polling helper (Tauri)** — `drop(s); clone; start_polling()` pattern repeated 3 times. Extract helper, ensure `stop_polling()` called in all paths. (`commands.rs:131-133, 170-172, 196-198`)
+
+### Medium
+- [ ] **Thread-safe KeychainService cache (macOS)** — Static `cache` dict not synchronized. Add lock or serial queue. (`KeychainService.swift:8`)
+- [ ] **Add test coverage** — Tests for `paceRatio()` edge cases, account migration, history compaction, GraphQL query construction.
+- [ ] **Document stability thresholds (Tauri)** — Magic numbers (6h elapsed, 1h remaining) need named constants with rationale. (`state.rs:244-246`)
+- [ ] **Log corrupted config (Tauri)** — `unwrap_or_default()` silently replaces corrupted config. Log warning, consider backup. (`config.rs:50`)
+- [ ] **Escape HTML in main.ts (Tauri)** — Import `escapeHtml()` for backend-sourced strings in popover. (`main.ts:16-17, 90`)
+
+### Low
+- [ ] **Slim tokio features (Tauri)** — Replace `features = ["full"]` with only needed features. (`Cargo.toml:21`)
+- [ ] **Account delete confirmation (macOS)** — Add confirmation dialog before deleting account. (`SettingsView.swift:249-252`)
+- [ ] **Rename email → name (Tauri)** — `AccountMetadata.email` is actually an account label. (`models.rs:28-32`)
+- [ ] **Fix menu bar text spacing (Tauri)** — `%W` reads like format specifier; use `% W`. (`state.rs:193`)
+- [ ] **Align keyring service name (Tauri)** — `com.claudeusage.credentials` vs app id `com.claudeusage.desktop`. (`credentials.rs:3`)
+
+### Spec conformance
+- [ ] **Auto-prompt re-auth on 401/403** — Spec says prompt to re-auth in settings; both platforms only show banner. (`SPEC.md Auth Flow §4`)
+- [ ] **Network error backoff** — Spec says retry with backoff; both platforms continue polling at fixed 300s/5min interval. (`SPEC.md Polling Strategy §3`)

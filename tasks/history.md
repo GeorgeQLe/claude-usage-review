@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-01 — Expert Code Review #2 (Full Project)
+
+Second comprehensive review across both Swift (macOS) and Tauri (Rust + TypeScript) codebases. Found 2 Critical (polling handle leak causing duplicate API calls after account switches, GraphQL injection via username), 5 High (reqwest::Client reuse, silent GitHub errors, eval() for opacity, blocking_lock in setup, repeated restart-polling pattern), 5 Medium (KeychainService thread safety, test coverage, magic thresholds, silent config corruption, unescaped HTML), 5 Low (tokio features, delete confirmation, field naming, text spacing, service name mismatch), 2 Spec conformance (auto-prompt re-auth, network error backoff). Cross-referenced against prior review and project docs. Added Phase 7 to roadmap with all findings prioritized.
+
 ## 2026-03-18 — README Update (macOS)
 
 Updated README.md to reflect all current features. Replaced outdated arrow-based pace indicator docs with emoji-based system (3 themes, 6 pace states). Added sections for hover tooltip, usage history sparklines, GitHub heatmap, and comprehensive settings list. Updated feature comparison table with 6 new entries. Fixed menu bar format example and expanded Notes section.
