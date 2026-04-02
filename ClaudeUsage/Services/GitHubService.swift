@@ -26,8 +26,8 @@ struct GitHubService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let query = """
-        {
-          user(login: "\(username)") {
+        query($login: String!) {
+          user(login: $login) {
             contributionsCollection {
               contributionCalendar {
                 totalContributions
@@ -43,7 +43,10 @@ struct GitHubService {
         }
         """
 
-        let body = ["query": query]
+        let body: [String: Any] = [
+            "query": query,
+            "variables": ["login": username]
+        ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await session.data(for: request)

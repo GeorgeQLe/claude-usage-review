@@ -327,12 +327,13 @@ pub fn tray_color_for_utilization(utilization: f64) -> String {
     }
 }
 
-/// Start polling for the active account
+/// Start polling for the active account.
+/// Aborts any existing polling task before spawning a new one.
 pub fn start_polling(app: AppHandle, state: Arc<Mutex<AppState>>) {
     let state_clone = state.clone();
     let app_clone = app.clone();
 
-    tauri::async_runtime::spawn(async move {
+    let handle = tauri::async_runtime::spawn(async move {
         // Get account info
         let (account_id, session_key, org_id) = {
             let s = state_clone.lock().await;
@@ -400,6 +401,11 @@ pub fn start_polling(app: AppHandle, state: Arc<Mutex<AppState>>) {
             .await;
         }
     });
+
+    // Store handle, aborting any previous polling task
+    let mut s = state.blocking_lock();
+    s.stop_polling();
+    s.polling_handle = Some(handle);
 }
 
 async fn perform_fetch(

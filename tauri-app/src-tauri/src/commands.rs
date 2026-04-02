@@ -129,8 +129,7 @@ pub async fn remove_account(
 
     // Restart polling if we switched to a new account
     drop(s);
-    let state_arc = state.inner().clone();
-    state::start_polling(app, state_arc);
+    state::start_polling(app, state.inner().clone());
 
     Ok(())
 }
@@ -164,12 +163,10 @@ pub async fn set_active_account(
     s.usage_data = None;
     s.last_updated = None;
     s.error_state = None;
-    s.stop_polling();
     config::save_config(&s.config)?;
 
     drop(s);
-    let state_arc = state.inner().clone();
-    state::start_polling(app, state_arc);
+    state::start_polling(app, state.inner().clone());
 
     Ok(())
 }
@@ -191,11 +188,9 @@ pub async fn save_credentials(
         acct.org_id = Some(org_id);
     }
     config::save_config(&s.config)?;
-    s.stop_polling();
 
     drop(s);
-    let state_arc = state.inner().clone();
-    state::start_polling(app, state_arc);
+    state::start_polling(app, state.inner().clone());
 
     Ok(())
 }
