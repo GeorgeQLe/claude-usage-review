@@ -1,5 +1,15 @@
 # ClaudeUsage — Session History
 
+## 2026-04-01 — Phase 7 Step 1: Fix Critical Polling Leak + GraphQL Injection
+
+Fixed the 2 Critical severity bugs from expert review #2:
+
+1. **Polling handle leak (Tauri)** — `start_polling()` in `state.rs` now captures the `JoinHandle` from `spawn()`, calls `stop_polling()` to abort any existing task, and stores the new handle. All 3 callers in `commands.rs` (`remove_account`, `set_active_account`, `save_credentials`) simplified to `drop(s); start_polling(app, state.inner().clone())` — redundant `stop_polling()` calls removed since `start_polling` handles it internally.
+
+2. **GraphQL injection (macOS)** — `GitHubService.swift` now uses GraphQL variables (`$login: String!`) instead of interpolating `username` directly into the query string. Prevents injection from usernames containing special characters.
+
+Note: `cargo check` cannot run in this WSL environment (missing OpenSSL/pkg-config system deps) — code changes verified by manual review.
+
 ## 2026-04-01 — Expert Code Review #2 (Full Project)
 
 Second comprehensive review across both Swift (macOS) and Tauri (Rust + TypeScript) codebases. Found 2 Critical (polling handle leak causing duplicate API calls after account switches, GraphQL injection via username), 5 High (reqwest::Client reuse, silent GitHub errors, eval() for opacity, blocking_lock in setup, repeated restart-polling pattern), 5 Medium (KeychainService thread safety, test coverage, magic thresholds, silent config corruption, unescaped HTML), 5 Low (tokio features, delete confirmation, field naming, text spacing, service name mismatch), 2 Spec conformance (auto-prompt re-auth, network error backoff). Cross-referenced against prior review and project docs. Added Phase 7 to roadmap with all findings prioritized.

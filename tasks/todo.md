@@ -1,8 +1,8 @@
 # Phase 7: Expert Review Fixes
 
 ## Critical
-- [ ] Fix polling handle leak (`state.rs`)
-- [ ] Fix GraphQL injection (`GitHubService.swift`)
+- [x] Fix polling handle leak (`state.rs`)
+- [x] Fix GraphQL injection (`GitHubService.swift`)
 
 ## High
 - [ ] Reuse reqwest::Client (`api.rs`)

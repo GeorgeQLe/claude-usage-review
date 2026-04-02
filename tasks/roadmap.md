@@ -46,8 +46,8 @@
 ## Phase 7: Expert Review Fixes (2026-04-01)
 
 ### Critical
-- [ ] **Polling handle leak (Tauri)** — `start_polling()` never stores JoinHandle in `AppState.polling_handle`, so `stop_polling()` is a no-op. Multiple polling tasks accumulate after account switches. Fix: store handle, ensure old task is aborted before spawning new one. (`state.rs:331-402`)
-- [ ] **GraphQL injection (macOS)** — Username interpolated directly into GraphQL query string. Use GraphQL variables instead. (`GitHubService.swift:28-44`)
+- [x] **Polling handle leak (Tauri)** — `start_polling()` now stores JoinHandle and aborts old task before spawning new one. Callers simplified to single pattern. (`state.rs`, `commands.rs`)
+- [x] **GraphQL injection (macOS)** — Username now passed via GraphQL variables instead of string interpolation. (`GitHubService.swift`)
 
 ### High
 - [ ] **Reuse reqwest::Client (Tauri)** — New client created per API call. Store in `AppState` or `Lazy<Client>`. (`api.rs:45`)
