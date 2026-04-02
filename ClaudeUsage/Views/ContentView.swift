@@ -47,11 +47,11 @@ struct ContentView: View {
 
     private var toolbarButtons: some View {
         HStack {
-            if viewModel.errorState == .networkError {
+            if case .networkError(let detail) = viewModel.errorState {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 11))
                     .foregroundColor(.orange)
-                Text("Network error")
+                Text(detail)
                     .font(.system(size: 11))
                     .foregroundColor(.orange)
             } else {
@@ -147,6 +147,21 @@ struct ContentView: View {
                         .multilineTextAlignment(.center)
                     Button("Open Settings") {
                         openSettings()
+                    }
+                }
+                .padding()
+            } else if case .networkError(let detail) = viewModel.errorState, viewModel.usageData == nil {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 32))
+                        .foregroundColor(.orange)
+                    Text("Request Failed")
+                        .font(.headline)
+                    Text(detail)
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                    Button("Retry") {
+                        viewModel.fetchNow()
                     }
                 }
                 .padding()

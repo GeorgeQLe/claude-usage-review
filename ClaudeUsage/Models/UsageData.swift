@@ -10,6 +10,26 @@ struct UsageLimit: Codable, Equatable {
     }
 }
 
+struct ExtraUsage: Codable, Equatable {
+    let isEnabled: Bool?
+    let monthlyLimit: Int?
+    let usedCredits: Double?
+    let utilization: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case isEnabled = "is_enabled"
+        case monthlyLimit = "monthly_limit"
+        case usedCredits = "used_credits"
+        case utilization
+    }
+
+    /// Converts to a UsageLimit for display compatibility.
+    var asUsageLimit: UsageLimit? {
+        guard let utilization = utilization else { return nil }
+        return UsageLimit(utilization: utilization, resetsAt: nil)
+    }
+}
+
 struct UsageData: Codable, Equatable {
     let fiveHour: UsageLimit
     let sevenDay: UsageLimit
@@ -18,7 +38,11 @@ struct UsageData: Codable, Equatable {
     let sevenDayOauthApps: UsageLimit?
     let sevenDayCowork: UsageLimit?
     let iguanaNecktie: UsageLimit?
-    let extraUsage: UsageLimit?
+    let extraUsageRaw: ExtraUsage?
+
+    var extraUsage: UsageLimit? {
+        extraUsageRaw?.asUsageLimit
+    }
 
     enum CodingKeys: String, CodingKey {
         case fiveHour = "five_hour"
@@ -28,6 +52,6 @@ struct UsageData: Codable, Equatable {
         case sevenDayOauthApps = "seven_day_oauth_apps"
         case sevenDayCowork = "seven_day_cowork"
         case iguanaNecktie = "iguana_necktie"
-        case extraUsage = "extra_usage"
+        case extraUsageRaw = "extra_usage"
     }
 }

@@ -215,3 +215,14 @@ Added underutilization detection and a hover tooltip on the menu bar item.
 - Global `NSEvent.addGlobalMonitorForEvents` tracks mouse position over the status item
 - `paceGuidance` computed property provides just the status message (e.g. "Behind pace — pick it up")
 - Tooltip updates live via Combine subscription on `$usageData`
+
+## 2026-04-02 — Fix API Response Parse Error + Error Diagnostics (macOS)
+
+Fixed broken usage display caused by Claude API changing the `extra_usage` response format from `UsageLimit` shape to a new object with `is_enabled`, `monthly_limit`, `used_credits`, `utilization`. The JSON decoder failed but the error was silently classified as "Network error" with no diagnostic detail, and with no cached data the app showed an infinite spinner.
+
+- Added `ExtraUsage` struct for new API shape, with `asUsageLimit` bridge for display compatibility
+- `ErrorState.networkError` now carries `detail: String` (HTTP status, "Parse error", "Connection failed")
+- Added `os.log` logging (`com.claudeusage` subsystem) in ViewModel error handlers
+- New error UI in ContentView: "Request Failed" + detail + Retry button when no cached data (was infinite spinner)
+- Added `NSSupportsAutomaticTermination=false` / `NSSupportsSuddenTermination=false` to Info.plist
+- Added `ProcessInfo.disableAutomaticTermination` in AppDelegate
