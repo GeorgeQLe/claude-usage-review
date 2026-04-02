@@ -33,6 +33,10 @@
       "icons/icon.png"
     ],
     "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper",
+        "silent": false
+      },
       "wix": {
         "language": "en-US"
       }

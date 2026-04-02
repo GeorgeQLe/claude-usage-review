@@ -6,7 +6,10 @@ mod models;
 mod overlay;
 mod state;
 
+use log::{error, info, warn};
+use simplelog::{CombinedLogger, Config as LogConfig, LevelFilter, WriteLogger};
 use state::AppState;
+use std::fs;
 use std::sync::Arc;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
@@ -14,6 +17,54 @@ use tauri::{
     Emitter, Listener, Manager, WebviewUrl, WebviewWindowBuilder,
 };
 use tokio::sync::Mutex;
+
+fn init_logging() {
+    let log_dir = dirs::data_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("ClaudeUsage");
+    let _ = fs::create_dir_all(&log_dir);
+    let log_file = log_dir.join("app.log");
+
+    if let Ok(file) = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_file)
+    {
+        let _ = CombinedLogger::init(vec![WriteLogger::new(
+            LevelFilter::Info,
+            LogConfig::default(),
+            file,
+        )]);
+    }
+}
+
+fn show_error_dialog(message: &str) {
+    #[cfg(target_os = "windows")]
+    {
+        use std::ffi::OsStr;
+        use std::iter::once;
+        use std::os::windows::ffi::OsStrExt;
+        use std::ptr::null_mut;
+
+        extern "system" {
+            fn MessageBoxW(hwnd: *mut u8, text: *const u16, caption: *const u16, flags: u32)
+                -> i32;
+        }
+
+        let text: Vec<u16> = OsStr::new(message).encode_wide().chain(once(0)).collect();
+        let caption: Vec<u16> = OsStr::new("ClaudeUsage Error")
+            .encode_wide()
+            .chain(once(0))
+            .collect();
+        unsafe {
+            MessageBoxW(null_mut(), text.as_ptr(), caption.as_ptr(), 0x10); // MB_ICONERROR
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        eprintln!("ClaudeUsage Error: {}", message);
+    }
+}
 
 fn toggle_popover(app: &tauri::AppHandle, tray_rect: tauri::Rect) {
     if let Some(window) = app.get_webview_window("popover") {
@@ -93,12 +144,16 @@ fn open_settings(app: &tauri::AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    init_logging();
+    info!("ClaudeUsage starting up");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--autostarted"]),
         ))
         .setup(|app| {
+            info!("Tauri setup phase starting");
             let state = Arc::new(Mutex::new(AppState::new()));
             app.manage(state.clone());
 
@@ -118,41 +173,48 @@ pub fn run() {
                 .item(&quit_item)
                 .build()?;
 
-            if let Some(tray) = app.tray_by_id("main-tray") {
-                tray.set_menu(Some(menu))?;
+            match app.tray_by_id("main-tray") {
+                Some(tray) => {
+                    info!("Tray icon created successfully");
+                    tray.set_menu(Some(menu))?;
 
-                let app_handle = app.handle().clone();
-                tray.on_tray_icon_event(move |_tray, event| {
-                    if let TrayIconEvent::Click { button, rect, .. } = event {
-                        match button {
-                            tauri::tray::MouseButton::Left => {
-                                toggle_popover(&app_handle, rect);
+                    let app_handle = app.handle().clone();
+                    tray.on_tray_icon_event(move |_tray, event| {
+                        if let TrayIconEvent::Click { button, rect, .. } = event {
+                            match button {
+                                tauri::tray::MouseButton::Left => {
+                                    toggle_popover(&app_handle, rect);
+                                }
+                                _ => {}
                             }
-                            _ => {}
                         }
-                    }
-                });
+                    });
 
-                let app_handle2 = app.handle().clone();
-                tray.on_menu_event(move |_app, event| match event.id().as_ref() {
-                    "refresh" => {
-                        // Trigger refresh via event
-                        let _ = app_handle2.emit("trigger-refresh", ());
-                    }
-                    "settings" => {
-                        open_settings(&app_handle2);
-                    }
-                    "toggle_overlay" => {
-                        let _ = app_handle2.emit("trigger-toggle-overlay", ());
-                    }
-                    "quit" => {
-                        app_handle2.exit(0);
-                    }
-                    _ => {}
-                });
+                    let app_handle2 = app.handle().clone();
+                    tray.on_menu_event(move |_app, event| match event.id().as_ref() {
+                        "refresh" => {
+                            let _ = app_handle2.emit("trigger-refresh", ());
+                        }
+                        "settings" => {
+                            open_settings(&app_handle2);
+                        }
+                        "toggle_overlay" => {
+                            let _ = app_handle2.emit("trigger-toggle-overlay", ());
+                        }
+                        "quit" => {
+                            app_handle2.exit(0);
+                        }
+                        _ => {}
+                    });
+                }
+                None => {
+                    warn!("Tray icon creation failed — opening settings window as fallback");
+                    open_settings(app.handle());
+                }
             }
 
             // Start polling
+            info!("Starting usage polling");
             let app_handle = app.handle().clone();
             state::start_polling(app_handle, state.clone());
 
@@ -172,6 +234,7 @@ pub fn run() {
                 }
             });
 
+            info!("Setup phase complete");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -192,5 +255,10 @@ pub fn run() {
             commands::set_overlay_position,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .unwrap_or_else(|err| {
+            let msg = format!("Failed to start ClaudeUsage: {err}");
+            error!("{}", msg);
+            show_error_dialog(&msg);
+            std::process::exit(1);
+        });
 }
