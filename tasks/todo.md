@@ -12,7 +12,7 @@
 - [x] Extract restart-polling helper (`commands.rs`)
 
 ## Medium
-- [ ] Thread-safe KeychainService cache
+- [x] Thread-safe KeychainService cache
 - [ ] Add test coverage
 - [x] Document stability thresholds (`state.rs`)
 - [x] Log corrupted config (`config.rs`)

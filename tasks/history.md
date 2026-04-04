@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-04 — Phase 7 Step 4: Thread-Safe KeychainService Cache
+
+Added serial `DispatchQueue` guard to `KeychainService.swift` static `cache` dictionary. All 10 access points (4 reads, 4 writes, 2 deletes) now wrapped in `cacheQueue.sync { ... }`. Queue scope is minimal — only protects the dictionary, not the underlying keychain/UserDefaults calls.
+
 ## 2026-04-04 — Phase 7 Step 3: Fix Medium-Priority Issues (Batch 1)
 
 Fixed 3 Medium severity items from expert review:
