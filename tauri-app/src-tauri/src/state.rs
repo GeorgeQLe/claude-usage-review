@@ -241,7 +241,8 @@ impl AppState {
         let time_remaining = (resets_at - now).num_seconds() as f64;
         let time_elapsed = window_seconds - time_remaining;
 
-        // Unstable in first 6 hours or last hour
+        // Skip pace calculation during the first 6 hours (insufficient data for a stable
+        // ratio) and the last hour (remaining time too small, ratio becomes hypersensitive).
         if time_elapsed < 6.0 * 3600.0 || time_remaining < 3600.0 {
             return None;
         }
@@ -253,6 +254,8 @@ impl AppState {
         Some(limit.utilization / expected)
     }
 
+    /// ±15% threshold: tighter triggers too many false pace changes,
+    /// wider misses meaningful trends within a 7-day window.
     fn weekly_pace_indicator(&self, data: &UsageData) -> &str {
         match self.pace_ratio(&data.seven_day, SEVEN_DAY_WINDOW_SECS) {
             Some(ratio) if ratio > 1.15 => "▲",
@@ -281,6 +284,7 @@ impl AppState {
         let time_remaining = (resets_at - now).num_seconds() as f64;
         let time_elapsed = SEVEN_DAY_WINDOW_SECS - time_remaining;
 
+        // Same stability guard as pace_ratio: need ≥6h elapsed and ≥1h remaining.
         if time_elapsed < 6.0 * 3600.0 {
             return None;
         }
@@ -317,6 +321,10 @@ impl AppState {
     }
 }
 
+/// Tray icon color based on session utilization percentage.
+/// - ≥80%: red (near limit)
+/// - ≥50%: yellow (moderate usage)
+/// - <50%: green (plenty of headroom)
 pub fn tray_color_for_utilization(utilization: f64) -> String {
     if utilization >= 80.0 {
         "red".to_string()

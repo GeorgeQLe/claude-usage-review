@@ -1,4 +1,5 @@
 use crate::models::{AccountMetadata, OverlayLayout, OverlayPosition, TimeDisplayFormat};
+use log::warn;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -47,8 +48,17 @@ pub fn load_config() -> AppConfig {
     let path = config_path();
     if path.exists() {
         match fs::read_to_string(&path) {
-            Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
-            Err(_) => AppConfig::default(),
+            Ok(content) => match serde_json::from_str(&content) {
+                Ok(config) => config,
+                Err(e) => {
+                    warn!("Config file corrupted, using defaults: {}", e);
+                    AppConfig::default()
+                }
+            },
+            Err(e) => {
+                warn!("Failed to read config file: {}", e);
+                AppConfig::default()
+            }
         }
     } else {
         AppConfig::default()
