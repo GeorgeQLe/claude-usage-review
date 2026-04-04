@@ -5,7 +5,7 @@
 - [x] Fix GraphQL injection (`GitHubService.swift`)
 
 ## High
-- [ ] Reuse reqwest::Client (`api.rs`)
+- [x] Reuse reqwest::Client (`api.rs`)
 - [ ] Surface GitHub errors (`GitHubViewModel.swift`)
 - [ ] Remove eval() for opacity (`commands.rs`)
 - [ ] Fix blocking_lock in setup (`lib.rs`)

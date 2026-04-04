@@ -1,5 +1,9 @@
+use std::sync::LazyLock;
+
 use crate::models::UsageData;
 use thiserror::Error;
+
+static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| reqwest::Client::new());
 
 #[derive(Error, Debug)]
 pub enum ApiError {
@@ -42,7 +46,7 @@ pub async fn fetch_usage(
         org_id
     );
 
-    let client = reqwest::Client::new();
+    let client = &*HTTP_CLIENT;
     let response = client
         .get(&url)
         .header("accept", "*/*")

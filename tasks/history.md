@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-04 — Phase 7 High: Reuse reqwest::Client in api.rs
+
+Replaced per-call `reqwest::Client::new()` with a module-level `LazyLock<reqwest::Client>` static. The client is initialized once on first use and reused for all subsequent `fetch_usage` calls, enabling connection pooling and TLS session reuse. One file changed (`tauri-app/src-tauri/src/api.rs`), 3 lines modified.
+
 ## 2026-04-01 — Phase 7 Step 1: Fix Critical Polling Leak + GraphQL Injection
 
 Fixed the 2 Critical severity bugs from expert review #2:
