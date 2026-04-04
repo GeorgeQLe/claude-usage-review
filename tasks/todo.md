@@ -31,75 +31,46 @@
 
 ---
 
-## Next Step Plan: Phase 7 Step 5 — Add Test Coverage (macOS)
+## Next Step Plan: Phase 7 Step 6 — Fix Low-Priority Items (Batch)
 
-### What needs to be done
-Add unit tests for the 4 untested areas flagged by expert review: pace ratio edge cases, history compaction, account migration, and GraphQL query construction. Currently 12 tests exist (10 Swift, 2 Rust) covering only API decoding and request construction.
+All 5 Low items are small, independent changes. Batch them in one step.
 
-### Files affected
-- `ClaudeUsageTests/ClaudeUsageTests.swift` — add new test classes (or create separate files if cleaner)
-- No production code changes expected
+### Item 1: Slim tokio features
+**File:** `tauri-app/src-tauri/Cargo.toml`
+**Change:** Replace `tokio = { version = "1", features = ["full"] }` with only the features actually used. Grep the Rust source for tokio usage (likely `rt-multi-thread`, `macros`, `time`, `sync`). Run `cargo check` after to verify nothing breaks.
 
-### Test Group 1: Pace Ratio & Status (~6 tests)
+### Item 2: Account delete confirmation (macOS)
+**File:** `ClaudeUsage/Views/SettingsView.swift` (around line 249)
+**Change:** Wrap the existing account delete action in a `.confirmationDialog` or `.alert` modifier. Show "Delete account '{name}'?" with Cancel/Delete buttons. Only call `accountStore.remove(id:)` on confirmation.
 
-**Source:** `ClaudeUsage/Models/UsageViewModel.swift` lines 458-537
+### Item 3: Rename email → name in AccountMetadata
+**Files:**
+- `tauri-app/src-tauri/src/models.rs` — rename `email` field to `name` in `AccountMetadata` struct
+- `tauri-app/src-tauri/src/commands.rs` — update all references to `.email` → `.name`
+- `tauri-app/src-tauri/src/config.rs` — update if referenced
+- `tauri-app/src/types.ts` — update TypeScript interface
+- `tauri-app/src/settings.ts` — update UI references
+- `tauri-app/src/components/account-picker.ts` — update display
+**Note:** Must handle backwards compatibility — existing config files on disk use `"email"`. Add `#[serde(alias = "email")]` to the `name` field so old configs still deserialize.
 
-The pace logic lives on `UsageViewModel` which requires `@Published` state. To test without standing up the full ViewModel, extract the pure computation into a static/free function or test via ViewModel with mock data.
+### Item 4: Fix menu bar text spacing (Tauri)
+**File:** `tauri-app/src-tauri/src/state.rs` (around line 193)
+**Change:** The format string uses `%W` which reads like a format specifier. Change to `% W` or use a different separator (e.g., `| W:` or ` · W:`). Grep for the exact format string to find the right location.
 
-**Key tests:**
-- `testPaceRatioReturnsNilBeforeStabilityGuard` — elapsed < 6h AND remaining < 1h → returns nil (weekly), elapsed < 15min AND remaining < 5min → returns nil (session)
-- `testPaceRatioAtBoundaryThresholds` — ratio at exactly 0.6, 0.85, 1.15, 1.4 → correct PaceStatus
-- `testPaceStatusLimitHit` — utilization >= 100 → `.limitHit` regardless of ratio
-- `testSessionPaceStatusFallback` — before stability window, uses raw utilization (>=80 critical, >=60 warning)
-- `testPaceRatioDivisionByZero` — expected=0 (t=0 or window fully elapsed) → guard returns nil
-- `testPaceStatusBehindPaceOnlyInPaceAwareMode` — `.behindPace`/`.wayBehind` only when pace-aware enabled
-
-**Approach:** Set `usageData` on ViewModel directly, mock the `fiveHour` window timing via a helper that sets `resetsAt` to control elapsed/remaining time. The `paceRatio` method takes `windowSeconds` and reads `resetsAt` from usage data.
-
-### Test Group 2: History Compaction (~4 tests)
-
-**Source:** `ClaudeUsage/Services/HistoryStore.swift` lines 57-94
-
-`compact(_:)` is a static-like method on `HistoryStore`. Create `UsageSnapshot` arrays with controlled timestamps.
-
-**Key tests:**
-- `testCompactKeepsRecentSnapshots` — snapshots < 24h old kept as-is
-- `testCompactDownsamplesMidRange` — snapshots 24h–7d old → 1 per hour bucket, highest `sessionUtilization` wins
-- `testCompactDeletesOldSnapshots` — snapshots > 7d old removed entirely
-- `testCompactBoundaryAt24Hours` — snapshot at exactly 24h boundary → in midRange bucket (not recent)
-
-### Test Group 3: Account Migration (~3 tests)
-
-**Source:** `ClaudeUsage/Services/AccountStore.swift` lines 135-164
-
-`migrateIfNeeded()` reads from Keychain and UserDefaults. Tests need to mock or use test-scoped storage.
-
-**Key tests:**
-- `testMigrationSkippedWhenAccountsExist` — non-empty accounts array → no migration
-- `testMigrationRunsWithOldCredentials` — empty accounts + old sessionKey in Keychain → creates account, migrates credentials
-- `testMigrationIdempotent` — after migration, calling again is a no-op (accounts now non-empty)
-
-**Note:** These tests touch Keychain which may require entitlements or mocking. If Keychain access fails in test runner, use a protocol abstraction or skip with `XCTSkipIf`.
-
-### Test Group 4: GraphQL Query Safety (~2 tests)
-
-**Source:** `ClaudeUsage/Services/GitHubService.swift` lines 20-77
-
-**Key tests:**
-- `testGraphQLQueryUsesVariables` — verify the request body contains `"variables": {"login": username}` and the query string uses `$login` parameter (not interpolated username)
-- `testGraphQLErrorResponse` — mock response with `errors` array → throws `.invalidResponse`
-
-**Approach:** Use same `MockURLProtocol` pattern from existing `UsageServiceTests`. Intercept the request, inspect JSON body for variable parameterization.
+### Item 5: Align keyring service name (Tauri)
+**File:** `tauri-app/src-tauri/src/credentials.rs` (line 3)
+**Change:** The keyring service name is `com.claudeusage.credentials` but the app identifier is `com.claudeusage.desktop`. Align to use the app identifier. **Migration:** Read old credentials under old service name and re-save under new name on first access, then delete old entries. Or — simpler — just change the constant if no one has existing credentials stored (this is still pre-release).
 
 ### Implementation order
-1. Start with History Compaction (pure data, no mocking needed)
-2. Then GraphQL Safety (reuses existing MockURLProtocol)
-3. Then Pace Ratio (needs ViewModel setup but no I/O)
-4. Finally Account Migration (most complex setup, may need Keychain mock)
+1. Slim tokio features (Cargo.toml only, quick `cargo check`)
+2. Fix menu bar text spacing (1-line change)
+3. Align keyring service name (1-line change, pre-release so no migration needed)
+4. Rename email → name (multi-file, needs serde alias)
+5. Account delete confirmation (SwiftUI, standalone)
 
 ### Acceptance criteria
-- All new tests pass via `xcodebuild test -scheme ClaudeUsage` (if on macOS; WSL = manual review)
-- At least 12 new test functions covering the 4 areas
-- No production code changes required (unless extracting a pure function for testability)
-- Tests use descriptive names following existing `testXxx` convention
-
+- `cargo check` passes after tokio feature slimming
+- `cargo clippy` has no new warnings
+- Account delete shows confirmation dialog before removing
+- Old config files with `"email"` field still deserialize correctly after rename
+- Menu bar text no longer shows `%W` pattern

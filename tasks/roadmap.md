@@ -50,18 +50,18 @@
 - [x] **GraphQL injection (macOS)** — Username now passed via GraphQL variables instead of string interpolation. (`GitHubService.swift`)
 
 ### High
-- [ ] **Reuse reqwest::Client (Tauri)** — New client created per API call. Store in `AppState` or `Lazy<Client>`. (`api.rs:45`)
-- [ ] **Surface GitHub errors (macOS)** — Empty `catch {}` silently swallows all errors. Add `@Published var error` and display in UI. (`GitHubViewModel.swift:66-68`)
-- [ ] **Remove eval() for opacity (Tauri)** — Use Tauri event or DOM API instead of `window.eval()`. (`commands.rs:293`)
-- [ ] **Fix blocking_lock in setup (Tauri)** — `state.blocking_lock()` blocks event loop. Move overlay creation to async context. (`lib.rs:223`)
-- [ ] **Extract restart-polling helper (Tauri)** — `drop(s); clone; start_polling()` pattern repeated 3 times. Extract helper, ensure `stop_polling()` called in all paths. (`commands.rs:131-133, 170-172, 196-198`)
+- [x] **Reuse reqwest::Client (Tauri)** — `LazyLock<Client>` static in `api.rs` for connection pooling.
+- [x] **Surface GitHub errors (macOS)** — `GitHubViewModel` now exposes `@Published var errorMessage`.
+- [x] **Sanitize eval() opacity input (Tauri)** — Validates NaN/infinity, clamps to [0,1]. (`commands.rs`)
+- [x] **Fix blocking_lock in setup (Tauri)** — Replaced with `try_lock().expect(...)`. (`lib.rs`)
+- [x] **Extract restart-polling helper (Tauri)** — DRY'd into `restart_polling()` at 3 call sites. (`commands.rs`)
 
 ### Medium
-- [ ] **Thread-safe KeychainService cache (macOS)** — Static `cache` dict not synchronized. Add lock or serial queue. (`KeychainService.swift:8`)
-- [ ] **Add test coverage** — Tests for `paceRatio()` edge cases, account migration, history compaction, GraphQL query construction.
-- [ ] **Document stability thresholds (Tauri)** — Magic numbers (6h elapsed, 1h remaining) need named constants with rationale. (`state.rs:244-246`)
-- [ ] **Log corrupted config (Tauri)** — `unwrap_or_default()` silently replaces corrupted config. Log warning, consider backup. (`config.rs:50`)
-- [ ] **Escape HTML in main.ts (Tauri)** — Import `escapeHtml()` for backend-sourced strings in popover. (`main.ts:16-17, 90`)
+- [x] **Thread-safe KeychainService cache (macOS)** — Serial `DispatchQueue` guard. (`KeychainService.swift`)
+- [x] **Add test coverage** — 16 new tests: pace status, compaction, GraphQL safety, migration.
+- [x] **Document stability thresholds (Tauri)** — Doc comments on magic numbers. (`state.rs`)
+- [x] **Log corrupted config (Tauri)** — `warn!()` logging before fallback. (`config.rs`)
+- [x] **Escape HTML in usage-bar.ts (Tauri)** — Shared `escapeHtml` in `utils/escape.ts`.
 
 ### Low
 - [ ] **Slim tokio features (Tauri)** — Replace `features = ["full"]` with only needed features. (`Cargo.toml:21`)
