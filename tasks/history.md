@@ -1,5 +1,15 @@
 # ClaudeUsage — Session History
 
+## 2026-04-04 — Phase 7 Step 6: Fix Low-Priority Items (Batch)
+
+Fixed all 5 Low severity items from expert review:
+
+1. **Slim tokio features** — replaced `features = ["full"]` with `["sync", "time", "rt", "macros"]` (only what's actually used).
+2. **Fix menu bar text spacing** — added space in format string (`{}% W{}`) so `%W` no longer reads like a format specifier.
+3. **Align keyring service name** — changed from `com.claudeusage.credentials` to `com.claudeusage.desktop` to match app identifier.
+4. **Rename email → name** — renamed `email` field to `name` across 7 files (models, commands, state, types, components, main, settings). Added `#[serde(alias = "email")]` for backwards compat with existing config files.
+5. **Account delete confirmation (macOS)** — added `.confirmationDialog` to SettingsView so the trash button shows a destructive confirmation before removing an account.
+
 ## 2026-04-04 — Phase 7 Step 5: Add Test Coverage
 
 Added 16 new tests across 4 test groups (26 total, up from 10):

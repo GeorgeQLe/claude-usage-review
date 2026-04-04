@@ -19,11 +19,11 @@
 - [x] Escape HTML in usage-bar.ts
 
 ## Low
-- [ ] Slim tokio features
-- [ ] Account delete confirmation
-- [ ] Rename email → name in AccountMetadata
-- [ ] Fix menu bar text spacing
-- [ ] Align keyring service name
+- [x] Slim tokio features
+- [x] Account delete confirmation
+- [x] Rename email → name in AccountMetadata
+- [x] Fix menu bar text spacing
+- [x] Align keyring service name
 
 ## Spec conformance
 - [ ] Auto-prompt re-auth on 401/403
