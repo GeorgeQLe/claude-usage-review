@@ -121,7 +121,7 @@ function render(state: UsageState) {
     const input = document.getElementById("new-account-name") as HTMLInputElement;
     if (input.value.trim()) {
       try {
-        await invoke("add_account", { email: input.value.trim() });
+        await invoke("add_account", { name: input.value.trim() });
         showAddAccount = false;
         const newState = await invoke<UsageState>("get_usage");
         render(newState);

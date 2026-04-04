@@ -27,7 +27,7 @@ function render(state: UsageState, config: AppConfig) {
     // Editable account name
     html += `
       <div class="editable-name">
-        <input type="text" id="account-name" value="${escapeHtml(activeAccount.email)}" />
+        <input type="text" id="account-name" value="${escapeHtml(activeAccount.name)}" />
       </div>
     `;
 
@@ -119,7 +119,7 @@ function render(state: UsageState, config: AppConfig) {
             .map(
               (a) => `
             <div class="account-list-item">
-              <span class="name">${escapeHtml(a.email)} ${a.is_active ? "(active)" : ""}</span>
+              <span class="name">${escapeHtml(a.name)} ${a.is_active ? "(active)" : ""}</span>
               <button class="btn-delete" data-id="${a.id}" title="Remove">🗑</button>
             </div>
           `
@@ -149,7 +149,7 @@ function bindEvents(state: UsageState, config: AppConfig) {
   // Account name editing
   document.getElementById("account-name")?.addEventListener("blur", async (e) => {
     const input = e.target as HTMLInputElement;
-    if (activeAccount && input.value.trim() !== activeAccount.email) {
+    if (activeAccount && input.value.trim() !== activeAccount.name) {
       try {
         await invoke("rename_account", {
           accountId: activeAccount.id,

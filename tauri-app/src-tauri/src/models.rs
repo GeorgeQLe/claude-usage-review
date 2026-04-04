@@ -27,7 +27,8 @@ pub struct UsageData {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AccountMetadata {
     pub id: Uuid,
-    pub email: String,
+    #[serde(alias = "email")]
+    pub name: String,
     pub org_id: Option<String>,
 }
 
@@ -35,7 +36,7 @@ pub struct AccountMetadata {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AccountInfo {
     pub id: String,
-    pub email: String,
+    pub name: String,
     pub is_configured: bool,
     pub is_active: bool,
 }

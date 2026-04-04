@@ -13,7 +13,7 @@ export interface DisplayLimit {
 
 export interface AccountInfo {
   id: string;
-  email: string;
+  name: string;
   is_configured: boolean;
   is_active: boolean;
 }

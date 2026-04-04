@@ -86,13 +86,13 @@ pub async fn get_accounts(state: State<'_, SharedState>) -> Result<Vec<AccountIn
 #[tauri::command]
 pub async fn add_account(
     state: State<'_, SharedState>,
-    email: String,
+    name: String,
 ) -> Result<AccountInfo, String> {
     let mut s = state.lock().await;
     let id = Uuid::new_v4();
     let account = AccountMetadata {
         id,
-        email: email.clone(),
+        name: name.clone(),
         org_id: None,
     };
     s.config.accounts.push(account);
@@ -103,7 +103,7 @@ pub async fn add_account(
 
     Ok(AccountInfo {
         id: id.to_string(),
-        email,
+        name,
         is_configured: false,
         is_active: s.config.active_account_id == Some(id),
     })
@@ -147,7 +147,7 @@ pub async fn rename_account(
     let id: Uuid = account_id.parse().map_err(|_| "Invalid UUID")?;
     let mut s = state.lock().await;
     if let Some(acct) = s.config.accounts.iter_mut().find(|a| a.id == id) {
-        acct.email = new_name;
+        acct.name = new_name;
     }
     config::save_config(&s.config)
 }

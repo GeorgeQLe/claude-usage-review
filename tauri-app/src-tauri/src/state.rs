@@ -66,7 +66,7 @@ impl AppState {
             .iter()
             .map(|a| AccountInfo {
                 id: a.id.to_string(),
-                email: a.email.clone(),
+                name: a.name.clone(),
                 is_configured: a.org_id.is_some()
                     && credentials::read_session_key(&a.id).is_some(),
                 is_active: self.config.active_account_id == Some(a.id),
@@ -190,7 +190,7 @@ impl AppState {
 
         let time_part = self.format_time_display(data);
 
-        format!("{}% · {}%W{} · {}", session_pct, weekly_pct, pace, time_part)
+        format!("{}% · {}% W{} · {}", session_pct, weekly_pct, pace, time_part)
     }
 
     fn format_time_display(&self, data: &UsageData) -> String {

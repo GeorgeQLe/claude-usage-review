@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-const SERVICE_NAME: &str = "com.claudeusage.credentials";
+const SERVICE_NAME: &str = "com.claudeusage.desktop";
 
 fn scoped_key(account_id: &Uuid, key: &str) -> String {
     format!("{}-{}", account_id, key)

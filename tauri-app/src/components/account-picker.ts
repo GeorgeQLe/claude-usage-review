@@ -10,7 +10,7 @@ export function createAccountPicker(
   accounts.forEach((account) => {
     const btn = document.createElement("button");
     btn.className = `account-picker-btn ${account.is_active ? "active" : ""}`;
-    btn.textContent = account.email;
+    btn.textContent = account.name;
     btn.addEventListener("click", () => onSelect(account.id));
     container.appendChild(btn);
   });

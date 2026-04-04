@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var launchAtLogin = false
     @State private var editingAccountId: UUID?
     @State private var editingAccountName = ""
+    @State private var accountToDelete: Account?
     @State private var githubUsername = ""
     @State private var githubToken = ""
 
@@ -247,8 +248,7 @@ struct SettingsView: View {
                             Spacer()
                             if accountStore.accounts.count > 1 {
                                 Button(action: {
-                                    accountStore.remove(id: account.id)
-                                    loadActiveAccountCredentials()
+                                    accountToDelete = account
                                 }) {
                                     Image(systemName: "trash")
                                         .font(.system(size: 11))
@@ -274,6 +274,25 @@ struct SettingsView: View {
             launchAtLogin = SMAppService.mainApp.status == .enabled
             githubUsername = UserDefaults.standard.string(forKey: "claude_github_username") ?? ""
             githubToken = KeychainService.read(key: .githubToken) ?? ""
+        }
+        .confirmationDialog(
+            "Remove Account",
+            isPresented: Binding(
+                get: { accountToDelete != nil },
+                set: { if !$0 { accountToDelete = nil } }
+            ),
+            presenting: accountToDelete
+        ) { account in
+            Button("Remove \"\(account.email)\"", role: .destructive) {
+                accountStore.remove(id: account.id)
+                loadActiveAccountCredentials()
+                accountToDelete = nil
+            }
+            Button("Cancel", role: .cancel) {
+                accountToDelete = nil
+            }
+        } message: { account in
+            Text("This will remove \"\(account.email)\" and its stored credentials.")
         }
     }
 
