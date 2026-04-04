@@ -1,5 +1,16 @@
 # ClaudeUsage — Session History
 
+## 2026-04-04 — Phase 7 Step 2: Fix Remaining High-Priority Issues
+
+Fixed all 4 remaining High severity items from expert review:
+
+1. **Surface GitHub errors (macOS)** — `GitHubViewModel` now exposes `@Published var errorMessage` instead of silently swallowing fetch failures.
+2. **Sanitize eval() opacity input (Tauri)** — `set_overlay_opacity` rejects NaN/infinity and clamps to [0.0, 1.0] before passing to `window.eval()`. Tauri 2.x has no `set_alpha()` API, so eval with validated float is the only option.
+3. **Replace blocking_lock in setup (Tauri)** — `state.blocking_lock()` replaced with `try_lock().expect(...)` to avoid blocking the async executor during setup.
+4. **Extract restart-polling helper (Tauri)** — DRY'd the `drop(s); state::start_polling(...)` pattern into a `restart_polling()` helper used at all 3 call sites.
+
+All High items now complete. Phase 7 continues with Medium priority items.
+
 ## 2026-04-04 — Phase 7 High: Reuse reqwest::Client in api.rs
 
 Replaced per-call `reqwest::Client::new()` with a module-level `LazyLock<reqwest::Client>` static. The client is initialized once on first use and reused for all subsequent `fetch_usage` calls, enabling connection pooling and TLS session reuse. One file changed (`tauri-app/src-tauri/src/api.rs`), 3 lines modified.
