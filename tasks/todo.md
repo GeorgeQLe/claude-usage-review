@@ -31,46 +31,43 @@
 
 ---
 
-## Next Step Plan: Phase 7 Step 6 — Fix Low-Priority Items (Batch)
+## Next Step Plan: Phase 7 Step 7 — Spec Conformance (2 items)
 
-All 5 Low items are small, independent changes. Batch them in one step.
+Two spec conformance gaps remain. Both affect only the Tauri app (macOS SwiftUI has the same gaps but is not in scope for this step).
 
-### Item 1: Slim tokio features
-**File:** `tauri-app/src-tauri/Cargo.toml`
-**Change:** Replace `tokio = { version = "1", features = ["full"] }` with only the features actually used. Grep the Rust source for tokio usage (likely `rt-multi-thread`, `macros`, `time`, `sync`). Run `cargo check` after to verify nothing breaks.
+### Item 1: Auto-prompt re-auth on 401/403
+**Spec:** "If 401/403 received, show error badge on icon + prompt to re-auth in settings" (SPEC.md Auth Flow §4)
+**Current behavior:** On `ApiError::AuthError`, sets `ErrorState::AuthExpired` and shows a banner "Session expired. Update credentials in Settings." — but doesn't open or focus the settings window.
+**Files to change:**
+- `tauri-app/src-tauri/src/state.rs` (line ~447-453) — in `perform_fetch`'s `AuthError` arm, after setting error state, open/focus the settings window
+- This requires passing the `AppHandle` (already available) and using the same logic as `openSettings()` in `main.ts` but from the Rust side via `WebviewWindow::builder` or by emitting an event that the frontend handles
 
-### Item 2: Account delete confirmation (macOS)
-**File:** `ClaudeUsage/Views/SettingsView.swift` (around line 249)
-**Change:** Wrap the existing account delete action in a `.confirmationDialog` or `.alert` modifier. Show "Delete account '{name}'?" with Cancel/Delete buttons. Only call `accountStore.remove(id:)` on confirmation.
+**Approach:** Emit a `"prompt-reauth"` event from Rust. In `main.ts`, listen for it and call `openSettings()`. This keeps the settings window creation logic in one place (TypeScript) rather than duplicating in Rust.
 
-### Item 3: Rename email → name in AccountMetadata
-**Files:**
-- `tauri-app/src-tauri/src/models.rs` — rename `email` field to `name` in `AccountMetadata` struct
-- `tauri-app/src-tauri/src/commands.rs` — update all references to `.email` → `.name`
-- `tauri-app/src-tauri/src/config.rs` — update if referenced
-- `tauri-app/src/types.ts` — update TypeScript interface
-- `tauri-app/src/settings.ts` — update UI references
-- `tauri-app/src/components/account-picker.ts` — update display
-**Note:** Must handle backwards compatibility — existing config files on disk use `"email"`. Add `#[serde(alias = "email")]` to the `name` field so old configs still deserialize.
+**Changes:**
+1. `tauri-app/src-tauri/src/state.rs:447-453` — add `let _ = app.emit("prompt-reauth", ());` after setting auth expired state
+2. `tauri-app/src/main.ts` — add `listen("prompt-reauth", () => openSettings())` in `init()`
 
-### Item 4: Fix menu bar text spacing (Tauri)
-**File:** `tauri-app/src-tauri/src/state.rs` (around line 193)
-**Change:** The format string uses `%W` which reads like a format specifier. Change to `% W` or use a different separator (e.g., `| W:` or ` · W:`). Grep for the exact format string to find the right location.
+### Item 2: Network error backoff
+**Spec:** "Pause on network error, retry with backoff" (SPEC.md Polling Strategy §3)
+**Current behavior:** Fixed 300s polling interval regardless of errors.
+**Files to change:**
+- `tauri-app/src-tauri/src/state.rs` — modify the polling loop (line ~378) to track consecutive errors and increase sleep duration
 
-### Item 5: Align keyring service name (Tauri)
-**File:** `tauri-app/src-tauri/src/credentials.rs` (line 3)
-**Change:** The keyring service name is `com.claudeusage.credentials` but the app identifier is `com.claudeusage.desktop`. Align to use the app identifier. **Migration:** Read old credentials under old service name and re-save under new name on first access, then delete old entries. Or — simpler — just change the constant if no one has existing credentials stored (this is still pre-release).
+**Approach:** Add a `consecutive_errors: u32` counter in the polling loop. On network error (not auth error), increment it. On success, reset to 0. Sleep duration = `min(POLLING_INTERVAL_SECS * 2^consecutive_errors, 3600)` (cap at 1 hour). Auth errors don't trigger backoff (they already prompt re-auth).
+
+**Changes:**
+1. `tauri-app/src-tauri/src/state.rs` — refactor `perform_fetch` to return a result enum so the caller knows whether to backoff
+2. Add backoff calculation before the `tokio::time::sleep` call
+3. Same logic for the initial fetch (if it fails with network error, wait with backoff before entering loop)
 
 ### Implementation order
-1. Slim tokio features (Cargo.toml only, quick `cargo check`)
-2. Fix menu bar text spacing (1-line change)
-3. Align keyring service name (1-line change, pre-release so no migration needed)
-4. Rename email → name (multi-file, needs serde alias)
-5. Account delete confirmation (SwiftUI, standalone)
+1. Auto-prompt re-auth (simpler, emit + listen pattern)
+2. Network error backoff (refactor perform_fetch return type, add backoff logic)
 
 ### Acceptance criteria
-- `cargo check` passes after tokio feature slimming
-- `cargo clippy` has no new warnings
-- Account delete shows confirmation dialog before removing
-- Old config files with `"email"` field still deserialize correctly after rename
-- Menu bar text no longer shows `%W` pattern
+- On 401/403, the settings window opens automatically (or is focused if already open)
+- On consecutive network errors, polling interval increases exponentially up to 1 hour
+- On successful fetch after errors, interval resets to normal 300s
+- Auth errors do NOT trigger backoff (they prompt re-auth instead)
+- `npx tsc --noEmit` passes

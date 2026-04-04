@@ -64,11 +64,11 @@
 - [x] **Escape HTML in usage-bar.ts (Tauri)** — Shared `escapeHtml` in `utils/escape.ts`.
 
 ### Low
-- [ ] **Slim tokio features (Tauri)** — Replace `features = ["full"]` with only needed features. (`Cargo.toml:21`)
-- [ ] **Account delete confirmation (macOS)** — Add confirmation dialog before deleting account. (`SettingsView.swift:249-252`)
-- [ ] **Rename email → name (Tauri)** — `AccountMetadata.email` is actually an account label. (`models.rs:28-32`)
-- [ ] **Fix menu bar text spacing (Tauri)** — `%W` reads like format specifier; use `% W`. (`state.rs:193`)
-- [ ] **Align keyring service name (Tauri)** — `com.claudeusage.credentials` vs app id `com.claudeusage.desktop`. (`credentials.rs:3`)
+- [x] **Slim tokio features (Tauri)** — Replace `features = ["full"]` with only needed features. (`Cargo.toml:21`)
+- [x] **Account delete confirmation (macOS)** — Add confirmation dialog before deleting account. (`SettingsView.swift:249-252`)
+- [x] **Rename email → name (Tauri)** — `AccountMetadata.email` is actually an account label. (`models.rs:28-32`)
+- [x] **Fix menu bar text spacing (Tauri)** — `%W` reads like format specifier; use `% W`. (`state.rs:193`)
+- [x] **Align keyring service name (Tauri)** — `com.claudeusage.credentials` vs app id `com.claudeusage.desktop`. (`credentials.rs:3`)
 
 ### Spec conformance
 - [ ] **Auto-prompt re-auth on 401/403** — Spec says prompt to re-auth in settings; both platforms only show banner. (`SPEC.md Auth Flow §4`)
