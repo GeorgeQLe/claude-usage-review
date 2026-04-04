@@ -14,9 +14,9 @@
 ## Medium
 - [ ] Thread-safe KeychainService cache
 - [ ] Add test coverage
-- [ ] Document stability thresholds (`state.rs`)
-- [ ] Log corrupted config (`config.rs`)
-- [ ] Escape HTML in main.ts
+- [x] Document stability thresholds (`state.rs`)
+- [x] Log corrupted config (`config.rs`)
+- [x] Escape HTML in usage-bar.ts
 
 ## Low
 - [ ] Slim tokio features

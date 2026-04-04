@@ -1,5 +1,13 @@
 # ClaudeUsage — Session History
 
+## 2026-04-04 — Phase 7 Step 3: Fix Medium-Priority Issues (Batch 1)
+
+Fixed 3 Medium severity items from expert review:
+
+1. **Document stability thresholds (Tauri)** — added doc comments explaining magic numbers in `state.rs`: 6h/1h guards in `pace_ratio`/`weekly_budget_per_day`, ±15% threshold in `weekly_pace_indicator`, utilization color tiers in `tray_color_for_utilization`.
+2. **Log corrupted config (Tauri)** — replaced silent `unwrap_or_default()` and `Err(_)` in `config.rs` with `warn!()` logging before falling back to defaults.
+3. **Escape HTML in usage-bar.ts (Tauri)** — extracted `escapeHtml` from `settings.ts` into shared `utils/escape.ts`, applied to all API-sourced string interpolations in `usage-bar.ts` (defense-in-depth against compromised API responses).
+
 ## 2026-04-04 — Phase 7 Step 2: Fix Remaining High-Priority Issues
 
 Fixed all 4 remaining High severity items from expert review:
