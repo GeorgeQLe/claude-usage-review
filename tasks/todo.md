@@ -13,7 +13,7 @@
 
 ## Medium
 - [x] Thread-safe KeychainService cache
-- [ ] Add test coverage
+- [x] Add test coverage
 - [x] Document stability thresholds (`state.rs`)
 - [x] Log corrupted config (`config.rs`)
 - [x] Escape HTML in usage-bar.ts

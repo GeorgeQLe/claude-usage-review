@@ -54,7 +54,7 @@ class HistoryStore {
 
     // MARK: - Compaction
 
-    private func compact(_ snapshots: [UsageSnapshot]) -> [UsageSnapshot] {
+    func compact(_ snapshots: [UsageSnapshot]) -> [UsageSnapshot] {
         let now = Date()
         let oneDayAgo = now.addingTimeInterval(-24 * 3600)
         let sevenDaysAgo = now.addingTimeInterval(-7 * 24 * 3600)
