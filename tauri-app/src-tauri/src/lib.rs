@@ -127,7 +127,7 @@ fn toggle_popover(app: &tauri::AppHandle, tray_rect: tauri::Rect) {
         .build();
 }
 
-fn open_settings(app: &tauri::AppHandle) {
+pub fn open_settings(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("settings") {
         let _ = window.set_focus();
         return;

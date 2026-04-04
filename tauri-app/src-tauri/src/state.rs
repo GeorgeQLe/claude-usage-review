@@ -10,7 +10,14 @@ use tokio::task::JoinHandle;
 use uuid::Uuid;
 
 const POLLING_INTERVAL_SECS: u64 = 300;
+const MAX_BACKOFF_SECS: u64 = 3600;
 const SEVEN_DAY_WINDOW_SECS: f64 = 7.0 * 86400.0;
+
+enum FetchOutcome {
+    Success,
+    AuthError,
+    NetworkError,
+}
 
 pub struct AppState {
     pub config: AppConfig,
@@ -365,7 +372,7 @@ pub fn start_polling(app: AppHandle, state: Arc<Mutex<AppState>>) {
         };
 
         // Initial fetch
-        perform_fetch(
+        let outcome = perform_fetch(
             &app_clone,
             &state_clone,
             &session_key,
@@ -374,9 +381,19 @@ pub fn start_polling(app: AppHandle, state: Arc<Mutex<AppState>>) {
         )
         .await;
 
+        let mut consecutive_errors: u32 = match outcome {
+            FetchOutcome::NetworkError => 1,
+            _ => 0,
+        };
+
         // Polling loop
         loop {
-            tokio::time::sleep(tokio::time::Duration::from_secs(POLLING_INTERVAL_SECS)).await;
+            let sleep_secs = if consecutive_errors > 0 {
+                (POLLING_INTERVAL_SECS * 2u64.pow(consecutive_errors)).min(MAX_BACKOFF_SECS)
+            } else {
+                POLLING_INTERVAL_SECS
+            };
+            tokio::time::sleep(tokio::time::Duration::from_secs(sleep_secs)).await;
 
             // Check if still the active account
             let (current_key, current_org) = {
@@ -399,7 +416,7 @@ pub fn start_polling(app: AppHandle, state: Arc<Mutex<AppState>>) {
                 (key, org)
             };
 
-            perform_fetch(
+            let outcome = perform_fetch(
                 &app_clone,
                 &state_clone,
                 &current_key,
@@ -407,6 +424,15 @@ pub fn start_polling(app: AppHandle, state: Arc<Mutex<AppState>>) {
                 &account_id,
             )
             .await;
+
+            match outcome {
+                FetchOutcome::NetworkError => {
+                    consecutive_errors = consecutive_errors.saturating_add(1);
+                }
+                _ => {
+                    consecutive_errors = 0;
+                }
+            }
         }
     });
 
@@ -422,7 +448,7 @@ async fn perform_fetch(
     session_key: &str,
     org_id: &str,
     account_id: &Uuid,
-) {
+) -> FetchOutcome {
     match api::fetch_usage(session_key, org_id).await {
         Ok(result) => {
             let mut s = state.lock().await;
@@ -443,6 +469,7 @@ async fn perform_fetch(
             // Emit event
             let usage_state = s.compute_usage_state();
             let _ = app.emit("usage-updated", &usage_state);
+            FetchOutcome::Success
         }
         Err(api::ApiError::AuthError { .. }) => {
             let mut s = state.lock().await;
@@ -451,6 +478,11 @@ async fn perform_fetch(
 
             let usage_state = s.compute_usage_state();
             let _ = app.emit("usage-updated", &usage_state);
+
+            // Prompt user to re-authenticate via settings window
+            crate::open_settings(app);
+
+            FetchOutcome::AuthError
         }
         Err(_) => {
             let mut s = state.lock().await;
@@ -458,6 +490,7 @@ async fn perform_fetch(
 
             let usage_state = s.compute_usage_state();
             let _ = app.emit("usage-updated", &usage_state);
+            FetchOutcome::NetworkError
         }
     }
 }
