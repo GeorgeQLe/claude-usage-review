@@ -1,5 +1,12 @@
 # ClaudeUsage — Session History
 
+## 2026-04-04 — Phase 7 Step 7: Spec Conformance (Re-auth Prompt + Backoff)
+
+Fixed 2 spec conformance gaps in the Tauri app's polling behavior:
+
+1. **Auto-prompt re-auth on 401/403** — made `open_settings` public in `lib.rs`, called `crate::open_settings(app)` from `perform_fetch`'s `AuthError` arm in `state.rs`. Settings window now opens/focuses automatically when auth expires.
+2. **Network error backoff** — added `FetchOutcome` enum, changed `perform_fetch` to return it, added `consecutive_errors` counter to polling loop. Sleep = `min(300 * 2^errors, 3600)` on network errors (300s → 600s → 1200s → 2400s → 3600s cap). Success resets to 300s. Auth errors don't trigger backoff.
+
 ## 2026-04-04 — Phase 7 Step 6: Fix Low-Priority Items (Batch)
 
 Fixed all 5 Low severity items from expert review:

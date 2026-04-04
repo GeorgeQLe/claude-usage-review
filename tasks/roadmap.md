@@ -71,5 +71,5 @@
 - [x] **Align keyring service name (Tauri)** — `com.claudeusage.credentials` vs app id `com.claudeusage.desktop`. (`credentials.rs:3`)
 
 ### Spec conformance
-- [ ] **Auto-prompt re-auth on 401/403** — Spec says prompt to re-auth in settings; both platforms only show banner. (`SPEC.md Auth Flow §4`)
-- [ ] **Network error backoff** — Spec says retry with backoff; both platforms continue polling at fixed 300s/5min interval. (`SPEC.md Polling Strategy §3`)
+- [x] **Auto-prompt re-auth on 401/403** — Settings window auto-opens on auth error. (`lib.rs`, `state.rs`)
+- [x] **Network error backoff** — Exponential backoff (300s→3600s cap) on consecutive network errors. (`state.rs`)
