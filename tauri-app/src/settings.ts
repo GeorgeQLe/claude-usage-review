@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { UsageState, AccountInfo, AppConfig } from "./types";
+import { escapeHtml } from "./utils/escape";
 
 const app = document.getElementById("app")!;
 let testResult: { status: string; message: string } | null = null;
@@ -293,12 +294,6 @@ function getOrgId(_account: AccountInfo, _state: UsageState): string {
   // Org ID is in the config, not exposed directly to frontend
   // User will need to enter it
   return "";
-}
-
-function escapeHtml(str: string): string {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
 }
 
 init();
