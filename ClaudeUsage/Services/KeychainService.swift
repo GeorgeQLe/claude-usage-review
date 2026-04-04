@@ -6,6 +6,7 @@ struct KeychainService {
 
     // In-memory cache to avoid repeated keychain access (which triggers password prompts)
     private static var cache: [String: String] = [:]
+    private static let cacheQueue = DispatchQueue(label: "com.claudeusage.keychain-cache")
 
     enum KeychainKey: String {
         case sessionKey = "sessionKey"
@@ -16,7 +17,7 @@ struct KeychainService {
     @discardableResult
     static func save(key: KeychainKey, value: String) -> Bool {
         // Update cache
-        cache[key.rawValue] = value
+        cacheQueue.sync { cache[key.rawValue] = value }
 
         // Org ID isn't secret — store in UserDefaults
         if key == .orgId {
@@ -43,14 +44,14 @@ struct KeychainService {
 
     static func read(key: KeychainKey) -> String? {
         // Check cache first
-        if let cached = cache[key.rawValue] {
+        if let cached = cacheQueue.sync(execute: { cache[key.rawValue] }) {
             return cached
         }
 
         // Org ID from UserDefaults
         if key == .orgId {
             let value = UserDefaults.standard.string(forKey: "claude_org_id")
-            if let value { cache[key.rawValue] = value }
+            if let value { cacheQueue.sync { cache[key.rawValue] = value } }
             return value
         }
 
@@ -70,14 +71,14 @@ struct KeychainService {
         }
 
         let value = String(data: data, encoding: .utf8)
-        if let value { cache[key.rawValue] = value }
+        if let value { cacheQueue.sync { cache[key.rawValue] = value } }
         return value
     }
 
     @discardableResult
     static func delete(key: KeychainKey) -> Bool {
         // Clear cache
-        cache.removeValue(forKey: key.rawValue)
+        cacheQueue.sync { cache.removeValue(forKey: key.rawValue) }
 
         if key == .orgId {
             UserDefaults.standard.removeObject(forKey: "claude_org_id")
@@ -103,7 +104,7 @@ struct KeychainService {
     @discardableResult
     static func save(key: KeychainKey, accountId: UUID, value: String) -> Bool {
         let scopedKey = accountKey(key, accountId: accountId)
-        cache[scopedKey] = value
+        cacheQueue.sync { cache[scopedKey] = value }
 
         if key == .orgId {
             UserDefaults.standard.set(value, forKey: "claude_org_id_\(accountId.uuidString)")
@@ -129,13 +130,13 @@ struct KeychainService {
     static func read(key: KeychainKey, accountId: UUID) -> String? {
         let scopedKey = accountKey(key, accountId: accountId)
 
-        if let cached = cache[scopedKey] {
+        if let cached = cacheQueue.sync(execute: { cache[scopedKey] }) {
             return cached
         }
 
         if key == .orgId {
             let value = UserDefaults.standard.string(forKey: "claude_org_id_\(accountId.uuidString)")
-            if let value { cache[scopedKey] = value }
+            if let value { cacheQueue.sync { cache[scopedKey] = value } }
             return value
         }
 
@@ -155,14 +156,14 @@ struct KeychainService {
         }
 
         let value = String(data: data, encoding: .utf8)
-        if let value { cache[scopedKey] = value }
+        if let value { cacheQueue.sync { cache[scopedKey] = value } }
         return value
     }
 
     @discardableResult
     static func delete(key: KeychainKey, accountId: UUID) -> Bool {
         let scopedKey = accountKey(key, accountId: accountId)
-        cache.removeValue(forKey: scopedKey)
+        cacheQueue.sync { cache.removeValue(forKey: scopedKey) }
 
         if key == .orgId {
             UserDefaults.standard.removeObject(forKey: "claude_org_id_\(accountId.uuidString)")
