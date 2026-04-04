@@ -112,6 +112,10 @@ class UsageViewModel: ObservableObject {
         case notConfigured
     }
 
+    private enum FetchOutcome {
+        case success, authError, networkError
+    }
+
     let accountStore: AccountStore
     let historyStore = HistoryStore()
     @Published var historySnapshots: [UsageSnapshot] = []
@@ -119,6 +123,8 @@ class UsageViewModel: ObservableObject {
     @Published var tick: UInt = 0
 
     private let pollingInterval: TimeInterval = 300 // 5 minutes
+    private var consecutiveNetworkErrors: UInt = 0
+    private let maxBackoffInterval: TimeInterval = 3600 // 1 hour
     private var pollingTask: Task<Void, Never>?
     private var resetTask: Task<Void, Never>?
     private var tickTimer: Timer?
@@ -255,11 +261,27 @@ class UsageViewModel: ObservableObject {
             guard let self = self else { return }
             // Initial fetch
             guard !Task.isCancelled, self.accountStore.activeAccountId == accountId else { return }
-            await self.performFetch(sessionKey: sessionKey, orgId: orgId, accountId: accountId)
+            let initialOutcome = await self.performFetch(sessionKey: sessionKey, orgId: orgId, accountId: accountId)
+            switch initialOutcome {
+            case .networkError:
+                self.consecutiveNetworkErrors += 1
+            case .success, .authError:
+                self.consecutiveNetworkErrors = 0
+            }
 
             // Polling loop
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: UInt64(self.pollingInterval * 1_000_000_000))
+                // Exponential backoff on consecutive network errors
+                let sleepDuration: TimeInterval
+                if self.consecutiveNetworkErrors > 0 {
+                    sleepDuration = min(
+                        self.pollingInterval * pow(2.0, Double(self.consecutiveNetworkErrors)),
+                        self.maxBackoffInterval
+                    )
+                } else {
+                    sleepDuration = self.pollingInterval
+                }
+                try? await Task.sleep(nanoseconds: UInt64(sleepDuration * 1_000_000_000))
                 if Task.isCancelled { break }
                 // Verify this is still the active account
                 guard self.accountStore.activeAccountId == accountId else { break }
@@ -268,7 +290,13 @@ class UsageViewModel: ObservableObject {
                       let currentOrg = self.accountStore.orgId(for: accountId) else {
                     break
                 }
-                await self.performFetch(sessionKey: currentKey, orgId: currentOrg, accountId: accountId)
+                let outcome = await self.performFetch(sessionKey: currentKey, orgId: currentOrg, accountId: accountId)
+                switch outcome {
+                case .networkError:
+                    self.consecutiveNetworkErrors += 1
+                case .success, .authError:
+                    self.consecutiveNetworkErrors = 0
+                }
             }
         }
     }
@@ -283,12 +311,18 @@ class UsageViewModel: ObservableObject {
         }
 
         Task { [weak self] in
-            await self?.performFetch(sessionKey: sessionKey, orgId: orgId, accountId: accountId)
+            guard let self = self else { return }
+            let outcome = await self.performFetch(sessionKey: sessionKey, orgId: orgId, accountId: accountId)
+            // Reset backoff on manual refresh success so polling resumes normally
+            if case .success = outcome {
+                self.consecutiveNetworkErrors = 0
+            }
         }
     }
 
     @MainActor
-    private func performFetch(sessionKey: String, orgId: String, accountId: UUID) async {
+    @discardableResult
+    private func performFetch(sessionKey: String, orgId: String, accountId: UUID) async -> FetchOutcome {
         let service = UsageService(sessionKey: sessionKey, orgId: orgId)
         do {
             let (data, newKey) = try await service.fetchUsage()
@@ -316,28 +350,35 @@ class UsageViewModel: ObservableObject {
             )
             historyStore.append(snapshot, for: accountId)
             historySnapshots = historyStore.snapshots(for: accountId, lastHours: 24)
+            return .success
         } catch let error as UsageServiceError {
             switch error {
             case .authError(let code):
                 errorState = .authExpired
                 authStatus = .expired
                 logger.error("Auth error: HTTP \(code)")
+                return .authError
             case .httpError(let code):
                 errorState = .networkError(detail: "HTTP \(code)")
                 logger.error("HTTP error: \(code)")
+                return .networkError
             case .invalidResponse:
                 errorState = .networkError(detail: "Invalid response")
                 logger.error("Invalid response (not HTTP)")
+                return .networkError
             case .missingCredentials:
                 errorState = .networkError(detail: "Missing credentials")
                 logger.error("Missing credentials")
+                return .networkError
             }
         } catch let error as DecodingError {
             errorState = .networkError(detail: "Parse error")
             logger.error("JSON decoding error: \(String(describing: error))")
+            return .networkError
         } catch {
             errorState = .networkError(detail: "Connection failed")
             logger.error("Network error: \(error.localizedDescription)")
+            return .networkError
         }
     }
 
