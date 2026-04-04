@@ -1,5 +1,15 @@
 # ClaudeUsage — Session History
 
+## 2026-04-04 — Phase 7 Step 5: Add Test Coverage
+
+Added 16 new tests across 4 test groups (26 total, up from 10):
+- **HistoryCompactionTests** (4) — recent kept, mid-range downsampled, old deleted, mixed-age filtering
+- **PaceStatusTests** (6) — limitHit, fallback before stability, on-track/critical ratios, behind-pace in pace-aware vs raw-percentage modes
+- **GitHubServiceTests** (3) — GraphQL variables-not-interpolation, error response handling, 401 auth error
+- **AccountMigrationTests** (2) — migration from old credentials, migration skipped when accounts exist
+
+Refactored `MockURLProtocol` to file scope for reuse. One production change: `HistoryStore.compact` visibility from `private` → `internal` for `@testable import`.
+
 ## 2026-04-04 — Phase 7 Step 4: Thread-Safe KeychainService Cache
 
 Added serial `DispatchQueue` guard to `KeychainService.swift` static `cache` dictionary. All 10 access points (4 reads, 4 writes, 2 deletes) now wrapped in `cacheQueue.sync { ... }`. Queue scope is minimal — only protects the dictionary, not the underlying keychain/UserDefaults calls.
