@@ -11,6 +11,10 @@ use uuid::Uuid;
 
 type SharedState = Arc<Mutex<AppState>>;
 
+fn restart_polling(app: AppHandle, state: &State<'_, SharedState>) {
+    state::start_polling(app, state.inner().clone());
+}
+
 #[tauri::command]
 pub async fn get_usage(state: State<'_, SharedState>) -> Result<UsageState, String> {
     let s = state.lock().await;
@@ -129,7 +133,7 @@ pub async fn remove_account(
 
     // Restart polling if we switched to a new account
     drop(s);
-    state::start_polling(app, state.inner().clone());
+    restart_polling(app, &state);
 
     Ok(())
 }
@@ -166,7 +170,7 @@ pub async fn set_active_account(
     config::save_config(&s.config)?;
 
     drop(s);
-    state::start_polling(app, state.inner().clone());
+    restart_polling(app, &state);
 
     Ok(())
 }
@@ -190,7 +194,7 @@ pub async fn save_credentials(
     config::save_config(&s.config)?;
 
     drop(s);
-    state::start_polling(app, state.inner().clone());
+    restart_polling(app, &state);
 
     Ok(())
 }
@@ -279,6 +283,10 @@ pub async fn set_overlay_opacity(
     state: State<'_, SharedState>,
     opacity: f64,
 ) -> Result<(), String> {
+    if opacity.is_nan() || opacity.is_infinite() {
+        return Err("Opacity must be a finite number".to_string());
+    }
+    let opacity = opacity.clamp(0.0, 1.0);
     let mut s = state.lock().await;
     s.config.overlay_opacity = opacity;
     config::save_config(&s.config)?;

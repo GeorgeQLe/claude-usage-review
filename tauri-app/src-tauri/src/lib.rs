@@ -220,7 +220,7 @@ pub fn run() {
 
             // Create overlay if enabled
             {
-                let state_blocking = state.blocking_lock();
+                let state_blocking = state.try_lock().expect("state lock should be uncontested during setup");
                 if state_blocking.config.overlay_enabled {
                     let _ = overlay::create_overlay(app.handle(), &state_blocking.config);
                 }

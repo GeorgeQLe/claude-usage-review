@@ -4,6 +4,7 @@ import Combine
 class GitHubViewModel: ObservableObject {
     @Published var weeks: [[ContributionDay]] = []
     @Published var isConfigured: Bool = false
+    @Published var errorMessage: String? = nil
 
     private var pollingTask: Task<Void, Never>?
     private let pollingInterval: TimeInterval = 3600 // 1 hour
@@ -59,12 +60,13 @@ class GitHubViewModel: ObservableObject {
             return
         }
 
+        self.errorMessage = nil
         let service = GitHubService(token: token, username: username)
         do {
             let fetchedWeeks = try await service.fetchContributions()
             self.weeks = fetchedWeeks
         } catch {
-            // Silently fail — keep existing data
+            self.errorMessage = error.localizedDescription
         }
     }
 }
