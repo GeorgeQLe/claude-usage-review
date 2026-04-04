@@ -1,5 +1,13 @@
 # ClaudeUsage — Session History
 
+## 2026-04-04 — Spec Drift Fixes (Swift Backoff + SPEC.md Rewrite)
+
+Fixed spec drift identified by `/spec-drift` audit (1 Error, 3 Warnings, 25 Info items):
+
+1. **Swift network error backoff** — Added `FetchOutcome` enum, `consecutiveNetworkErrors` counter, and exponential backoff to `UsageViewModel.swift`. Sleep = `min(300 * 2^n, 3600)` on consecutive network errors. Success/auth error resets counter. Manual refresh also resets backoff. Mirrors Tauri implementation.
+
+2. **SPEC.md comprehensive rewrite** — Updated from original MVP spec (2026-03-18) to reflect current state of both codebases. Added Tauri platform, pace emoji themes, account picker, sparklines, GitHub heatmap, daily budget, live countdown, overlay widget, backoff strategy, and full file structure for both Swift and Tauri. Checked off all 10 MVP features, added 16 post-MVP features.
+
 ## 2026-04-04 — Phase 7 Step 7: Spec Conformance (Re-auth Prompt + Backoff)
 
 Fixed 2 spec conformance gaps in the Tauri app's polling behavior:
