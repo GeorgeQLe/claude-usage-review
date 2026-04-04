@@ -31,78 +31,39 @@
 
 ---
 
-## Next Step Plan: Phase 7 Step 3 — Fix Medium-Priority Issues (Batch 1)
+## Next Step Plan: Phase 7 Step 4 — Thread-Safe KeychainService Cache (macOS)
 
 ### What needs to be done
-Fix 3 of the 5 Medium items: document stability thresholds, log corrupted config, and escape HTML. These are small, isolated changes. Thread-safe KeychainService cache and test coverage are larger efforts saved for a separate step.
+Make the static `cache` dictionary in `KeychainService.swift` thread-safe. Currently it's an unprotected `static var` that can be accessed concurrently from the UI thread (credential reads) and background polling thread (session key refresh), causing potential data races.
 
-### Fix 1: Document stability thresholds (`state.rs`)
+### Fix: Add serial DispatchQueue guard
 
-**File:** `tauri-app/src-tauri/src/state.rs`
+**File:** `ClaudeUsage/Services/KeychainService.swift`
 
-Add doc comments explaining the rationale for each magic number:
-
-1. **Line 244-246** (`pace_ratio`): Add comment before the guard:
-   ```rust
-   // Skip pace calculation during the first 6 hours (too little data for a stable ratio)
-   // and the last hour (remaining time too small, ratio becomes hypersensitive).
+1. Add a private static serial queue:
+   ```swift
+   private static let cacheQueue = DispatchQueue(label: "com.claudeusage.keychain-cache")
    ```
 
-2. **Lines 258-259** (`weekly_pace_indicator`): Add comment:
-   ```rust
-   // ±15% threshold: tighter than this triggers too many false pace changes,
-   // wider misses meaningful trends within a 7-day window.
-   ```
+2. Wrap every read from `cache` in `cacheQueue.sync { ... }`:
+   - Line ~45-48: `if let cached = cache[key]` guard in `getSessionKey`
+   - Line ~132-134: `if let cached = cache[key]` guard in account-scoped read
 
-3. **Lines 284-288** (`weekly_budget_per_day`): Same stability guard as pace_ratio — add:
-   ```rust
-   // Same stability guard as pace_ratio: need ≥6h of data and ≥1h remaining.
-   ```
+3. Wrap every write to `cache` in `cacheQueue.sync { ... }`:
+   - Line ~19: `cache[key] = value` in save
+   - Line ~73: `cache[key] = value` after successful keychain read
+   - Line ~106: `cache[key] = value` in account-scoped save
+   - Line ~158: `cache[key] = value` in account-scoped read
 
-4. **Lines 320-327** (`tray_color_for_utilization`): Add doc comment:
-   ```rust
-   /// Tray icon color based on session utilization percentage.
-   /// - ≥80%: red (near limit)
-   /// - ≥50%: yellow (moderate usage)
-   /// - <50%: green (plenty of headroom)
-   ```
-
-### Fix 2: Log corrupted config (`config.rs`)
-
-**File:** `tauri-app/src-tauri/src/config.rs`
-
-1. Add `use log::warn;` at top
-2. In `load_config()` (lines 46-56), replace silent fallbacks with logged warnings:
-   - Line 50: `serde_json::from_str(&content).unwrap_or_default()` → match on the result, `warn!("Config file corrupted, using defaults: {}", e)` on Err
-   - Line 51: `Err(_) => AppConfig::default()` → `Err(e) => { warn!("Failed to read config file: {}", e); AppConfig::default() }`
-
-### Fix 3: Escape HTML in usage-bar.ts and main.ts
-
-**File:** `tauri-app/src/components/usage-bar.ts` (lines 12, 15, 18, 20, 21)
-
-All `limit.*` fields come from the Rust API (not user input), but defense-in-depth requires escaping since values could be manipulated by a compromised API response.
-
-1. Create `tauri-app/src/utils/escape.ts` with the `escapeHtml` function (currently duplicated in `settings.ts` at line 298)
-2. Import `escapeHtml` in `usage-bar.ts`
-3. Escape these interpolations:
-   - `${limit.name}` → `${escapeHtml(limit.name)}`
-   - `${limit.reset_time_display}` → `${escapeHtml(limit.reset_time_display)}`
-   - `${limit.pace_detail}` → `${escapeHtml(limit.pace_detail)}`
-   - `${color}` is computed from `getColor()` which returns hardcoded strings — safe, no escaping needed
-4. Update `settings.ts` to import from the shared utility instead of its local copy
+4. Wrap cache removal in `cacheQueue.sync { ... }`:
+   - Any `cache.removeValue(forKey:)` calls in delete methods
 
 ### Files affected
-- `tauri-app/src-tauri/src/state.rs` — add doc comments for magic numbers
-- `tauri-app/src-tauri/src/config.rs` — add log::warn for corrupted config
-- `tauri-app/src/components/usage-bar.ts` — escape HTML in template literals
-- `tauri-app/src/utils/escape.ts` — new shared escapeHtml utility
-- `tauri-app/src/settings.ts` — import escapeHtml from shared utility
+- `ClaudeUsage/Services/KeychainService.swift` — add DispatchQueue, wrap cache access
 
 ### Acceptance criteria
-- All magic numbers in state.rs have explaining comments
-- Corrupted config logs a warning (not silent)
-- All dynamic string interpolations in usage-bar.ts are escaped
-- escapeHtml is a shared utility, not duplicated
-- `npm run build` passes (TypeScript)
-- `cargo check` passes (if OpenSSL available)
+- All `cache` dictionary reads/writes are protected by serial queue
+- No direct `cache` access outside of `cacheQueue.sync { }` blocks
+- `xcodebuild -scheme ClaudeUsage build` passes (if on macOS)
+- Grep confirms no unguarded `cache[` or `cache.` outside queue blocks
 
