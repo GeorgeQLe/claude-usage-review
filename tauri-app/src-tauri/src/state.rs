@@ -345,6 +345,12 @@ pub fn tray_color_for_utilization(utilization: f64) -> String {
 /// Start polling for the active account.
 /// Aborts any existing polling task before spawning a new one.
 pub fn start_polling(app: AppHandle, state: Arc<Mutex<AppState>>) {
+    // Stop any existing polling BEFORE spawning new task to avoid lock contention
+    {
+        let mut s = state.blocking_lock();
+        s.stop_polling();
+    }
+
     let state_clone = state.clone();
     let app_clone = app.clone();
 
@@ -436,9 +442,8 @@ pub fn start_polling(app: AppHandle, state: Arc<Mutex<AppState>>) {
         }
     });
 
-    // Store handle, aborting any previous polling task
+    // Store the new handle — old task already stopped above, no contention
     let mut s = state.blocking_lock();
-    s.stop_polling();
     s.polling_handle = Some(handle);
 }
 

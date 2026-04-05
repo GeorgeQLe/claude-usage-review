@@ -213,18 +213,19 @@ pub fn run() {
                 }
             }
 
-            // Start polling
-            info!("Starting usage polling");
-            let app_handle = app.handle().clone();
-            state::start_polling(app_handle, state.clone());
-
-            // Create overlay if enabled
+            // Create overlay if enabled (BEFORE polling starts to avoid lock contention)
             {
                 let state_blocking = state.try_lock().expect("state lock should be uncontested during setup");
                 if state_blocking.config.overlay_enabled {
                     let _ = overlay::create_overlay(app.handle(), &state_blocking.config);
                 }
             }
+
+            // Start polling AFTER overlay setup — spawned task acquires the lock,
+            // so it must not race with try_lock() above
+            info!("Starting usage polling");
+            let app_handle = app.handle().clone();
+            state::start_polling(app_handle, state.clone());
 
             // Close popover on focus loss
             let app_handle = app.handle().clone();

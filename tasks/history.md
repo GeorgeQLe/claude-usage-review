@@ -1,5 +1,14 @@
 # ClaudeUsage — Session History
 
+## 2026-04-04 — Fix Windows Startup Crash (Lock Race Condition)
+
+Fixed race condition causing the Tauri app to crash immediately on Windows (tray icon appears briefly then disappears).
+
+1. **Reorder setup in `lib.rs`** — Moved overlay setup (`try_lock().expect()`) before `start_polling()`. Previously, the spawned polling task could acquire the lock before `try_lock()`, causing a panic.
+2. **Fix lock ordering in `state.rs`** — `start_polling()` now calls `stop_polling()` via `blocking_lock()` before spawning the new async task, then stores the handle after. Eliminates the race where the spawned task and the post-spawn `blocking_lock()` could deadlock.
+
+Note: `cargo check` cannot run in WSL (missing GTK system deps) — verified by code review.
+
 ## 2026-04-04 — Spec Drift Fixes (Swift Backoff + SPEC.md Rewrite)
 
 Fixed spec drift identified by `/spec-drift` audit (1 Error, 3 Warnings, 25 Info items):
