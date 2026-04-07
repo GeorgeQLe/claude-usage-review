@@ -1,5 +1,28 @@
 # ClaudeUsage — Session History
 
+## 2026-04-07 — Phase Plan for Multi-Provider CLI Monitor
+
+Converted the approved multi-provider spec and high-level roadmap into an executable phased plan.
+
+Key changes:
+
+1. **Stepwise roadmap** — rewrote `tasks/roadmap.md` into a proper phase plan with summary, phase overview table, and `Tests First / Implementation / Green / Milestone` sections for all 7 phases.
+2. **Active phase reset** — replaced the completed expert-review checklist in `tasks/todo.md` with Phase 1 only: shared provider foundation work for the macOS multi-provider product.
+3. **Manual tasks isolated** — created `tasks/manual-todo.md` for human-only Codex/Gemini validation and wrapper-adoption tasks instead of mixing them into automated phase execution.
+4. **Critical path clarified** — the plan now sequences shared provider shell first, then Codex passive, Codex wrapper, Gemini passive, Gemini wrapper, hardening, and finally Tauri/cross-platform follow-through.
+
+## 2026-04-06 — Roadmap Reset for Multi-Provider CLI Monitor
+
+Replaced the old Tauri/Windows-focused roadmap with a new macOS-first product roadmap based on the approved multi-provider spec.
+
+Key changes:
+
+1. **Project direction reset** — roadmap now treats the app as a multi-provider CLI usage monitor for Claude Code, Codex, and Gemini instead of continuing the older Claude-only/Tauri delivery plan.
+2. **Claude preserved** — explicit roadmap constraint that the current Claude ingestion path must remain unchanged.
+3. **Provider sequencing changed** — shared provider foundation first, then Codex passive adapter, Codex wrapper, Gemini passive adapter, and Gemini wrapper.
+4. **Windows work deferred** — the unfinished Windows end-to-end test and broader Tauri follow-through were moved into a later cross-platform phase instead of remaining the active line of work.
+5. **Kanban sync blocked** — Poketo kanban tooling is installed, but board operations could not run because `POKETOWORK_DATABASE_URL` is not configured in this shell.
+
 ## 2026-04-04 — Fix Windows Startup Crash (Lock Race Condition)
 
 Fixed race condition causing the Tauri app to crash immediately on Windows (tray icon appears briefly then disappears).

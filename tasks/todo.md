@@ -1,30 +1,21 @@
-# Phase 7: Expert Review Fixes
+# Phase 1: Shared Provider Foundation
 
-## Critical
-- [x] Fix polling handle leak (`state.rs`)
-- [x] Fix GraphQL injection (`GitHubService.swift`)
+## Tests First
+- [ ] Step 1.1: [automated] Add failing Swift tests for provider aggregation, rotating tray selection, provider pinning, and Claude non-regression in `ClaudeUsageTests`.
 
-## High
-- [x] Reuse reqwest::Client (`api.rs`)
-- [x] Surface GitHub errors (`GitHubViewModel.swift`)
-- [x] Sanitize eval() opacity input (`commands.rs`)
-- [x] Fix blocking_lock in setup (`lib.rs`)
-- [x] Extract restart-polling helper (`commands.rs`)
+## Implementation
+- [ ] Step 1.2: [automated] Introduce provider-aware domain types for shared provider state, confidence labels, plan/auth configuration, and tray rotation policy in `ClaudeUsage/Models/`.
+- [ ] Step 1.3: [automated] Add a provider coordinator/store that maps the existing Claude `UsageViewModel` output into the new provider shell without altering Claude fetching behavior.
+- [ ] Step 1.4: [automated] Update the menu bar and popover shell for rotating provider headlines, manual override, pinning, and stacked provider cards in `ClaudeUsageApp.swift`, `AppDelegate.swift`, and `Views/ContentView.swift`.
+- [ ] Step 1.5: [automated] Extend settings/onboarding for provider enablement, plan/auth confirmation, and local install detection entry points in `Views/SettingsView.swift`, `Services/AccountStore.swift`, and related persistence files.
 
-## Medium
-- [x] Thread-safe KeychainService cache
-- [x] Add test coverage
-- [x] Document stability thresholds (`state.rs`)
-- [x] Log corrupted config (`config.rs`)
-- [x] Escape HTML in usage-bar.ts
+## Green
+- [ ] Step 1.6: [automated] Make the new provider-shell tests pass, verify the existing Claude tests still pass, and run macOS build/test checks for the updated shell.
 
-## Low
-- [x] Slim tokio features
-- [x] Account delete confirmation
-- [x] Rename email → name in AccountMetadata
-- [x] Fix menu bar text spacing
-- [x] Align keyring service name
-
-## Spec conformance
-- [x] Auto-prompt re-auth on 401/403
-- [x] Network error backoff
+## Milestone
+- [ ] Provider-aware state exists and can represent Claude, Codex, and Gemini side by side.
+- [ ] Claude still renders through the current ingestion path with no fetch/auth behavior changes.
+- [ ] The tray rotates across enabled providers, supports manual override, and supports pinning.
+- [ ] The popover can show stacked provider cards for configured, missing, and degraded providers.
+- [ ] All Phase 1 tests pass.
+- [ ] No regressions in previous phase tests.
