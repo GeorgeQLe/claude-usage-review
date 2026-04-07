@@ -1,5 +1,15 @@
 # ClaudeUsage — Session History
 
+## 2026-04-07 — Phase 1 Step 1.1 Red Tests Added, Verification Blocked
+
+Added the first provider-shell red-phase tests for the macOS shared provider foundation, but could not run the required macOS test command in this environment.
+
+Key changes:
+
+1. **Provider-shell test coverage** — added failing tests for provider aggregation, tray rotation, manual override precedence, provider pinning, and Claude non-regression mapping in `ClaudeUsageTests.swift`.
+2. **Blocker recorded** — updated `tasks/todo.md` to keep Step 1.1 unchecked and note that `xcodebuild` is unavailable in this shell, so the red-phase test run could not be verified.
+3. **No deploy performed** — no `deploy.md` exists and no explicit deploy was requested, so shipping remained source-control only.
+
 ## 2026-04-07 — Phase Plan for Multi-Provider CLI Monitor
 
 Converted the approved multi-provider spec and high-level roadmap into an executable phased plan.
