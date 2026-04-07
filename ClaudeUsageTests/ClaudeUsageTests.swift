@@ -506,6 +506,148 @@ final class PaceStatusTests: XCTestCase {
     }
 }
 
+// MARK: - Provider Shell Tests
+
+final class ProviderShellTests: XCTestCase {
+
+    private func makeClaudeUsage(session: Double, weekly: Double) -> UsageData {
+        UsageData(
+            fiveHour: UsageLimit(
+                utilization: session,
+                resetsAt: Date(timeIntervalSince1970: 1_800_000_000)
+            ),
+            sevenDay: UsageLimit(
+                utilization: weekly,
+                resetsAt: Date(timeIntervalSince1970: 1_800_432_000)
+            ),
+            sevenDaySonnet: nil,
+            sevenDayOpus: nil,
+            sevenDayOauthApps: nil,
+            sevenDayCowork: nil,
+            iguanaNecktie: nil,
+            extraUsageRaw: nil
+        )
+    }
+
+    func testAggregatesProviderStatesForConfiguredMissingAndDegradedCards() {
+        let coordinator = ProviderCoordinator()
+        let shellState = coordinator.makeShellState(
+            providers: [
+                ProviderSnapshot.claude(
+                    usage: makeClaudeUsage(session: 42, weekly: 28),
+                    authStatus: .connected,
+                    isEnabled: true
+                ),
+                ProviderSnapshot.codex(
+                    status: .missingConfiguration,
+                    isEnabled: true
+                ),
+                ProviderSnapshot.gemini(
+                    status: .degraded(reason: "Install not detected"),
+                    isEnabled: true
+                ),
+            ],
+            now: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+
+        XCTAssertEqual(shellState.providers.map(\.id), [.claude, .codex, .gemini])
+        XCTAssertEqual(shellState.providers[0].cardState, .configured)
+        XCTAssertEqual(shellState.providers[1].cardState, .missingConfiguration)
+        XCTAssertEqual(shellState.providers[2].cardState, .degraded)
+        XCTAssertEqual(shellState.providers[0].headline, "Claude 42% session")
+        XCTAssertEqual(shellState.providers[2].detailText, "Install not detected")
+    }
+
+    func testTraySelectionRotatesAcrossEnabledProvidersWhenNoOverrideOrPin() {
+        let coordinator = ProviderCoordinator(
+            trayPolicy: ProviderTrayPolicy(rotationInterval: 300)
+        )
+        let providers = [
+            ProviderSnapshot.claude(status: .configured, isEnabled: true),
+            ProviderSnapshot.codex(status: .configured, isEnabled: true),
+            ProviderSnapshot.gemini(status: .configured, isEnabled: false),
+        ]
+
+        let firstSelection = coordinator.selectedTrayProvider(
+            from: providers,
+            now: Date(timeIntervalSince1970: 0)
+        )
+        let secondSelection = coordinator.selectedTrayProvider(
+            from: providers,
+            now: Date(timeIntervalSince1970: 301)
+        )
+
+        XCTAssertEqual(firstSelection?.id, .claude)
+        XCTAssertEqual(secondSelection?.id, .codex)
+    }
+
+    func testManualOverrideBeatsRotationUntilCleared() {
+        let coordinator = ProviderCoordinator(
+            trayPolicy: ProviderTrayPolicy(
+                rotationInterval: 300,
+                manualOverride: .gemini
+            )
+        )
+        let providers = [
+            ProviderSnapshot.claude(status: .configured, isEnabled: true),
+            ProviderSnapshot.codex(status: .configured, isEnabled: true),
+            ProviderSnapshot.gemini(status: .configured, isEnabled: true),
+        ]
+
+        let selection = coordinator.selectedTrayProvider(
+            from: providers,
+            now: Date(timeIntervalSince1970: 601)
+        )
+
+        XCTAssertEqual(selection?.id, .gemini)
+    }
+
+    func testPinnedProviderWinsOverRotationAndManualOverride() {
+        let coordinator = ProviderCoordinator(
+            trayPolicy: ProviderTrayPolicy(
+                rotationInterval: 300,
+                manualOverride: .gemini,
+                pinnedProvider: .codex
+            )
+        )
+        let providers = [
+            ProviderSnapshot.claude(status: .configured, isEnabled: true),
+            ProviderSnapshot.codex(status: .configured, isEnabled: true),
+            ProviderSnapshot.gemini(status: .configured, isEnabled: true),
+        ]
+
+        let selection = coordinator.selectedTrayProvider(
+            from: providers,
+            now: Date(timeIntervalSince1970: 601)
+        )
+
+        XCTAssertEqual(selection?.id, .codex)
+    }
+
+    func testClaudeSnapshotPreservesExistingUsageViewModelOutput() {
+        let coordinator = ProviderCoordinator()
+        let usage = makeClaudeUsage(session: 64, weekly: 37)
+
+        let shellState = coordinator.makeShellState(
+            providers: [
+                ProviderSnapshot.claude(
+                    usage: usage,
+                    authStatus: .connected,
+                    isEnabled: true
+                )
+            ],
+            now: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+
+        let claude = try XCTUnwrap(shellState.providers.first)
+        XCTAssertEqual(claude.id, .claude)
+        XCTAssertEqual(claude.cardState, .configured)
+        XCTAssertEqual(claude.sessionUtilization, usage.fiveHour.utilization)
+        XCTAssertEqual(claude.weeklyUtilization, usage.sevenDay.utilization)
+        XCTAssertEqual(shellState.trayProvider?.id, .claude)
+    }
+}
+
 // MARK: - GitHub Service Tests
 
 final class GitHubServiceTests: XCTestCase {
