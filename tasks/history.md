@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-08 — Step 1.2: Provider Domain Types
+
+Created `ClaudeUsage/Models/ProviderTypes.swift` with all provider-aware domain types: `ProviderId`, `ProviderStatus`, `AuthStatus`, `CardState` enums; `ProviderSnapshot` enum with static factory methods for two `claude(...)` overloads (rich with UsageData, simple with ProviderStatus); `ProviderCard` struct, `ShellState` struct, `ProviderTrayPolicy` struct; `ProviderCoordinator` class with `makeShellState` and `selectedTrayProvider` logic (pinned > override > rotation priority). Added to Xcode project. Fixed test file missing `throws` on `testClaudeSnapshotPreservesExistingUsageViewModelOutput`. All 5 provider shell tests pass.
+
 ## 2026-04-08 — Verify Red-Phase Provider Shell Tests
 
 Confirmed Step 1.1 red-phase tests compile-fail as expected. `xcodebuild test` produces the right missing-type errors (`ProviderSnapshot`, `ProviderCoordinator`, `ProviderTrayPolicy`). Marked Step 1.1 complete in `tasks/todo.md`.

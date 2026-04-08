@@ -624,7 +624,7 @@ final class ProviderShellTests: XCTestCase {
         XCTAssertEqual(selection?.id, .codex)
     }
 
-    func testClaudeSnapshotPreservesExistingUsageViewModelOutput() {
+    func testClaudeSnapshotPreservesExistingUsageViewModelOutput() throws {
         let coordinator = ProviderCoordinator()
         let usage = makeClaudeUsage(session: 64, weekly: 37)
 
