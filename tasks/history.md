@@ -1,5 +1,15 @@
 # ClaudeUsage — Session History
 
+## 2026-04-08 — Reuse reqwest::Client (Tauri)
+
+Moved `reqwest::Client` creation from per-request (`api.rs:45`) to a shared instance stored in `AppState`. The client's connection pool, DNS cache, and TLS session cache are now reused across all API calls.
+
+- Added `http_client: reqwest::Client` to `AppState`, initialized once in `new()`
+- Changed `fetch_usage()` signature to accept `&reqwest::Client` as first param
+- `perform_fetch` (polling) and `refresh_now` (manual refresh) clone client from state
+- `test_connection` uses a one-off client (no `AppState` access, called only during credential testing)
+- Fixed pre-existing type mismatch: `tokio::task::JoinHandle` → `tauri::async_runtime::JoinHandle`
+
 ## 2026-04-07 — Phase 1 Step 1.1 Red Tests Added, Verification Blocked
 
 Added the first provider-shell red-phase tests for the macOS shared provider foundation, but could not run the required macOS test command in this environment.
