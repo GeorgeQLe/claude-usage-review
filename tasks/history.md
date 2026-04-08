@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-08 — Verify Red-Phase Provider Shell Tests
+
+Confirmed Step 1.1 red-phase tests compile-fail as expected. `xcodebuild test` produces the right missing-type errors (`ProviderSnapshot`, `ProviderCoordinator`, `ProviderTrayPolicy`). Marked Step 1.1 complete in `tasks/todo.md`.
+
 ## 2026-04-08 — Reuse reqwest::Client (Tauri)
 
 Moved `reqwest::Client` creation from per-request (`api.rs:45`) to a shared instance stored in `AppState`. The client's connection pool, DNS cache, and TLS session cache are now reused across all API calls.

@@ -1,9 +1,7 @@
 # Phase 1: Shared Provider Foundation
 
 ## Tests First
-- [ ] Step 1.1: [automated] Add failing Swift tests for provider aggregation, rotating tray selection, provider pinning, and Claude non-regression in `ClaudeUsageTests`.
-  Red-phase provider-shell tests were added in `ClaudeUsageTests/ClaudeUsageTests.swift`.
-  Blocked in this environment: `xcodebuild` is not installed, so the red-phase macOS test run could not be executed after adding the tests.
+- [x] Step 1.1: Red-phase provider-shell tests verified — build fails with expected missing-type errors (`ProviderSnapshot`, `ProviderCoordinator`, `ProviderTrayPolicy`).
 
 ## Implementation
 - [ ] Step 1.2: [automated] Introduce provider-aware domain types for shared provider state, confidence labels, plan/auth configuration, and tray rotation policy in `ClaudeUsage/Models/`.
