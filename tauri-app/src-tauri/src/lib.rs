@@ -225,7 +225,10 @@ pub fn run() {
             // so it must not race with try_lock() above
             info!("Starting usage polling");
             let app_handle = app.handle().clone();
-            state::start_polling(app_handle, state.clone());
+            let state_for_poll = state.clone();
+            tauri::async_runtime::spawn(async move {
+                state::start_polling(app_handle, state_for_poll).await;
+            });
 
             // Close popover on focus loss
             let app_handle = app.handle().clone();

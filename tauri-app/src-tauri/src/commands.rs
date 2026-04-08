@@ -5,14 +5,14 @@ use crate::models::*;
 use crate::overlay;
 use crate::state::{self, AppState};
 use std::sync::Arc;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, State};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
 type SharedState = Arc<Mutex<AppState>>;
 
-fn restart_polling(app: AppHandle, state: &State<'_, SharedState>) {
-    state::start_polling(app, state.inner().clone());
+async fn restart_polling(app: AppHandle, state: &State<'_, SharedState>) {
+    state::start_polling(app, state.inner().clone()).await;
 }
 
 #[tauri::command]
@@ -134,7 +134,7 @@ pub async fn remove_account(
 
     // Restart polling if we switched to a new account
     drop(s);
-    restart_polling(app, &state);
+    restart_polling(app, &state).await;
 
     Ok(())
 }
@@ -171,7 +171,7 @@ pub async fn set_active_account(
     config::save_config(&s.config)?;
 
     drop(s);
-    restart_polling(app, &state);
+    restart_polling(app, &state).await;
 
     Ok(())
 }
@@ -195,7 +195,7 @@ pub async fn save_credentials(
     config::save_config(&s.config)?;
 
     drop(s);
-    restart_polling(app, &state);
+    restart_polling(app, &state).await;
 
     Ok(())
 }
@@ -293,10 +293,8 @@ pub async fn set_overlay_opacity(
     s.config.overlay_opacity = opacity;
     config::save_config(&s.config)?;
 
-    // Apply opacity to existing overlay window
-    if let Some(window) = app.get_webview_window("overlay") {
-        let _ = window.eval(&format!("document.body.style.opacity = '{}'", opacity));
-    }
+    // Apply opacity to existing overlay window via event
+    let _ = app.emit("opacity-changed", opacity);
     Ok(())
 }
 

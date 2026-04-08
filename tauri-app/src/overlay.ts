@@ -36,6 +36,10 @@ async function init() {
     }
   });
 
+  await listen<number>("opacity-changed", (event) => {
+    document.body.style.opacity = String(event.payload);
+  });
+
   // Dragging
   document.addEventListener("mousedown", (e) => {
     isDragging = true;
