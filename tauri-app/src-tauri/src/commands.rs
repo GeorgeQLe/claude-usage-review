@@ -26,7 +26,7 @@ pub async fn refresh_now(
     app: AppHandle,
     state: State<'_, SharedState>,
 ) -> Result<UsageState, String> {
-    let (session_key, org_id, account_id) = {
+    let (session_key, org_id, account_id, http_client) = {
         let s = state.lock().await;
         let id = s
             .config
@@ -41,10 +41,11 @@ pub async fn refresh_now(
         let org = acct.org_id.clone().ok_or("No org ID configured")?;
         let key =
             credentials::read_session_key(&id).ok_or("No session key found")?;
-        (key, org, id)
+        let client = s.http_client.clone();
+        (key, org, id, client)
     };
 
-    match api::fetch_usage(&session_key, &org_id).await {
+    match api::fetch_usage(&http_client, &session_key, &org_id).await {
         Ok(result) => {
             let mut s = state.lock().await;
             if let Some(ref new_key) = result.new_session_key {
@@ -204,7 +205,8 @@ pub async fn test_connection(
     session_key: String,
     org_id: String,
 ) -> Result<String, String> {
-    match api::fetch_usage(&session_key, &org_id).await {
+    let client = reqwest::Client::new();
+    match api::fetch_usage(&client, &session_key, &org_id).await {
         Ok(_) => Ok("connected".to_string()),
         Err(api::ApiError::AuthError { .. }) => Ok("auth_error".to_string()),
         Err(e) => Ok(format!("error: {}", e)),

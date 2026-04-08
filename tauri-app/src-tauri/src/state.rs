@@ -6,7 +6,7 @@ use chrono::{DateTime, Local, Utc};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
+use tauri::async_runtime::JoinHandle;
 use uuid::Uuid;
 
 const POLLING_INTERVAL_SECS: u64 = 300;
@@ -21,6 +21,7 @@ enum FetchOutcome {
 
 pub struct AppState {
     pub config: AppConfig,
+    pub http_client: reqwest::Client,
     pub usage_data: Option<UsageData>,
     pub last_updated: Option<DateTime<Utc>>,
     pub error_state: Option<ErrorState>,
@@ -51,6 +52,7 @@ impl AppState {
 
         Self {
             config,
+            http_client: reqwest::Client::new(),
             usage_data: None,
             last_updated: None,
             error_state: None,
@@ -356,7 +358,7 @@ pub fn start_polling(app: AppHandle, state: Arc<Mutex<AppState>>) {
 
     let handle = tauri::async_runtime::spawn(async move {
         // Get account info
-        let (account_id, session_key, org_id) = {
+        let (account_id, session_key, org_id, http_client) = {
             let s = state_clone.lock().await;
             let id = match s.config.active_account_id {
                 Some(id) => id,
@@ -374,13 +376,15 @@ pub fn start_polling(app: AppHandle, state: Arc<Mutex<AppState>>) {
                 Some(k) => k,
                 None => return,
             };
-            (id, key, org)
+            let client = s.http_client.clone();
+            (id, key, org, client)
         };
 
         // Initial fetch
         let outcome = perform_fetch(
             &app_clone,
             &state_clone,
+            &http_client,
             &session_key,
             &org_id,
             &account_id,
@@ -425,6 +429,7 @@ pub fn start_polling(app: AppHandle, state: Arc<Mutex<AppState>>) {
             let outcome = perform_fetch(
                 &app_clone,
                 &state_clone,
+                &http_client,
                 &current_key,
                 &current_org,
                 &account_id,
@@ -450,11 +455,12 @@ pub fn start_polling(app: AppHandle, state: Arc<Mutex<AppState>>) {
 async fn perform_fetch(
     app: &AppHandle,
     state: &Arc<Mutex<AppState>>,
+    client: &reqwest::Client,
     session_key: &str,
     org_id: &str,
     account_id: &Uuid,
 ) -> FetchOutcome {
-    match api::fetch_usage(session_key, org_id).await {
+    match api::fetch_usage(client, session_key, org_id).await {
         Ok(result) => {
             let mut s = state.lock().await;
 
