@@ -30,6 +30,7 @@ enum ProviderSnapshot {
     case claudeRich(usage: UsageData, authStatus: AuthStatus, isEnabled: Bool)
     case claudeSimple(status: ProviderStatus, isEnabled: Bool)
     case codex(status: ProviderStatus, isEnabled: Bool)
+    case codexRich(estimate: CodexEstimate, isEnabled: Bool)
     case gemini(status: ProviderStatus, isEnabled: Bool)
 
     // Static factory methods matching test API
@@ -44,7 +45,7 @@ enum ProviderSnapshot {
     var id: ProviderId {
         switch self {
         case .claudeRich, .claudeSimple: return .claude
-        case .codex: return .codex
+        case .codex, .codexRich: return .codex
         case .gemini: return .gemini
         }
     }
@@ -54,6 +55,7 @@ enum ProviderSnapshot {
         case .claudeRich(_, _, let enabled): return enabled
         case .claudeSimple(_, let enabled): return enabled
         case .codex(_, let enabled): return enabled
+        case .codexRich(_, let enabled): return enabled
         case .gemini(_, let enabled): return enabled
         }
     }
@@ -135,6 +137,20 @@ class ProviderCoordinator {
                     detailText: degradedReason(from: status),
                     sessionUtilization: nil,
                     weeklyUtilization: nil
+                )
+            case let .codexRich(estimate, _):
+                let headline: String
+                switch estimate.confidence {
+                case .exact: headline = "Codex — Exact"
+                case .highConfidence: headline = "Codex — High Confidence"
+                case .estimated: headline = "Codex — Estimated"
+                case .observedOnly: headline = "Codex — Observed Only"
+                }
+                return ProviderCard(
+                    id: .codex, cardState: .configured,
+                    headline: headline,
+                    detailText: "Confidence: \(estimate.confidence)",
+                    sessionUtilization: nil, weeklyUtilization: nil
                 )
             case let .gemini(status, _):
                 return ProviderCard(

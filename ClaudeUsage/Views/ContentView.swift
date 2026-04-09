@@ -17,7 +17,7 @@ struct ContentView: View {
     }
 
     private func openSettings() {
-        let settingsView = SettingsView(viewModel: viewModel, accountStore: accountStore, githubViewModel: githubViewModel, providerSettingsStore: providerSettingsStore)
+        let settingsView = SettingsView(viewModel: viewModel, accountStore: accountStore, githubViewModel: githubViewModel, providerSettingsStore: providerSettingsStore, providerShellViewModel: providerShellViewModel)
         let hostingController = NSHostingController(rootView: settingsView)
         let window = NSWindow(contentViewController: hostingController)
         window.title = "Claude Usage Settings"

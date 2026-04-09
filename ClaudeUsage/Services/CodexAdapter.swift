@@ -1,0 +1,51 @@
+import Foundation
+import Combine
+
+enum CodexAdapterState {
+    case notInstalled
+    case installed(estimate: CodexEstimate, cooldown: CooldownStatus)
+}
+
+class CodexAdapter: ObservableObject {
+    @Published var state: CodexAdapterState = .notInstalled
+
+    let detector: CodexDetector
+    let parser: CodexActivityParser
+    let confidenceEngine: CodexConfidenceEngine
+    var planProfile: CodexPlanProfile?
+
+    init(codexHome: URL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".codex"),
+         planProfile: CodexPlanProfile? = nil) {
+        self.detector = CodexDetector(codexHome: codexHome)
+        self.parser = CodexActivityParser(codexHome: codexHome)
+        self.confidenceEngine = CodexConfidenceEngine()
+        self.planProfile = planProfile
+    }
+
+    func refresh() {
+        let detection = detector.detect()
+        guard detection.installStatus == .installed else {
+            state = .notInstalled
+            return
+        }
+        let events = (try? parser.parseHistory()) ?? []
+        let recentResets = events.filter {
+            $0.eventType == .limitHit && $0.timestamp > Date().addingTimeInterval(-86400)
+        }.count
+        let estimate = confidenceEngine.evaluate(
+            detection: detection, events: events,
+            plan: planProfile, recentResets: recentResets
+        )
+        let cooldown = confidenceEngine.cooldownStatus(from: events)
+        state = .installed(estimate: estimate, cooldown: cooldown)
+    }
+
+    func toProviderSnapshot(isEnabled: Bool) -> ProviderSnapshot {
+        switch state {
+        case .notInstalled:
+            return .codex(status: .missingConfiguration, isEnabled: isEnabled)
+        case let .installed(estimate, _):
+            return .codexRich(estimate: estimate, isEnabled: isEnabled)
+        }
+    }
+}

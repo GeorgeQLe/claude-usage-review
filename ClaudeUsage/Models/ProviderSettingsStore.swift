@@ -36,4 +36,22 @@ class ProviderSettingsStore: ObservableObject {
         }
         UserDefaults.standard.set(enabled, forKey: Self.keys[id]!)
     }
+
+    func codexPlan() -> CodexPlanProfile? {
+        guard let name = UserDefaults.standard.string(forKey: "provider_codex_plan"),
+              let limit = UserDefaults.standard.object(forKey: "provider_codex_plan_limit") as? Int else {
+            return nil
+        }
+        return CodexPlanProfile(name: name, dailyTokenLimit: limit)
+    }
+
+    func setCodexPlan(_ plan: CodexPlanProfile?) {
+        if let plan = plan {
+            UserDefaults.standard.set(plan.name, forKey: "provider_codex_plan")
+            UserDefaults.standard.set(plan.dailyTokenLimit, forKey: "provider_codex_plan_limit")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "provider_codex_plan")
+            UserDefaults.standard.removeObject(forKey: "provider_codex_plan_limit")
+        }
+    }
 }

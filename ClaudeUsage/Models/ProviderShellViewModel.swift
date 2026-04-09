@@ -7,12 +7,16 @@ class ProviderShellViewModel: ObservableObject {
 
     private let coordinator: ProviderCoordinator
     private let settingsStore: ProviderSettingsStore
+    private let codexAdapter: CodexAdapter
+    private var codexTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
     init(usageViewModel: UsageViewModel, settingsStore: ProviderSettingsStore) {
         let policy = ProviderShellViewModel.loadPolicy()
         self.coordinator = ProviderCoordinator(trayPolicy: policy)
         self.settingsStore = settingsStore
+        let plan = settingsStore.codexPlan()
+        self.codexAdapter = CodexAdapter(planProfile: plan)
         self.shellState = ShellState(providers: [])
 
         usageViewModel.$usageData
@@ -22,6 +26,18 @@ class ProviderShellViewModel: ObservableObject {
                 self?.rebuildShellState(usageData: usageData, authStatus: authStatus)
             }
             .store(in: &cancellables)
+
+        codexAdapter.$state
+            .sink { [weak self] _ in self?.rebuildFromCurrent() }
+            .store(in: &cancellables)
+        codexAdapter.refresh()
+        codexTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
+            self?.codexAdapter.refresh()
+        }
+    }
+
+    deinit {
+        codexTimer?.invalidate()
     }
 
     // MARK: - Public
@@ -56,6 +72,11 @@ class ProviderShellViewModel: ObservableObject {
         rebuildFromCurrent()
     }
 
+    var codexDetected: Bool {
+        if case .installed = codexAdapter.state { return true }
+        return false
+    }
+
     // MARK: - Private
 
     private var lastUsageData: UsageData?
@@ -78,7 +99,7 @@ class ProviderShellViewModel: ObservableObject {
             snapshots.append(.claude(status: .missingConfiguration, isEnabled: true))
         }
 
-        snapshots.append(.codex(status: .missingConfiguration, isEnabled: settingsStore.isEnabled(.codex)))
+        snapshots.append(codexAdapter.toProviderSnapshot(isEnabled: settingsStore.isEnabled(.codex)))
         snapshots.append(.gemini(status: .missingConfiguration, isEnabled: settingsStore.isEnabled(.gemini)))
 
         let now = Date()

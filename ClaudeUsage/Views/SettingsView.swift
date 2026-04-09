@@ -6,6 +6,7 @@ struct SettingsView: View {
     @ObservedObject var accountStore: AccountStore
     @ObservedObject var githubViewModel: GitHubViewModel
     @ObservedObject var providerSettingsStore: ProviderSettingsStore
+    @ObservedObject var providerShellViewModel: ProviderShellViewModel
     @State private var sessionKeyInput = ""
     @State private var orgIdInput = ""
     @State private var timeDisplayFormat = TimeDisplayFormat.resetTime
@@ -227,7 +228,7 @@ struct SettingsView: View {
                         Text("Codex")
                             .font(.system(size: 12))
                         Spacer()
-                        Text("Coming in Phase 2")
+                        Text(providerShellViewModel.codexDetected ? "Detected" : "Not Detected")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                         Toggle("", isOn: Binding(
