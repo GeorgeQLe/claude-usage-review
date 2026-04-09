@@ -395,3 +395,13 @@ Fixed broken usage display caused by Claude API changing the `extra_usage` respo
 - New error UI in ContentView: "Request Failed" + detail + Retry button when no cached data (was infinite spinner)
 - Added `NSSupportsAutomaticTermination=false` / `NSSupportsSuddenTermination=false` to Info.plist
 - Added `ProcessInfo.disableAutomaticTermination` in AppDelegate
+
+## 2026-04-09 — Phase 3 Step 3.1: Red-Phase Wrapper Tests
+
+Created `ClaudeUsageTests/CodexWrapperTests.swift` with 15 tests across 4 test classes defining the Codex Accuracy Mode wrapper contract:
+- **CodexWrapperEventTests** (3): `CodexInvocationEvent` struct — timestamps, duration, commandMode, model, limitHitDetected
+- **CodexEventLedgerTests** (5): JSONL persistence — append, read, rolling trim, empty file, corrupt line handling
+- **CodexWrapperConfidenceTests** (4): confidence engine `wrapperEvents:` parameter — upgrade paths, never `.exact`
+- **CodexPrivacyTests** (3): structural checks — no prompt fields, JSONL key whitelist, App Support directory
+
+Updated `project.pbxproj` to include the new test file in the test target. App target compiles; test target fails with expected missing-type errors (`CodexInvocationEvent`, `CodexEventLedger`, `wrapperEvents:` parameter) — confirming red phase.

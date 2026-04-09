@@ -6,7 +6,7 @@
 > Current test count: 46 passing (15 Codex + 5 ProviderShell + 26 existing)
 
 ## Tests First
-- [ ] Step 3.1: [automated] Add failing tests for Codex wrapper event models, event-ledger persistence, confidence upgrades from wrapper data, and privacy constraints.
+- [x] Step 3.1: [automated] Add failing tests for Codex wrapper event models, event-ledger persistence, confidence upgrades from wrapper data, and privacy constraints.
 
   **What:** Write red-phase tests that define the Accuracy Mode wrapper contract before production code exists. Tests use temp directories and inline fixtures — no live CLI invocations.
 
