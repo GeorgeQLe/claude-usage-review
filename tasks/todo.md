@@ -79,27 +79,86 @@
 
 - [ ] Step 2.3: [automated] Implement incremental JSONL parser for Codex history and session files.
 
-  **What:** Build a parser that reads `history.jsonl` and `sessions/YYYY/MM/DD/rollout-*.jsonl` incrementally using byte-offset bookmarks. Returns structured activity events with timestamps. Handles corrupt/incomplete lines gracefully.
+  **What:** Create `CodexActivityParser` and `CodexActivityEvent` to make all 5 `CodexActivityParsingTests` and 1 of 3 `CodexCooldownTests` pass (`testDetectsRateLimitFromLogEntry`). The remaining 2 cooldown tests and all 3 confidence tests need `CodexConfidenceEngine` from step 2.4.
 
   **Files to create:**
-  - `ClaudeUsage/Services/CodexActivityParser.swift` — new service:
-    - `struct CodexActivityEvent { let timestamp: Date; let type: ActivityEventType; let durationSeconds: Double? }`
-    - `enum ActivityEventType { case command, session, limitHit, reset }`
-    - `struct ParseBookmark { let filePath: String; let byteOffset: UInt64 }` — for incremental reads
-    - `class CodexActivityParser`:
-      - `init(codexHome: URL, fileManager: FileManager = .default)`
-      - `func parseHistory(from bookmark: ParseBookmark?) -> (events: [CodexActivityEvent], bookmark: ParseBookmark)` — reads `history.jsonl` from bookmark offset, returns new events + updated bookmark
-      - `func parseSessionFiles(since: Date) -> [CodexActivityEvent]` — scans `sessions/YYYY/MM/DD/rollout-*.jsonl` for files modified after `since`
-      - `func detectCooldownEvents(from events: [CodexActivityEvent], within window: TimeInterval) -> Bool` — checks for rate-limit/lockout events within the window
+  - `ClaudeUsage/Services/CodexActivityParser.swift`:
 
-  **Key decisions:**
-  - JSONL parsing: read line-by-line from byte offset using `FileHandle.seek(toFileOffset:)`
-  - Skip malformed lines (log warning, continue) — Codex may write partial lines
-  - Session files: glob `sessions/` directory for `rollout-*.jsonl`, filter by modification date
-  - Bookmark stored in memory (not persisted yet — persistence comes when wired into polling)
+  ```swift
+  import Foundation
+
+  enum CodexEventType: Equatable {
+      case prompt, completion, sessionStart, sessionEnd, limitHit, error
+  }
+
+  struct CodexActivityEvent {
+      let eventType: CodexEventType
+      let timestamp: Date
+      let tokens: Int?
+      let duration: TimeInterval?
+  }
+
+  struct ParseBookmark {
+      let byteOffset: UInt64
+  }
+
+  struct ActivityWindow {
+      let startDate: Date
+      let endDate: Date
+      let eventCount: Int
+  }
+
+  class CodexActivityParser {
+      let codexHome: URL
+
+      init(codexHome: URL) { self.codexHome = codexHome }
+
+      // No-bookmark convenience (used by 3 tests)
+      func parseHistory() throws -> [CodexActivityEvent]
+
+      // Incremental with bookmark (used by testIncrementalParseResumeFromBookmark)
+      func parseHistory(from bookmark: ParseBookmark?) throws -> ([CodexActivityEvent], ParseBookmark?)
+
+      // Session parsing (used by testParsesSessionRolloutFiles)
+      func parseSessions() throws -> [CodexActivityEvent]
+
+      // Single log line parsing (used by testDetectsRateLimitFromLogEntry)
+      func parseLogLine(_ line: String) -> CodexActivityEvent?
+
+      // Activity windowing (used by testParsesTimestampsIntoActivityWindows)
+      func activityWindows(from events: [CodexActivityEvent], windowHours: Int) -> [ActivityWindow]
+  }
+  ```
+
+  **Test contract (from CodexActivityParsingTests + 1 CodexCooldownTest):**
+
+  1. `testParsesHistoryJsonlEntries`: writes 3 JSONL lines to `history.jsonl` in tempDir, calls `parseHistory()`, asserts `events.count == 3`, `events[0].eventType == .prompt`, `events[1].eventType == .completion`, timestamps non-nil
+  2. `testParsesSessionRolloutFiles`: creates `sessions/session-001.jsonl` with session_start/prompt/session_end, calls `parseSessions()`, checks `events.count >= 1`, finds `.sessionEnd` event with non-nil `.duration`
+  3. `testIncrementalParseResumeFromBookmark`: writes 2 lines, calls `parseHistory(from: nil)` → 2 events + bookmark, appends 1 line, calls `parseHistory(from: bookmark)` → 1 event
+  4. `testHandlesEmptyOrCorruptedLines`: 6 lines (3 valid, 1 not-JSON, 1 empty, 1 malformed JSON), `parseHistory()` → exactly 3 events
+  5. `testParsesTimestampsIntoActivityWindows`: 5 events spanning 06:00–10:55Z, calls `activityWindows(from:windowHours: 5)`, checks `windows.first?.eventCount == 5`
+  6. `testDetectsRateLimitFromLogEntry`: JSON string with `type: "error"` and `message: "rate limit exceeded..."`, `parseLogLine()` returns event with `.limitHit`
+
+  **Implementation details:**
+  - `parseHistory()` no-bookmark: calls `parseHistory(from: nil)` and returns just the events array
+  - JSONL parsing: read entire file as String, split by newlines, decode each line as `[String: Any]` via `JSONSerialization`
+  - Map `"type"` field: `"prompt"` → `.prompt`, `"completion"` → `.completion`, `"session_start"` → `.sessionStart`, `"session_end"` → `.sessionEnd`, `"error"` → check message for "rate limit"/"usage limit" → `.limitHit`, else `.error`
+  - Timestamps: ISO8601 decode the `"timestamp"` field
+  - Duration for sessionEnd: compute from session_start timestamp to session_end timestamp within the same file
+  - Bookmark: `byteOffset` = byte length of data read; on resume, read from that offset using `FileHandle.seek(toFileOffset:)`
+  - Skip blank/malformed lines silently (no crash)
+  - `parseSessions()`: enumerate `sessions/` subdir for `.jsonl` files, parse each the same way
+  - `activityWindows()`: group events into `windowHours`-length buckets by timestamp, return `[ActivityWindow]`
 
   **Files to modify:**
-  - `ClaudeUsage.xcodeproj/project.pbxproj` — add to Services group
+  - `ClaudeUsage.xcodeproj/project.pbxproj` — add `CodexActivityParser.swift` to Services group (AA600007) and app Sources build phase (AA800001). Use IDs: AA100031 (file ref), AA000027 (build file).
+
+  **Acceptance criteria:**
+  - `xcodebuild build` succeeds
+  - 5 CodexActivityParsingTests pass + 1 CodexCooldownTest (`testDetectsRateLimitFromLogEntry`) passes
+  - 4 CodexDetectionTests still pass (total: 10 of 15 Codex tests green)
+  - Remaining 5 Codex tests still fail (need `CodexConfidenceEngine`, `CodexPlanProfile` from step 2.4)
+  - All 21 existing tests pass
 
 - [ ] Step 2.4: [automated] Add Codex plan profiles, confidence rules, and headroom estimation.
 
