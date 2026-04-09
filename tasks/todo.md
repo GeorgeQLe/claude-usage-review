@@ -33,7 +33,7 @@
   - `ProviderShellViewModel` can be instantiated with a `UsageViewModel` and produces a `ShellState` with 3 provider cards (Claude configured, Codex/Gemini missingConfiguration)
   - Existing 5 provider shell tests + all prior tests still pass
   - No changes to `UsageViewModel`, `UsageService`, or any networking code
-- [ ] Step 1.4: [automated] Update the menu bar and popover shell for rotating provider headlines, manual override, pinning, and stacked provider cards in `ClaudeUsageApp.swift`, `AppDelegate.swift`, and `Views/ContentView.swift`.
+- [x] Step 1.4: [automated] Update the menu bar and popover shell for rotating provider headlines, manual override, pinning, and stacked provider cards in `ClaudeUsageApp.swift`, `AppDelegate.swift`, and `Views/ContentView.swift`.
 
   **What:** Wire `ProviderShellViewModel` into the app's UI layer. The menu bar label should reflect the current tray provider (rotating headline from `shellState.trayProvider`). The popover should show stacked provider cards for all providers in `shellState.providers`. This is additive — existing Claude-specific UI remains functional alongside the new provider shell views.
 

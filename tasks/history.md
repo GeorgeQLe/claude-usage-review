@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-09 — Step 1.4: Wire ProviderShellViewModel into UI
+
+Wired `ProviderShellViewModel` into the app's UI layer. Created `ProviderCardView.swift` — compact card view with status dot (green/gray/orange), headline, optional detail text, and session utilization badge. Dimmed opacity for unconfigured providers. Added `@StateObject providerShellViewModel` to `ClaudeUsageApp`, initialized from the existing `UsageViewModel`. Added collapsible "Providers" `DisclosureGroup` section to `ContentView` (collapsed by default, between usage bars and History). Shows 3 provider cards: Claude configured, Codex/Gemini not configured. Existing Claude UI unchanged. Build succeeds, all 21 tests pass.
+
 ## 2026-04-09 — Step 1.3: Provider Shell View Model
 
 Verified pre-existing `ProviderShellViewModel.swift` implementation. The file was already created and added to the Xcode project (pbxproj). It bridges `UsageViewModel` to the provider shell by subscribing to `$usageData` and `$authStatus` via Combine, building `[ProviderSnapshot]` arrays (Claude from current usage, Codex/Gemini as disabled placeholders), and producing `ShellState` and `traySnapshot` via `ProviderCoordinator`. Exposes `setManualOverride`, `setPinnedProvider`, `clearOverrides` with UserDefaults persistence. Fixed pre-existing flaky test `testWeeklyPaceStatusBehindPaceInPaceAwareMode` — ratio was exactly on 0.6 boundary causing timing-dependent flip between `behindPace`/`wayBehind`; changed test from 30% to 35% utilization (ratio 0.7, clearly in behindPace range). Build succeeds, all 21 tests pass.
