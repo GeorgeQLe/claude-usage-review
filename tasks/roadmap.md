@@ -4,7 +4,7 @@ Build the macOS app into a multi-provider CLI usage monitor for Claude Code, Cod
 
 | Phase | Focus | Outcome |
 | --- | --- | --- |
-| 1 | Shared provider foundation | Provider-aware state, rotating tray, stacked popover, Claude preserved |
+| ~~1~~ | ~~Shared provider foundation~~ | ~~Provider-aware state, rotating tray, stacked popover, Claude preserved~~ ✅ |
 | 2 | Codex passive adapter | Codex detection, passive estimation, confidence labeling |
 | 3 | Codex wrapper | Optional Accuracy Mode and event ledger for Codex |
 | 4 | Gemini passive adapter | Gemini detection, passive quota/rate tracking |
