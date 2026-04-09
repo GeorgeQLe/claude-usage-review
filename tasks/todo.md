@@ -41,25 +41,41 @@
 ## Implementation
 - [ ] Step 2.2: [automated] Implement Codex install/auth detection service.
 
-  **What:** Create a service that checks for `~/.codex/` directory, `config.toml`, and `auth.json` to determine install and auth status. Uses `FileManager` for filesystem checks. Does NOT read auth tokens — only checks file existence and basic config structure.
+  **What:** Create `CodexDetector` to make the 4 `CodexDetectionTests` pass. The tests use `CodexDetector(codexHome:fileManager:)` with temp directories and check `.installStatus` (`.installed`/`.notInstalled`) and `.authStatus` (`.authPresent`/`.authAbsent`).
 
   **Files to create:**
-  - `ClaudeUsage/Services/CodexDetector.swift` — new service:
-    - `enum CodexInstallStatus { case installed, notInstalled }`
-    - `enum CodexAuthStatus { case authPresent, authAbsent, unknown }`
-    - `struct CodexDetectionResult { let installStatus: CodexInstallStatus; let authStatus: CodexAuthStatus; let codexHome: URL }`
-    - `class CodexDetector`:
-      - `init(fileManager: FileManager = .default)` — injectable for testing
-      - `func detect() -> CodexDetectionResult` — checks `~/.codex/` exists, `config.toml` present, `auth.json` present
-      - Respects `CODEX_HOME` env var override via `ProcessInfo.processInfo.environment`
+  - `ClaudeUsage/Services/CodexDetector.swift`:
+    ```
+    enum CodexInstallStatus: Equatable { case installed, notInstalled }
+    enum CodexAuthStatus: Equatable { case authPresent, authAbsent }
+    struct CodexDetectionResult {
+        let installStatus: CodexInstallStatus
+        let authStatus: CodexAuthStatus
+    }
+    class CodexDetector {
+        let codexHome: URL
+        let fileManager: FileManager
+        init(codexHome: URL, fileManager: FileManager = .default)
+        func detect() -> CodexDetectionResult
+    }
+    ```
+    - `detect()` logic: check `codexHome` dir exists → if not, `.notInstalled` + `.authAbsent`; check `config.toml` exists → `.installed`/`.notInstalled`; check `auth.json` exists → `.authPresent`/`.authAbsent`
+    - Default `codexHome` in production: `~/.codex` (or `CODEX_HOME` env var)
 
   **Files to modify:**
-  - `ClaudeUsage.xcodeproj/project.pbxproj` — add to Services group and Sources build phase
+  - `ClaudeUsage.xcodeproj/project.pbxproj` — add `CodexDetector.swift` to Services group (AA600007) and app Sources build phase (AA800001). Use IDs: AA100029 (file ref), AA000026 (build file).
 
-  **Key decisions:**
-  - Use `FileManager` injection (not protocol) to keep it simple — tests pass a real `FileManager` pointing at a temp directory
-  - Never read auth.json contents — only check existence
-  - `codexHome` defaults to `~/.codex` but respects `CODEX_HOME` env var
+  **Test contract (from CodexDetectionTests):**
+  - `testDetectsInstalledWhenConfigExists`: temp dir with `config.toml` → `.installed`
+  - `testDetectsNotInstalledWhenDirectoryMissing`: nonexistent dir → `.notInstalled`
+  - `testDetectsAuthPresentWhenAuthJsonExists`: temp dir with `auth.json` → `.authPresent`
+  - `testDetectsAuthAbsentWhenNoAuthFile`: temp dir without `auth.json` → `.authAbsent`
+
+  **Acceptance criteria:**
+  - All 4 `CodexDetectionTests` pass
+  - All 21 existing tests still pass
+  - `xcodebuild build` compiles cleanly
+  - Remaining 11 Codex tests still fail (expected — types not yet created)
 
 - [ ] Step 2.3: [automated] Implement incremental JSONL parser for Codex history and session files.
 
