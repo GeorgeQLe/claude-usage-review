@@ -17,6 +17,18 @@ struct CooldownStatus {
     let cooldownActive: Bool
 }
 
+struct CodexInvocationEvent: Codable, Equatable {
+    let startTime: Date
+    let endTime: Date
+    let commandMode: String
+    let model: String
+    let limitHitDetected: Bool
+
+    var duration: TimeInterval {
+        endTime.timeIntervalSince(startTime)
+    }
+}
+
 class CodexConfidenceEngine {
     private let cooldownThreshold: TimeInterval = 300
 
@@ -24,7 +36,8 @@ class CodexConfidenceEngine {
         detection: CodexDetectionResult,
         events: [CodexActivityEvent],
         plan: CodexPlanProfile?,
-        recentResets: Int
+        recentResets: Int,
+        wrapperEvents: [CodexInvocationEvent] = []
     ) -> CodexEstimate {
         if recentResets >= 3 && plan != nil {
             return CodexEstimate(confidence: .highConfidence)
