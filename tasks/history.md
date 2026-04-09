@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-09 — Step 2.6: Green Phase — Fix Crashing Test
+
+Fixed `testGraphQLUsesVariablesNotInterpolation` crash caused by `URLProtocol` converting `httpBody` to a stream. Added `capturedBody` static property to `MockURLProtocol` that reads from `httpBodyStream` when `httpBody` is nil. Updated the test to use `MockURLProtocol.capturedBody!` instead of `captured.httpBody!`. All 46 tests pass (15 Codex + 5 ProviderShell + 26 existing), 0 failures. Test-only change — no production code modified.
+
 ## 2026-04-09 — Step 2.5: Wire Codex Adapter into Provider Shell
 
 Created `ClaudeUsage/Services/CodexAdapter.swift` — orchestrator class tying `CodexDetector` + `CodexActivityParser` + `CodexConfidenceEngine` together. Publishes `CodexAdapterState` (.notInstalled / .installed with estimate + cooldown). Added `.codexRich(estimate:isEnabled:)` case to `ProviderSnapshot` with full `id`, `isEnabled`, and `makeShellState` handling in `ProviderTypes.swift`. Wired `CodexAdapter` into `ProviderShellViewModel` with 15s refresh timer, Combine subscription to `$state`, `codexDetected` computed property, and `deinit` cleanup. Added `codexPlan()` / `setCodexPlan(_:)` to `ProviderSettingsStore` for UserDefaults persistence. Updated `SettingsView` to accept `providerShellViewModel` and show dynamic "Detected"/"Not Detected" for Codex row (was "Coming in Phase 2"). Updated `ContentView` to pass `providerShellViewModel` to `SettingsView`. Registered `CodexAdapter.swift` in Xcode project (AA100033 file ref, AA000029 build file, Services group, app Sources build phase). Build succeeds. All 15 Codex + 5 ProviderShell + 11 other tests pass (21 total, 0 failures). Pre-existing `testGraphQLErrorResponseThrowsInvalidResponse` crash (httpBody force-unwrap) unrelated to this change.

@@ -472,7 +472,7 @@
   - No changes to Claude networking or UsageViewModel
 
 ## Green
-- [ ] Step 2.6: [automated] Make all Codex passive tests pass, run existing tests, verify no regressions.
+- [x] Step 2.6: [automated] Make all Codex passive tests pass, run existing tests, verify no regressions.
 
   **What:** Ensure all CodexAdapterTests pass. Run the full test suite (should be 21 existing + ~15 new Codex tests ≈ 36 total). Verify Codex never claims exact remaining quota without a defensible source. Fix any compilation or logic issues.
 
