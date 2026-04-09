@@ -4,8 +4,10 @@ struct ContentView: View {
     @ObservedObject var viewModel: UsageViewModel
     @ObservedObject var accountStore: AccountStore
     @ObservedObject var githubViewModel: GitHubViewModel
+    @ObservedObject var providerShellViewModel: ProviderShellViewModel
     @AppStorage("history_expanded") private var historyExpanded = false
     @AppStorage("github_expanded") private var githubExpanded = false
+    @AppStorage("providers_expanded") private var providersExpanded = false
     @State private var showingAddAccount = false
     @State private var newAccountEmail = ""
 
@@ -178,6 +180,23 @@ struct ContentView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
                 .padding(.bottom, 12)
+
+                // Providers section
+                Divider()
+
+                DisclosureGroup(isExpanded: $providersExpanded) {
+                    VStack(spacing: 6) {
+                        ForEach(providerShellViewModel.shellState.providers, id: \.id) { card in
+                            ProviderCardView(card: card)
+                        }
+                    }
+                    .padding(.top, 4)
+                } label: {
+                    Text("Providers")
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
 
                 // History sparkline section
                 if !viewModel.historySnapshots.isEmpty {
