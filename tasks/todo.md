@@ -160,13 +160,82 @@
   - Remaining 5 Codex tests still fail (need `CodexConfidenceEngine`, `CodexPlanProfile` from step 2.4)
   - All 21 existing tests pass
 
-- [ ] Step 2.4: [automated] Add Codex plan profiles, confidence rules, and headroom estimation.
+- [ ] Step 2.4: [automated] Add Codex plan profiles, confidence engine, and cooldown status.
 
-  **What:** Define Codex plan profiles with known window sizes and rough limits. Implement confidence scoring based on available signals. Calculate estimated headroom from plan profile + observed activity count.
+  **What:** Create `CodexTypes.swift` with `CodexPlanProfile`, `CodexConfidence`, `CodexEstimate`, `CooldownStatus`, and `CodexConfidenceEngine`. This makes all 15 Codex tests compile and pass (5 remaining: 3 confidence + 2 cooldown).
 
-  **Files to create:**
-  - `ClaudeUsage/Models/CodexTypes.swift` — new model file:
-    - `enum CodexPlan: String, CaseIterable { case plus, pro, business, edu, enterprise }`
+  ### CREATE: `ClaudeUsage/Models/CodexTypes.swift`
+
+  **Types needed (derived from test contracts in `CodexAdapterTests.swift:242-320` and `211-239`):**
+
+  ```swift
+  struct CodexPlanProfile {
+      let name: String
+      let dailyTokenLimit: Int
+  }
+  ```
+  Tests construct: `CodexPlanProfile(name: "pro", dailyTokenLimit: 100_000)`
+
+  ```swift
+  enum CodexConfidence: Equatable {
+      case exact, highConfidence, estimated, observedOnly
+  }
+  ```
+
+  ```swift
+  struct CodexEstimate {
+      let confidence: CodexConfidence
+  }
+  ```
+  Tests only check `estimate.confidence` — keep it minimal.
+
+  ```swift
+  struct CooldownStatus {
+      let cooldownActive: Bool
+  }
+  ```
+  Tests check `cooldown.cooldownActive` (Bool).
+
+  ```swift
+  class CodexConfidenceEngine {
+      func evaluate(
+          detection: CodexDetectionResult,
+          events: [CodexActivityEvent],
+          plan: CodexPlanProfile?,
+          recentResets: Int
+      ) -> CodexEstimate
+
+      func cooldownStatus(from events: [CodexActivityEvent]) -> CooldownStatus
+  }
+  ```
+
+  **`evaluate` logic (from tests):**
+  1. `recentResets >= 3` AND plan != nil → `.highConfidence` (test: `testHighConfidenceWhenRepeatedResetPatternsObserved`)
+  2. `!events.isEmpty` AND plan != nil → `.estimated` (test: `testEstimatedWhenPlanProfilePlusPassiveActivity`)
+  3. else → `.observedOnly` (test: `testObservedOnlyWhenAuthDetectedButNoActivity` — empty events, nil plan)
+
+  **`cooldownStatus` logic (from tests):**
+  - Find most recent `.limitHit` event
+  - If found and < 5 minutes ago (120s in test is recent) → `cooldownActive: true`
+  - If found but ≥ 2 hours old (7200s in test) → `cooldownActive: false`
+  - Use ~5 min threshold (300s) — recent test is 120s (active), old test is 7200s (expired)
+
+  ### MODIFY: `ClaudeUsage.xcodeproj/project.pbxproj`
+  Add `CodexTypes.swift` to:
+  1. PBXFileReference section — `AA100032` file ref
+  2. PBXBuildFile section — `AA000028` build file
+  3. Models group (AA600006) children list
+  4. App Sources build phase (AA800001) files list
+
+  ### Verification
+  1. `xcodebuild build` — succeeds
+  2. `xcodebuild test` — all 15 Codex tests pass, all 21 existing tests pass (36 total)
+
+  **Acceptance criteria:**
+  - All 15 CodexAdapterTests pass (4 detection + 5 parsing + 3 cooldown + 3 confidence)
+  - All 21 existing tests still pass
+  - `xcodebuild build` compiles cleanly
+  - Single new file, minimal types — only what tests require
     - `struct CodexPlanProfile`:
       - `let plan: CodexPlan`
       - `let fiveHourRange: ClosedRange<Int>` — e.g., 45...225 for Plus
