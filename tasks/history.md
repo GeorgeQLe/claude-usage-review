@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-09 — Step 1.3: Provider Shell View Model
+
+Verified pre-existing `ProviderShellViewModel.swift` implementation. The file was already created and added to the Xcode project (pbxproj). It bridges `UsageViewModel` to the provider shell by subscribing to `$usageData` and `$authStatus` via Combine, building `[ProviderSnapshot]` arrays (Claude from current usage, Codex/Gemini as disabled placeholders), and producing `ShellState` and `traySnapshot` via `ProviderCoordinator`. Exposes `setManualOverride`, `setPinnedProvider`, `clearOverrides` with UserDefaults persistence. Fixed pre-existing flaky test `testWeeklyPaceStatusBehindPaceInPaceAwareMode` — ratio was exactly on 0.6 boundary causing timing-dependent flip between `behindPace`/`wayBehind`; changed test from 30% to 35% utilization (ratio 0.7, clearly in behindPace range). Build succeeds, all 21 tests pass.
+
 ## 2026-04-08 — Step 1.2: Provider Domain Types
 
 Created `ClaudeUsage/Models/ProviderTypes.swift` with all provider-aware domain types: `ProviderId`, `ProviderStatus`, `AuthStatus`, `CardState` enums; `ProviderSnapshot` enum with static factory methods for two `claude(...)` overloads (rich with UsageData, simple with ProviderStatus); `ProviderCard` struct, `ShellState` struct, `ProviderTrayPolicy` struct; `ProviderCoordinator` class with `makeShellState` and `selectedTrayProvider` logic (pinned > override > rotation priority). Added to Xcode project. Fixed test file missing `throws` on `testClaudeSnapshotPreservesExistingUsageViewModelOutput`. All 5 provider shell tests pass.

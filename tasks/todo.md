@@ -5,7 +5,7 @@
 
 ## Implementation
 - [x] Step 1.2: Introduce provider-aware domain types in `ClaudeUsage/Models/ProviderTypes.swift`. All 5 provider shell tests pass.
-- [ ] Step 1.3: Add a provider coordinator/store that maps existing Claude `UsageViewModel` output into the new provider shell.
+- [x] Step 1.3: Add a provider coordinator/store that maps existing Claude `UsageViewModel` output into the new provider shell.
 
   **What:** Create a `ProviderShellViewModel` (ObservableObject) that subscribes to the existing `UsageViewModel`'s published properties and produces a `ShellState` via `ProviderCoordinator`. This is the bridge layer — it consumes Claude data from the existing pipeline and outputs provider-agnostic state for the UI. No changes to Claude fetching, polling, or auth logic.
 
