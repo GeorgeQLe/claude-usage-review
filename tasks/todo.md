@@ -261,7 +261,7 @@
   - Headroom is always a band ("~X–Y remaining"), never a single number, because plan ranges are wide
   - Confidence engine is pure logic (no I/O) — easy to unit test
 
-- [ ] Step 2.5: [automated] Wire Codex adapter into ProviderShellViewModel and render Codex-specific card.
+- [x] Step 2.5: [automated] Wire Codex adapter into ProviderShellViewModel and render Codex-specific card.
 
   **What:** Create a `CodexAdapter` that ties detection, parsing, confidence, and plan profile together. Wire it into `ProviderShellViewModel` so Codex shows real state instead of the hardcoded `.missingConfiguration`. Update `ProviderCardView` and `SettingsView` for Codex-specific display.
 
