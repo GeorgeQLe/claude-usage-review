@@ -5,6 +5,7 @@ struct SettingsView: View {
     @ObservedObject var viewModel: UsageViewModel
     @ObservedObject var accountStore: AccountStore
     @ObservedObject var githubViewModel: GitHubViewModel
+    @ObservedObject var providerSettingsStore: ProviderSettingsStore
     @State private var sessionKeyInput = ""
     @State private var orgIdInput = ""
     @State private var timeDisplayFormat = TimeDisplayFormat.resetTime
@@ -199,6 +200,59 @@ struct SettingsView: View {
                 Text("Token needs `read:user` scope for private contributions")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
+            }
+
+            Divider()
+
+            // Providers
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Providers")
+                    .font(.system(size: 12, weight: .medium))
+
+                VStack(spacing: 6) {
+                    HStack {
+                        Text("Claude")
+                            .font(.system(size: 12))
+                        Spacer()
+                        Text("Configured")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Toggle("", isOn: .constant(true))
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                            .disabled(true)
+                    }
+
+                    HStack {
+                        Text("Codex")
+                            .font(.system(size: 12))
+                        Spacer()
+                        Text("Coming in Phase 2")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Toggle("", isOn: Binding(
+                            get: { providerSettingsStore.isEnabled(.codex) },
+                            set: { providerSettingsStore.setEnabled(.codex, $0) }
+                        ))
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                    }
+
+                    HStack {
+                        Text("Gemini")
+                            .font(.system(size: 12))
+                        Spacer()
+                        Text("Coming in Phase 2")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                        Toggle("", isOn: Binding(
+                            get: { providerSettingsStore.isEnabled(.gemini) },
+                            set: { providerSettingsStore.setEnabled(.gemini, $0) }
+                        ))
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                    }
+                }
             }
 
             Divider()

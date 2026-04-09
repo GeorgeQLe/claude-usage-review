@@ -6,17 +6,19 @@ class ProviderShellViewModel: ObservableObject {
     @Published var traySnapshot: ProviderSnapshot?
 
     private let coordinator: ProviderCoordinator
+    private let settingsStore: ProviderSettingsStore
     private var cancellables = Set<AnyCancellable>()
 
-    init(usageViewModel: UsageViewModel) {
+    init(usageViewModel: UsageViewModel, settingsStore: ProviderSettingsStore) {
         let policy = ProviderShellViewModel.loadPolicy()
         self.coordinator = ProviderCoordinator(trayPolicy: policy)
+        self.settingsStore = settingsStore
         self.shellState = ShellState(providers: [])
 
         usageViewModel.$usageData
-            .combineLatest(usageViewModel.$authStatus)
+            .combineLatest(usageViewModel.$authStatus, settingsStore.$enabledProviders)
             .receive(on: RunLoop.main)
-            .sink { [weak self] usageData, authStatus in
+            .sink { [weak self] usageData, authStatus, _ in
                 self?.rebuildShellState(usageData: usageData, authStatus: authStatus)
             }
             .store(in: &cancellables)
@@ -76,8 +78,8 @@ class ProviderShellViewModel: ObservableObject {
             snapshots.append(.claude(status: .missingConfiguration, isEnabled: true))
         }
 
-        snapshots.append(.codex(status: .missingConfiguration, isEnabled: false))
-        snapshots.append(.gemini(status: .missingConfiguration, isEnabled: false))
+        snapshots.append(.codex(status: .missingConfiguration, isEnabled: settingsStore.isEnabled(.codex)))
+        snapshots.append(.gemini(status: .missingConfiguration, isEnabled: settingsStore.isEnabled(.gemini)))
 
         let now = Date()
         shellState = coordinator.makeShellState(providers: snapshots, now: now)

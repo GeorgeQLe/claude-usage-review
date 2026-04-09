@@ -5,6 +5,7 @@ struct ContentView: View {
     @ObservedObject var accountStore: AccountStore
     @ObservedObject var githubViewModel: GitHubViewModel
     @ObservedObject var providerShellViewModel: ProviderShellViewModel
+    @ObservedObject var providerSettingsStore: ProviderSettingsStore
     @AppStorage("history_expanded") private var historyExpanded = false
     @AppStorage("github_expanded") private var githubExpanded = false
     @AppStorage("providers_expanded") private var providersExpanded = false
@@ -16,7 +17,7 @@ struct ContentView: View {
     }
 
     private func openSettings() {
-        let settingsView = SettingsView(viewModel: viewModel, accountStore: accountStore, githubViewModel: githubViewModel)
+        let settingsView = SettingsView(viewModel: viewModel, accountStore: accountStore, githubViewModel: githubViewModel, providerSettingsStore: providerSettingsStore)
         let hostingController = NSHostingController(rootView: settingsView)
         let window = NSWindow(contentViewController: hostingController)
         window.title = "Claude Usage Settings"

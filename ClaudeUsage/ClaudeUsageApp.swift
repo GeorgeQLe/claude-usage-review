@@ -7,14 +7,17 @@ struct ClaudeUsageApp: App {
     @StateObject private var viewModel: UsageViewModel
     @StateObject private var githubViewModel = GitHubViewModel()
     @StateObject private var providerShellViewModel: ProviderShellViewModel
+    @StateObject private var providerSettingsStore: ProviderSettingsStore
 
     init() {
         let store = AccountStore()
         let vm = UsageViewModel(accountStore: store)
+        let providerSettings = ProviderSettingsStore()
         _accountStore = StateObject(wrappedValue: store)
         _viewModel = StateObject(wrappedValue: vm)
         _githubViewModel = StateObject(wrappedValue: GitHubViewModel())
-        _providerShellViewModel = StateObject(wrappedValue: ProviderShellViewModel(usageViewModel: vm))
+        _providerShellViewModel = StateObject(wrappedValue: ProviderShellViewModel(usageViewModel: vm, settingsStore: providerSettings))
+        _providerSettingsStore = StateObject(wrappedValue: providerSettings)
     }
 
     private var menuBarText: String {
@@ -46,7 +49,7 @@ struct ClaudeUsageApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            ContentView(viewModel: viewModel, accountStore: accountStore, githubViewModel: githubViewModel, providerShellViewModel: providerShellViewModel)
+            ContentView(viewModel: viewModel, accountStore: accountStore, githubViewModel: githubViewModel, providerShellViewModel: providerShellViewModel, providerSettingsStore: providerSettingsStore)
         } label: {
             let _ = { appDelegate.viewModel = viewModel }()
             Text(menuBarText)
