@@ -32,6 +32,7 @@
 		AA000023 /* ProviderCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100026 /* ProviderCardView.swift */; };
 		AA000024 /* ProviderSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100027 /* ProviderSettingsStore.swift */; };
 		AA000030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA100030 /* Assets.xcassets */; };
+		AA000025 /* CodexAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100028 /* CodexAdapterTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -72,6 +73,7 @@
 		AA100025 /* ProviderShellViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderShellViewModel.swift; sourceTree = "<group>"; };
 		AA100026 /* ProviderCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderCardView.swift; sourceTree = "<group>"; };
 		AA100027 /* ProviderSettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderSettingsStore.swift; sourceTree = "<group>"; };
+		AA100028 /* CodexAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAdapterTests.swift; sourceTree = "<group>"; };
 		AA100030 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -120,6 +122,7 @@
 			isa = PBXGroup;
 			children = (
 				AA100003 /* ClaudeUsageTests.swift */,
+				AA100028 /* CodexAdapterTests.swift */,
 			);
 			path = ClaudeUsageTests;
 			sourceTree = "<group>";
@@ -288,6 +291,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AA000003 /* ClaudeUsageTests.swift in Sources */,
+				AA000025 /* CodexAdapterTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
