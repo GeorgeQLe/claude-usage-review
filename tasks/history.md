@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-09 — Step 2.1: Red-Phase Codex Adapter Tests
+
+Created `ClaudeUsageTests/CodexAdapterTests.swift` with 15 fixture-based tests across 4 test classes defining the Codex passive adapter contract. CodexDetectionTests (4): install/auth detection via temp directories. CodexActivityParsingTests (5): JSONL parsing, incremental bookmarks, corrupt line handling, activity windows. CodexCooldownTests (3): rate-limit detection, cooldown active/expired. CodexConfidenceTests (3): observedOnly/estimated/highConfidence confidence levels. Added file to Xcode test target (pbxproj). App target builds cleanly; test target fails with expected missing-type errors (CodexDetector, CodexActivityParser, CodexActivityEvent, CodexConfidenceEngine, CodexDetectionResult, CodexPlanProfile) confirming red phase.
+
 ## 2026-04-09 — Step 1.5: Provider Settings UI & Enablement Store
 
 Created `ProviderSettingsStore.swift` — lightweight ObservableObject persisting per-provider enabled state to UserDefaults. Claude always returns true; Codex/Gemini default to disabled. Added "Providers" section to SettingsView with 3 rows: Claude (always-on disabled toggle, "Configured"), Codex/Gemini (toggleable, "Coming in Phase 2"). Wired `ProviderSettingsStore` through `ClaudeUsageApp` → `ProviderShellViewModel` (subscribes to `$enabledProviders` for reactive rebuilds) and → `ContentView` → `SettingsView`. Toggling Codex/Gemini persists to UserDefaults and affects popover card dimming and tray rotation. Build succeeds, all 21 tests pass.

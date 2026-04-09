@@ -1,7 +1,7 @@
 # Phase 2: Codex Passive Adapter
 
 ## Tests First
-- [ ] Step 2.1: [automated] Add failing fixture-based tests for Codex install detection, auth presence detection, passive activity parsing, cooldown detection, and confidence labeling.
+- [x] Step 2.1: [automated] Add failing fixture-based tests for Codex install detection, auth presence detection, passive activity parsing, cooldown detection, and confidence labeling.
 
   **What:** Write red-phase tests that define the Codex passive adapter's contract before any production code exists. Tests use inline fixture data (JSONL strings, TOML strings, directory stubs) — no live filesystem access.
 
