@@ -487,10 +487,10 @@ final class PaceStatusTests: XCTestCase {
         let vm = makeViewModel()
         vm.weeklyColorMode = .paceAware
 
-        // Set up ratio < 0.85: 3.5 days elapsed → expected=50%, actual=30% → ratio=0.6
+        // Set up ratio < 0.85: 3.5 days elapsed → expected=50%, actual=35% → ratio=0.7
         let resetsAt = Date().addingTimeInterval(3.5 * 86400) // 3.5 days remaining
         vm.usageData = usageData(sessionUtil: 20, sessionResetsAt: nil,
-                                 weeklyUtil: 30, weeklyResetsAt: resetsAt)
+                                 weeklyUtil: 35, weeklyResetsAt: resetsAt)
         XCTAssertEqual(vm.paceStatus, .behindPace)
     }
 
