@@ -77,7 +77,7 @@
   - `xcodebuild build` compiles cleanly
   - Remaining 11 Codex tests still fail (expected — types not yet created)
 
-- [ ] Step 2.3: [automated] Implement incremental JSONL parser for Codex history and session files.
+- [x] Step 2.3: [automated] Implement incremental JSONL parser for Codex history and session files.
 
   **What:** Create `CodexActivityParser` and `CodexActivityEvent` to make all 5 `CodexActivityParsingTests` and 1 of 3 `CodexCooldownTests` pass (`testDetectsRateLimitFromLogEntry`). The remaining 2 cooldown tests and all 3 confidence tests need `CodexConfidenceEngine` from step 2.4.
 

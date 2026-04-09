@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-09 — Step 2.3: Codex JSONL Activity Parser
+
+Created `ClaudeUsage/Services/CodexActivityParser.swift` with `CodexEventType` enum, `CodexActivityEvent`/`ParseBookmark`/`ActivityWindow` structs, and `CodexActivityParser` class. Parser handles: full and incremental JSONL history parsing via `FileHandle` with byte-offset bookmarks, session file parsing with duration computation from session_start→session_end timestamps, single log line parsing with rate-limit→`.limitHit` detection, and time-bucketed activity windowing. Gracefully skips blank/malformed lines. Added to Xcode project (AA100031 file ref, AA000027 build file). App builds cleanly. Test target still blocked by step 2.4 types (`CodexConfidenceEngine`, `CodexPlanProfile`). Once those exist, 10 Codex tests should pass (4 detection + 5 parsing + 1 cooldown).
+
 ## 2026-04-09 — Step 2.2: Codex Install/Auth Detection Service
 
 Created `ClaudeUsage/Services/CodexDetector.swift` with `CodexInstallStatus` (.installed/.notInstalled), `CodexAuthStatus` (.authPresent/.authAbsent), `CodexDetectionResult`, and `CodexDetector` class. Detector checks `config.toml` for install status and `auth.json` for auth status within a configurable `codexHome` URL. Uses injectable `FileManager` for testability. Added to Xcode project (AA100029 file ref, AA000026 build file, Services group, app Sources build phase). App builds cleanly. Test target doesn't compile yet — remaining 11 Codex tests reference types from steps 2.3–2.4 (CodexActivityParser, CodexActivityEvent, CodexConfidenceEngine, CodexPlanProfile). The 4 CodexDetectionTests will pass once the test target compiles.
