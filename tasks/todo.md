@@ -59,6 +59,32 @@
   - All 21 tests pass, no regressions
 - [ ] Step 1.5: [automated] Extend settings/onboarding for provider enablement, plan/auth confirmation, and local install detection entry points in `Views/SettingsView.swift`, `Services/AccountStore.swift`, and related persistence files.
 
+  **What:** Add a "Providers" section to SettingsView where users can see all 3 providers (Claude, Codex, Gemini) with their current status and toggle them enabled/disabled. Provider enablement state is persisted to UserDefaults and fed into `ProviderShellViewModel` so disabled providers are excluded from the shell state and tray rotation. Claude is always enabled (toggle disabled). Codex and Gemini default to disabled.
+
+  **Files to create:**
+  - `ClaudeUsage/Models/ProviderSettingsStore.swift` — lightweight ObservableObject that persists per-provider enabled state to UserDefaults (keys: `provider_claude_enabled`, `provider_codex_enabled`, `provider_gemini_enabled`). Publishes `@Published var enabledProviders: Set<ProviderId>`. Claude always returns true regardless of stored value.
+
+  **Files to modify:**
+  - `ClaudeUsage/Views/SettingsView.swift` — add a "Providers" section (after GitHub, before App Control) showing each provider as a row: name, status badge (Configured/Not configured/Degraded), and a Toggle for enabled/disabled. Claude's toggle is always on and disabled. Codex/Gemini toggles control `ProviderSettingsStore`. Each row also shows a brief hint (e.g., "Passive monitoring — coming in Phase 2" for Codex/Gemini).
+  - `ClaudeUsage/Models/ProviderShellViewModel.swift` — accept `ProviderSettingsStore` in init. When rebuilding shell state, set `isEnabled` on each `ProviderSnapshot` based on `enabledProviders`. This controls whether providers appear in tray rotation and whether their cards show as enabled vs disabled in the popover.
+  - `ClaudeUsage/ClaudeUsageApp.swift` — create `@StateObject var providerSettingsStore = ProviderSettingsStore()`, pass to both `ProviderShellViewModel` and `SettingsView`.
+  - `ClaudeUsage/Views/ContentView.swift` — no changes needed (already renders from shellState).
+  - `ClaudeUsage.xcodeproj/project.pbxproj` — add `ProviderSettingsStore.swift` to Models group and Sources build phase.
+
+  **Key decisions:**
+  - `ProviderSettingsStore` is separate from `AccountStore` — provider enablement is global, not per-account.
+  - Claude is hardcoded enabled. The UI shows a disabled toggle to communicate this.
+  - Codex/Gemini show "Not configured — coming soon" hint text. Phase 2+ will replace these with real detection.
+  - `ProviderShellViewModel.rebuildShellState` reads `providerSettingsStore.enabledProviders` to set `isEnabled` on each snapshot. This is the single source of truth for whether a provider participates in tray rotation.
+
+  **Acceptance criteria:**
+  - `xcodebuild build` compiles
+  - SettingsView shows a "Providers" section with 3 rows and working toggles
+  - Toggling Codex/Gemini enabled persists to UserDefaults and is reflected in the popover's provider cards (enabled vs dimmed) and tray rotation
+  - Claude toggle is always on and non-interactive
+  - All 21 tests pass, no regressions
+  - No changes to `UsageViewModel`, `UsageService`, or networking code
+
 ## Green
 - [ ] Step 1.6: [automated] Make the new provider-shell tests pass, verify the existing Claude tests still pass, and run macOS build/test checks for the updated shell.
 
