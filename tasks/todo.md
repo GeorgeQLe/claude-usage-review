@@ -39,7 +39,7 @@
   - Tests define the contract for: `CodexDetector`, `CodexActivityParser`, `CodexCooldownDetector`, `CodexConfidence`, `CodexPlanProfile`
 
 ## Implementation
-- [ ] Step 2.2: [automated] Implement Codex install/auth detection service.
+- [x] Step 2.2: [automated] Implement Codex install/auth detection service.
 
   **What:** Create `CodexDetector` to make the 4 `CodexDetectionTests` pass. The tests use `CodexDetector(codexHome:fileManager:)` with temp directories and check `.installStatus` (`.installed`/`.notInstalled`) and `.authStatus` (`.authPresent`/`.authAbsent`).
 

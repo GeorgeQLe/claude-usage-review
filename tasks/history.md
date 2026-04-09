@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-09 — Step 2.2: Codex Install/Auth Detection Service
+
+Created `ClaudeUsage/Services/CodexDetector.swift` with `CodexInstallStatus` (.installed/.notInstalled), `CodexAuthStatus` (.authPresent/.authAbsent), `CodexDetectionResult`, and `CodexDetector` class. Detector checks `config.toml` for install status and `auth.json` for auth status within a configurable `codexHome` URL. Uses injectable `FileManager` for testability. Added to Xcode project (AA100029 file ref, AA000026 build file, Services group, app Sources build phase). App builds cleanly. Test target doesn't compile yet — remaining 11 Codex tests reference types from steps 2.3–2.4 (CodexActivityParser, CodexActivityEvent, CodexConfidenceEngine, CodexPlanProfile). The 4 CodexDetectionTests will pass once the test target compiles.
+
 ## 2026-04-09 — Step 2.1: Red-Phase Codex Adapter Tests
 
 Created `ClaudeUsageTests/CodexAdapterTests.swift` with 15 fixture-based tests across 4 test classes defining the Codex passive adapter contract. CodexDetectionTests (4): install/auth detection via temp directories. CodexActivityParsingTests (5): JSONL parsing, incremental bookmarks, corrupt line handling, activity windows. CodexCooldownTests (3): rate-limit detection, cooldown active/expired. CodexConfidenceTests (3): observedOnly/estimated/highConfidence confidence levels. Added file to Xcode test target (pbxproj). App target builds cleanly; test target fails with expected missing-type errors (CodexDetector, CodexActivityParser, CodexActivityEvent, CodexConfidenceEngine, CodexDetectionResult, CodexPlanProfile) confirming red phase.
