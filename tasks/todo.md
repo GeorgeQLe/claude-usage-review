@@ -34,6 +34,29 @@
   - Existing 5 provider shell tests + all prior tests still pass
   - No changes to `UsageViewModel`, `UsageService`, or any networking code
 - [ ] Step 1.4: [automated] Update the menu bar and popover shell for rotating provider headlines, manual override, pinning, and stacked provider cards in `ClaudeUsageApp.swift`, `AppDelegate.swift`, and `Views/ContentView.swift`.
+
+  **What:** Wire `ProviderShellViewModel` into the app's UI layer. The menu bar label should reflect the current tray provider (rotating headline from `shellState.trayProvider`). The popover should show stacked provider cards for all providers in `shellState.providers`. This is additive — existing Claude-specific UI remains functional alongside the new provider shell views.
+
+  **Files to modify:**
+  - `ClaudeUsage/ClaudeUsageApp.swift` — create `ProviderShellViewModel` as `@StateObject`, pass `UsageViewModel` to it. Optionally use `shellState.trayProvider?.headline` as a secondary indicator in the menu bar label (keep existing Claude-specific label for now — Phase 1 doesn't need to replace it, just prove the shell drives UI).
+  - `ClaudeUsage/AppDelegate.swift` — add a `providerShellViewModel` property so tooltip can reference provider context if needed. Minimal changes; existing tooltip behavior preserved.
+  - `ClaudeUsage/Views/ContentView.swift` — add a "Providers" section below or above the existing usage display that renders each `ProviderCard` from `shellState.providers` as a compact card row (icon/name, status badge for configured/missing/degraded, headline text, utilization if available). This is a read-only view of the shell state — no interactive controls yet (those come in step 1.5).
+
+  **Files to create:**
+  - `ClaudeUsage/Views/ProviderCardView.swift` — a small SwiftUI view that renders a single `ProviderCard`: provider name, status indicator (green dot for configured, gray for missing, yellow for degraded), headline string, optional utilization bars. Keeps ContentView from getting bloated.
+
+  **Key decisions:**
+  - Do NOT replace the existing menu bar label or usage display — this step adds the provider shell view alongside them. The existing Claude display remains the primary UI.
+  - Provider cards in the popover should be collapsible (DisclosureGroup) like History and GitHub sections, defaulting to collapsed.
+  - For missing/degraded providers, show a brief explanation (e.g., "Not configured" or the degraded reason).
+  - The tray provider headline is informational only — rotation/pinning controls come in step 1.5.
+
+  **Acceptance criteria:**
+  - `xcodebuild build` compiles
+  - `ProviderShellViewModel` is instantiated in `ClaudeUsageApp` and its `shellState` drives the new provider cards section in ContentView
+  - Popover shows 3 provider cards: Claude (configured with usage data), Codex (not configured), Gemini (not configured)
+  - Existing Claude menu bar label and usage bars are unchanged
+  - All 21 tests pass, no regressions
 - [ ] Step 1.5: [automated] Extend settings/onboarding for provider enablement, plan/auth confirmation, and local install detection entry points in `Views/SettingsView.swift`, `Services/AccountStore.swift`, and related persistence files.
 
 ## Green
