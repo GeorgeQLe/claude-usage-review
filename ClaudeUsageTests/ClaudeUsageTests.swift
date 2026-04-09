@@ -6,6 +6,7 @@ import XCTest
 class MockURLProtocol: URLProtocol {
     static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
     static var capturedRequest: URLRequest?
+    static var capturedBody: Data?
 
     override class func canInit(with request: URLRequest) -> Bool {
         return true
@@ -17,6 +18,7 @@ class MockURLProtocol: URLProtocol {
 
     override func startLoading() {
         MockURLProtocol.capturedRequest = request
+        MockURLProtocol.capturedBody = request.httpBody ?? readBodyStream(request.httpBodyStream)
 
         guard let handler = MockURLProtocol.requestHandler else {
             client?.urlProtocolDidFinishLoading(self)
@@ -37,7 +39,24 @@ class MockURLProtocol: URLProtocol {
 
     static func reset() {
         capturedRequest = nil
+        capturedBody = nil
         requestHandler = nil
+    }
+
+    private func readBodyStream(_ stream: InputStream?) -> Data? {
+        guard let stream = stream else { return nil }
+        stream.open()
+        defer { stream.close() }
+        var data = Data()
+        let bufferSize = 1024
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
+        defer { buffer.deallocate() }
+        while stream.hasBytesAvailable {
+            let read = stream.read(buffer, maxLength: bufferSize)
+            if read <= 0 { break }
+            data.append(buffer, count: read)
+        }
+        return data
     }
 }
 
@@ -695,7 +714,7 @@ final class GitHubServiceTests: XCTestCase {
 
         // Inspect the captured request body
         let captured = MockURLProtocol.capturedRequest!
-        let bodyData = captured.httpBody!
+        let bodyData = MockURLProtocol.capturedBody!
         let bodyJSON = try JSONSerialization.jsonObject(with: bodyData) as! [String: Any]
 
         // Verify variables contain the username (parameterized, not interpolated into query)
