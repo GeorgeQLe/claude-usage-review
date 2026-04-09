@@ -160,7 +160,7 @@
   - Remaining 5 Codex tests still fail (need `CodexConfidenceEngine`, `CodexPlanProfile` from step 2.4)
   - All 21 existing tests pass
 
-- [ ] Step 2.4: [automated] Add Codex plan profiles, confidence engine, and cooldown status.
+- [x] Step 2.4: [automated] Add Codex plan profiles, confidence engine, and cooldown status.
 
   **What:** Create `CodexTypes.swift` with `CodexPlanProfile`, `CodexConfidence`, `CodexEstimate`, `CooldownStatus`, and `CodexConfidenceEngine`. This makes all 15 Codex tests compile and pass (5 remaining: 3 confidence + 2 cooldown).
 

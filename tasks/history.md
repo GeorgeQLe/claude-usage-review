@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-09 — Step 2.4: Codex Confidence Engine & Plan Profiles
+
+Created `ClaudeUsage/Models/CodexTypes.swift` with `CodexPlanProfile` (name + dailyTokenLimit), `CodexConfidence` enum (exact/highConfidence/estimated/observedOnly), `CodexEstimate` (wraps confidence), `CooldownStatus` (cooldownActive bool), and `CodexConfidenceEngine` class. Engine's `evaluate()` returns highConfidence when recentResets >= 3 with a plan, estimated when events exist with a plan, observedOnly otherwise. `cooldownStatus()` checks for limitHit events within a 300s threshold. Added to Xcode project (AA100032 file ref, AA000028 build file, Models group, app Sources build phase). Build succeeds. All 15 Codex tests now pass (4 detection + 5 parsing + 3 cooldown + 3 confidence). Pre-existing `testCompactDownsamplesMidRange` failure unrelated to this change.
+
 ## 2026-04-09 — Step 2.3: Codex JSONL Activity Parser
 
 Created `ClaudeUsage/Services/CodexActivityParser.swift` with `CodexEventType` enum, `CodexActivityEvent`/`ParseBookmark`/`ActivityWindow` structs, and `CodexActivityParser` class. Parser handles: full and incremental JSONL history parsing via `FileHandle` with byte-offset bookmarks, session file parsing with duration computation from session_start→session_end timestamps, single log line parsing with rate-limit→`.limitHit` detection, and time-bucketed activity windowing. Gracefully skips blank/malformed lines. Added to Xcode project (AA100031 file ref, AA000027 build file). App builds cleanly. Test target still blocked by step 2.4 types (`CodexConfidenceEngine`, `CodexPlanProfile`). Once those exist, 10 Codex tests should pass (4 detection + 5 parsing + 1 cooldown).
