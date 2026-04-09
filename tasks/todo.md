@@ -265,50 +265,211 @@
 
   **What:** Create a `CodexAdapter` that ties detection, parsing, confidence, and plan profile together. Wire it into `ProviderShellViewModel` so Codex shows real state instead of the hardcoded `.missingConfiguration`. Update `ProviderCardView` and `SettingsView` for Codex-specific display.
 
-  **Files to create:**
-  - `ClaudeUsage/Services/CodexAdapter.swift` — orchestrates the Codex pipeline:
-    - `class CodexAdapter: ObservableObject`:
-      - `@Published var state: CodexAdapterState` — wraps detection + estimate
-      - `let detector: CodexDetector`
-      - `let parser: CodexActivityParser`
-      - `let confidenceEngine: CodexConfidenceEngine`
-      - `var planProfile: CodexPlanProfile?` — user-confirmed plan
-      - `func refresh()` — runs detect → parse → evaluate → publish state
-      - `func toProviderSnapshot() -> ProviderSnapshot` — maps adapter state to the provider shell's snapshot type
+  ### CREATE: `ClaudeUsage/Services/CodexAdapter.swift`
 
-  **Files to modify:**
-  - `ClaudeUsage/Models/ProviderTypes.swift` — extend `ProviderSnapshot` with a new case for Codex rich state:
-    - Add `.codexRich(estimate: CodexEstimate, isEnabled: Bool)` case alongside existing `.codex(status:isEnabled:)`
-    - Add static factory: `.codex(estimate:isEnabled:)` → `.codexRich(...)`
-    - Update `id` and `isEnabled` computed properties for the new case
-  - `ClaudeUsage/Models/ProviderTypes.swift` — update `ProviderCoordinator.makeShellState` to handle `.codexRich`:
-    - Map to `ProviderCard` with confidence-aware headline (e.g., "Codex Est. ~120–180 left")
-    - Show `confidenceExplanation` as `detailText`
-  - `ClaudeUsage/Models/ProviderShellViewModel.swift`:
-    - Add `private let codexAdapter: CodexAdapter` property
-    - Init creates `CodexAdapter` with default `CodexDetector` and `CodexActivityParser`
-    - Subscribe to `codexAdapter.$state` alongside existing publishers
-    - In `rebuildShellState`, use `codexAdapter.toProviderSnapshot()` instead of hardcoded `.codex(status: .missingConfiguration, ...)`
-  - `ClaudeUsage/Views/ProviderCardView.swift` — handle Codex-specific display:
-    - Show confidence badge (color-coded: green=exact/high, yellow=estimated, gray=observedOnly)
-    - Show headroom band text
-    - Show cooldown indicator if active
-  - `ClaudeUsage/Views/SettingsView.swift` — update Codex row in Providers section:
-    - Replace "Coming in Phase 2" with actual detection status
-    - Add plan picker (Plus/Pro/Business) when Codex is detected
-    - Persist selected plan to UserDefaults via `ProviderSettingsStore`
-  - `ClaudeUsage/Models/ProviderSettingsStore.swift` — add Codex plan storage:
-    - `func codexPlan() -> CodexPlan?`
-    - `func setCodexPlan(_ plan: CodexPlan?)`
-    - UserDefaults key: `provider_codex_plan`
-  - `ClaudeUsage/ClaudeUsageApp.swift` — pass `CodexAdapter` or let `ProviderShellViewModel` create it internally
-  - `ClaudeUsage.xcodeproj/project.pbxproj` — add `CodexAdapter.swift` and `CodexTypes.swift`
+  ```swift
+  import Foundation
+  import Combine
 
-  **Key decisions:**
-  - `CodexAdapter` is created internally by `ProviderShellViewModel` (not injected from App) to keep the dependency chain simple
-  - Codex plan is persisted in `ProviderSettingsStore` (global, not per-account) since Codex has its own auth
-  - Refresh cadence: called from `ProviderShellViewModel` on a 15-second timer (spec recommends 15s for passive scans)
-  - If Codex is not installed, snapshot stays as `.codex(status: .missingConfiguration, ...)` — no adapter noise
+  enum CodexAdapterState {
+      case notInstalled
+      case installed(estimate: CodexEstimate, cooldown: CooldownStatus)
+  }
+
+  class CodexAdapter: ObservableObject {
+      @Published var state: CodexAdapterState = .notInstalled
+
+      let detector: CodexDetector
+      let parser: CodexActivityParser
+      let confidenceEngine: CodexConfidenceEngine
+      var planProfile: CodexPlanProfile?
+
+      init(codexHome: URL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".codex"),
+           planProfile: CodexPlanProfile? = nil) {
+          self.detector = CodexDetector(codexHome: codexHome)
+          self.parser = CodexActivityParser(codexHome: codexHome)
+          self.confidenceEngine = CodexConfidenceEngine()
+          self.planProfile = planProfile
+      }
+
+      func refresh() {
+          let detection = detector.detect()
+          guard detection.installStatus == .installed else {
+              state = .notInstalled
+              return
+          }
+          let events = (try? parser.parseHistory()) ?? []
+          let recentResets = countRecentResets(events)
+          let estimate = confidenceEngine.evaluate(
+              detection: detection, events: events,
+              plan: planProfile, recentResets: recentResets
+          )
+          let cooldown = confidenceEngine.cooldownStatus(from: events)
+          state = .installed(estimate: estimate, cooldown: cooldown)
+      }
+
+      func toProviderSnapshot(isEnabled: Bool) -> ProviderSnapshot {
+          switch state {
+          case .notInstalled:
+              return .codex(status: .missingConfiguration, isEnabled: isEnabled)
+          case let .installed(estimate, _):
+              return .codexRich(estimate: estimate, isEnabled: isEnabled)
+          }
+      }
+
+      private func countRecentResets(_ events: [CodexActivityEvent]) -> Int {
+          // Count limitHit events in the last 24 hours as proxy for resets
+          let cutoff = Date().addingTimeInterval(-86400)
+          return events.filter { $0.eventType == .limitHit && $0.timestamp > cutoff }.count
+      }
+  }
+  ```
+
+  ### MODIFY: `ClaudeUsage/Models/ProviderTypes.swift`
+
+  **Add `.codexRich` case to `ProviderSnapshot` enum (after line 32):**
+  ```swift
+  case codexRich(estimate: CodexEstimate, isEnabled: Bool)
+  ```
+
+  **Update `id` computed property (around line 47) — add case:**
+  ```swift
+  case .codexRich: return .codex
+  ```
+
+  **Update `isEnabled` computed property (around line 56) — add case:**
+  ```swift
+  case let .codexRich(_, isEnabled): return isEnabled
+  ```
+
+  **Update `ProviderCoordinator.makeShellState` switch (after the existing `.codex` case at line 138):**
+  ```swift
+  case let .codexRich(estimate, _):
+      let headline: String
+      switch estimate.confidence {
+      case .highConfidence: headline = "Codex — High Confidence"
+      case .estimated: headline = "Codex — Estimated"
+      case .observedOnly: headline = "Codex — Observed Only"
+      case .exact: headline = "Codex — Exact"
+      }
+      return ProviderCard(
+          id: .codex,
+          cardState: .configured,
+          headline: headline,
+          detailText: "Confidence: \(estimate.confidence)",
+          sessionUtilization: nil,
+          weeklyUtilization: nil
+      )
+  ```
+
+  ### MODIFY: `ClaudeUsage/Models/ProviderShellViewModel.swift`
+
+  **Add property (after line 9):**
+  ```swift
+  private let codexAdapter: CodexAdapter
+  private var codexTimer: Timer?
+  ```
+
+  **In `init` (around line 12) — create adapter internally:**
+  ```swift
+  let plan = settingsStore.codexPlan()
+  self.codexAdapter = CodexAdapter(planProfile: plan)
+  ```
+
+  **In `init` — subscribe to codexAdapter.$state (after line 24):**
+  ```swift
+  codexAdapter.$state
+      .sink { [weak self] _ in self?.rebuildShellState() }
+      .store(in: &cancellables)
+  codexAdapter.refresh()
+  codexTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
+      self?.codexAdapter.refresh()
+  }
+  ```
+
+  **In `rebuildShellState` — replace line 81:**
+  Replace:
+  ```swift
+  snapshots.append(.codex(status: .missingConfiguration, isEnabled: settingsStore.isEnabled(.codex)))
+  ```
+  With:
+  ```swift
+  snapshots.append(codexAdapter.toProviderSnapshot(isEnabled: settingsStore.isEnabled(.codex)))
+  ```
+
+  ### MODIFY: `ClaudeUsage/Models/ProviderSettingsStore.swift`
+
+  **Add Codex plan storage (after `setEnabled` method, ~line 38):**
+  ```swift
+  func codexPlan() -> CodexPlanProfile? {
+      guard let name = UserDefaults.standard.string(forKey: "provider_codex_plan"),
+            let limit = UserDefaults.standard.object(forKey: "provider_codex_plan_limit") as? Int else {
+          return nil
+      }
+      return CodexPlanProfile(name: name, dailyTokenLimit: limit)
+  }
+
+  func setCodexPlan(_ plan: CodexPlanProfile?) {
+      if let plan = plan {
+          UserDefaults.standard.set(plan.name, forKey: "provider_codex_plan")
+          UserDefaults.standard.set(plan.dailyTokenLimit, forKey: "provider_codex_plan_limit")
+      } else {
+          UserDefaults.standard.removeObject(forKey: "provider_codex_plan")
+          UserDefaults.standard.removeObject(forKey: "provider_codex_plan_limit")
+      }
+  }
+  ```
+
+  ### MODIFY: `ClaudeUsage/Views/SettingsView.swift`
+
+  **Update Codex row (line 230) — replace "Coming in Phase 2":**
+  Change the status text from hardcoded to dynamic based on detection. Note: SettingsView does not currently have access to CodexAdapter state, so keep it simple — show "Detected" or "Not Detected" based on whether Codex config exists at `~/.codex/config.toml` via a lightweight check, or pass detection status through ProviderShellViewModel.
+
+  Simplest approach: add a `codexDetected: Bool` computed property to `ProviderShellViewModel` that checks `codexAdapter.state`:
+  ```swift
+  var codexDetected: Bool {
+      if case .installed = codexAdapter.state { return true }
+      return false
+  }
+  ```
+
+  Then in SettingsView, change line 230:
+  ```swift
+  Text(providerShellViewModel.codexDetected ? "Detected" : "Not Detected")
+  ```
+
+  ### MODIFY: `ClaudeUsage.xcodeproj/project.pbxproj`
+
+  Add `CodexAdapter.swift` to:
+  1. PBXFileReference — ID `AA100033`
+  2. PBXBuildFile — ID `AA000029`
+  3. Services group (AA600007) children list
+  4. App Sources build phase (AA800001) files list
+
+  Note: `CodexTypes.swift` is already in the project from step 2.4.
+
+  ### Key decisions
+  - `CodexAdapter` created internally by `ProviderShellViewModel` (not injected from App) — keeps dependency chain simple
+  - Codex plan persisted in `ProviderSettingsStore` (global, not per-account) since Codex has its own auth
+  - 15-second refresh timer for passive filesystem scans (spec recommendation)
+  - If Codex not installed, snapshot stays `.codex(status: .missingConfiguration, ...)` — no adapter noise
+  - `countRecentResets` counts limitHit events in last 24h as proxy for window resets
+  - ProviderCardView needs no changes — it already renders any ProviderCard uniformly; the confidence info flows through headline/detailText
+
+  ### Gotchas from prior steps
+  - ProviderSnapshot enum uses associated values — every new case needs `id` and `isEnabled` computed property updates
+  - `ProviderCoordinator.makeShellState` iterates snapshots and maps to cards — must handle the new case
+  - The `codexAdapter.$state` subscription must use `[weak self]` to avoid retain cycles
+  - Timer must be invalidated on deinit to prevent leaks
+  - `SettingsView` receives `providerShellViewModel` as `@ObservedObject` — adding a computed property there is sufficient for reactivity
+
+  ### Acceptance criteria
+  - `xcodebuild build` succeeds
+  - `xcodebuild test` — all 15 Codex tests + 21 existing tests pass
+  - When `~/.codex/config.toml` exists: Codex card shows "Codex — Observed Only" (or higher confidence with activity)
+  - When `~/.codex/` doesn't exist: Codex card shows "Not configured" (unchanged behavior)
+  - Settings shows "Detected" / "Not Detected" for Codex row
+  - No changes to Claude networking or UsageViewModel
 
 ## Green
 - [ ] Step 2.6: [automated] Make all Codex passive tests pass, run existing tests, verify no regressions.
