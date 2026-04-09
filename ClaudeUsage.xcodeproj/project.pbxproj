@@ -34,6 +34,7 @@
 		AA000030 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA100030 /* Assets.xcassets */; };
 		AA000025 /* CodexAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100028 /* CodexAdapterTests.swift */; };
 		AA000026 /* CodexDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100029 /* CodexDetector.swift */; };
+		AA000027 /* CodexActivityParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100031 /* CodexActivityParser.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -77,6 +78,7 @@
 		AA100028 /* CodexAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAdapterTests.swift; sourceTree = "<group>"; };
 		AA100029 /* CodexDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexDetector.swift; sourceTree = "<group>"; };
 		AA100030 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA100031 /* CodexActivityParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexActivityParser.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -177,6 +179,7 @@
 				AA100017 /* HistoryStore.swift */,
 				AA100021 /* GitHubService.swift */,
 				AA100029 /* CodexDetector.swift */,
+				AA100031 /* CodexActivityParser.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -287,6 +290,7 @@
 				AA000023 /* ProviderCardView.swift in Sources */,
 				AA000024 /* ProviderSettingsStore.swift in Sources */,
 				AA000026 /* CodexDetector.swift in Sources */,
+				AA000027 /* CodexActivityParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
