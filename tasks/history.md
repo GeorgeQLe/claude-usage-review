@@ -1,5 +1,16 @@
 # ClaudeUsage — Session History
 
+## 2026-04-09 — Fix Phase 1 Gap: Wire Tray Rotation into Menu Bar
+
+Wired the existing rotation infrastructure (`ProviderCoordinator.selectedTrayProvider`, `ProviderTrayPolicy`, `traySnapshot`) into the actual menu bar label. Previously `menuBarText` was hardcoded to Claude-only data even though rotation types existed.
+
+Changes:
+- Changed default rotation interval from 300s to 7s (spec line 350) in `ProviderTypes.swift` and `ProviderShellViewModel.loadPolicy()` fallback.
+- Added `@Published trayText`, `rotationTimer` (7s), and `formatTrayText(from:)` to `ProviderShellViewModel`. Formats compact tray strings per provider type (e.g., "Codex High", "Claude 82%", "Gemini · Not configured").
+- Replaced `menuBarText` in `ClaudeUsageApp` with dual-mode logic: Claude-only mode preserves the existing rich format (no regression); multi-provider mode shows compact Claude with live countdown on Claude's turn, or `trayText` on other providers' turns.
+
+Build succeeds. All 46 tests pass, 0 failures.
+
 ## 2026-04-09 — Step 2.6: Green Phase — Fix Crashing Test
 
 Fixed `testGraphQLUsesVariablesNotInterpolation` crash caused by `URLProtocol` converting `httpBody` to a stream. Added `capturedBody` static property to `MockURLProtocol` that reads from `httpBodyStream` when `httpBody` is nil. Updated the test to use `MockURLProtocol.capturedBody!` instead of `captured.httpBody!`. All 46 tests pass (15 Codex + 5 ProviderShell + 26 existing), 0 failures. Test-only change — no production code modified.

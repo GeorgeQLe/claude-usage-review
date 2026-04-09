@@ -89,7 +89,7 @@ struct ProviderTrayPolicy {
     let pinnedProvider: ProviderId?
 
     init(
-        rotationInterval: TimeInterval = 300,
+        rotationInterval: TimeInterval = 7,
         manualOverride: ProviderId? = nil,
         pinnedProvider: ProviderId? = nil
     ) {

@@ -4,11 +4,13 @@ import Combine
 class ProviderShellViewModel: ObservableObject {
     @Published var shellState: ShellState
     @Published var traySnapshot: ProviderSnapshot?
+    @Published var trayText: String = ""
 
     private let coordinator: ProviderCoordinator
     private let settingsStore: ProviderSettingsStore
     private let codexAdapter: CodexAdapter
     private var codexTimer: Timer?
+    private var rotationTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
     init(usageViewModel: UsageViewModel, settingsStore: ProviderSettingsStore) {
@@ -34,10 +36,14 @@ class ProviderShellViewModel: ObservableObject {
         codexTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
             self?.codexAdapter.refresh()
         }
+        rotationTimer = Timer.scheduledTimer(withTimeInterval: 7, repeats: true) { [weak self] _ in
+            self?.rebuildFromCurrent()
+        }
     }
 
     deinit {
         codexTimer?.invalidate()
+        rotationTimer?.invalidate()
     }
 
     // MARK: - Public
@@ -105,6 +111,43 @@ class ProviderShellViewModel: ObservableObject {
         let now = Date()
         shellState = coordinator.makeShellState(providers: snapshots, now: now)
         traySnapshot = coordinator.selectedTrayProvider(from: snapshots, now: now)
+        if let snap = traySnapshot {
+            trayText = formatTrayText(from: snap)
+        }
+    }
+
+    func formatTrayText(from snapshot: ProviderSnapshot) -> String {
+        switch snapshot {
+        case let .claudeRich(usage, _, _):
+            let pct = Int(usage.fiveHour.utilization)
+            return "Claude \(pct)%"
+        case let .claudeSimple(status, _):
+            if case .missingConfiguration = status {
+                return "Claude · Not configured"
+            }
+            return "Claude"
+        case let .codexRich(estimate, _):
+            switch estimate.confidence {
+            case .exact:
+                return "Codex Exact"
+            case .highConfidence:
+                return "Codex High"
+            case .estimated:
+                return "Codex Est. only"
+            case .observedOnly:
+                return "Codex Observed"
+            }
+        case let .codex(status, _):
+            if case .missingConfiguration = status {
+                return "Codex · Not configured"
+            }
+            return "Codex"
+        case let .gemini(status, _):
+            if case .missingConfiguration = status {
+                return "Gemini · Not configured"
+            }
+            return "Gemini"
+        }
     }
 
     private func rebuildFromCurrent() {
@@ -123,7 +166,7 @@ class ProviderShellViewModel: ObservableObject {
         let pinned = defaults.string(forKey: pinnedKey).flatMap(providerIdFromString)
         let override = defaults.string(forKey: manualOverrideKey).flatMap(providerIdFromString)
         return ProviderTrayPolicy(
-            rotationInterval: interval > 0 ? interval : 300,
+            rotationInterval: interval > 0 ? interval : 7,
             manualOverride: override,
             pinnedProvider: pinned
         )

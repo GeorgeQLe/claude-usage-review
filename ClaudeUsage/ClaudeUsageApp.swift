@@ -20,8 +20,11 @@ struct ClaudeUsageApp: App {
         _providerSettingsStore = StateObject(wrappedValue: providerSettings)
     }
 
-    private var menuBarText: String {
-        _ = viewModel.tick
+    private var isMultiProvider: Bool {
+        providerSettingsStore.isEnabled(.codex) || providerSettingsStore.isEnabled(.gemini)
+    }
+
+    private var richClaudeMenuBarText: String {
         let timeText = viewModel.menuBarTimeString
         let sessionEmoji = viewModel.paceTheme.emoji(for: viewModel.sessionPaceStatus)
         let sessionPct = Int(viewModel.usageData?.fiveHour.utilization ?? 0)
@@ -45,6 +48,34 @@ struct ClaudeUsageApp: App {
         }
 
         return parts.joined(separator: " · ")
+    }
+
+    private var menuBarText: String {
+        _ = viewModel.tick
+
+        guard isMultiProvider else {
+            return richClaudeMenuBarText
+        }
+
+        // Multi-provider rotation mode
+        guard let snapshot = providerShellViewModel.traySnapshot else {
+            return richClaudeMenuBarText
+        }
+
+        switch snapshot {
+        case .claudeRich, .claudeSimple:
+            // Claude's turn: show compact format with live countdown
+            let sessionEmoji = viewModel.paceTheme.emoji(for: viewModel.sessionPaceStatus)
+            let sessionPct = Int(viewModel.usageData?.fiveHour.utilization ?? 0)
+            let timeText = viewModel.menuBarTimeString
+            if timeText.isEmpty {
+                return "\(sessionEmoji) \(sessionPct)%"
+            }
+            return "\(sessionEmoji) \(sessionPct)% · \(timeText)"
+        default:
+            // Non-Claude provider: use pre-formatted tray text
+            return providerShellViewModel.trayText
+        }
     }
 
     var body: some Scene {
