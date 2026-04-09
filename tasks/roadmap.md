@@ -37,16 +37,16 @@ Build the macOS app into a multi-provider CLI usage monitor for Claude Code, Cod
 ## Phase 2: Codex Passive Adapter
 
 ### Tests First
-- Step 2.1: [automated] Add failing fixture-based tests for Codex install detection, auth presence detection, passive activity parsing, cooldown detection, and confidence labeling in new test files under [ClaudeUsageTests](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsageTests) with sample data fixtures derived from `~/.codex` formats.
+- Step 2.1: [automated] Add failing fixture-based tests for Codex install detection, auth presence, passive activity parsing, cooldown detection, and confidence labeling in `ClaudeUsageTests/CodexAdapterTests.swift`. ~15 tests across CodexDetectionTests, CodexActivityParsingTests, CodexCooldownTests, CodexConfidenceTests.
 
 ### Implementation
-- Step 2.2: [automated] Implement Codex local-state discovery and non-secret auth/install detection in a new adapter/service under [ClaudeUsage/Services](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Services).
-- Step 2.3: [automated] Implement incremental parsing for Codex passive sources such as `history.jsonl`, logs, and recent SQLite-derived signals, with bookmarks and stale-state handling in new Codex parsing/storage files under [ClaudeUsage/Services](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Services).
-- Step 2.4: [automated] Add Codex plan profiles, confidence rules, and estimate/headroom derivation into the shared provider model under [ClaudeUsage/Models](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Models).
-- Step 2.5: [automated] Render a provider-specific Codex card, tray headline, and degraded/error states in [ClaudeUsage/Views/ContentView.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Views/ContentView.swift), [ClaudeUsage/Views/SettingsView.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Views/SettingsView.swift), and any new provider-specific view files.
+- Step 2.2: [automated] Implement Codex install/auth detection in `ClaudeUsage/Services/CodexDetector.swift`. FileManager-based checks for `~/.codex/`, `config.toml`, `auth.json`. Respects `CODEX_HOME` env var.
+- Step 2.3: [automated] Implement incremental JSONL parser in `ClaudeUsage/Services/CodexActivityParser.swift`. Reads `history.jsonl` and `sessions/YYYY/MM/DD/rollout-*.jsonl` with byte-offset bookmarks. Handles corrupt lines gracefully.
+- Step 2.4: [automated] Add plan profiles, confidence engine, and headroom estimation in `ClaudeUsage/Models/CodexTypes.swift`. Plans: Plus/Pro/Business with published 5-hour ranges. Confidence: exact/highConfidence/estimated/observedOnly. Headroom as band, never single number.
+- Step 2.5: [automated] Wire `CodexAdapter` into `ProviderShellViewModel`. Create `ClaudeUsage/Services/CodexAdapter.swift` orchestrating detect→parse→evaluate. Add `.codexRich` snapshot case to `ProviderTypes.swift`. Update `ProviderCardView` for confidence badge/headroom. Update `SettingsView` Codex row with plan picker. Add Codex plan persistence to `ProviderSettingsStore`.
 
 ### Green
-- Step 2.6: [automated] Make Codex passive tests pass, run the existing Claude/provider-shell tests, and verify Codex never claims an exact remaining quota without an exact source.
+- Step 2.6: [automated] Make all Codex passive tests pass, run existing 21 tests, verify no regressions. Codex never claims exact remaining quota without a defensible source.
 
 ### Milestone
 - Codex can be detected and configured as a monitored provider.
