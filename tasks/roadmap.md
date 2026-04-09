@@ -5,7 +5,7 @@ Build the macOS app into a multi-provider CLI usage monitor for Claude Code, Cod
 | Phase | Focus | Outcome |
 | --- | --- | --- |
 | ~~1~~ | ~~Shared provider foundation~~ | ~~Provider-aware state, rotating tray, stacked popover, Claude preserved~~ ✅ |
-| 2 | Codex passive adapter | Codex detection, passive estimation, confidence labeling |
+| ~~2~~ | ~~Codex passive adapter~~ | ~~Codex detection, passive estimation, confidence labeling~~ ✅ |
 | 3 | Codex wrapper | Optional Accuracy Mode and event ledger for Codex |
 | 4 | Gemini passive adapter | Gemini detection, passive quota/rate tracking |
 | 5 | Gemini wrapper | Optional Accuracy Mode and event ledger for Gemini |
@@ -57,17 +57,18 @@ Build the macOS app into a multi-provider CLI usage monitor for Claude Code, Cod
 - No regressions in previous phase tests.
 
 ## Phase 3: Codex Accuracy Mode Wrapper
+> Test strategy: tdd
 
 ### Tests First
-- Step 3.1: [automated] Add failing tests for Codex wrapper event capture, event-ledger persistence, confidence upgrades, and privacy constraints under [ClaudeUsageTests](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsageTests).
+- Step 3.1: [automated] Add failing tests for Codex wrapper event models, event-ledger persistence, confidence upgrades from wrapper data, and privacy constraints in `ClaudeUsageTests/CodexWrapperTests.swift`. ~15 tests across CodexWrapperEventTests, CodexEventLedgerTests, CodexWrapperConfidenceTests, CodexPrivacyTests.
 
 ### Implementation
-- Step 3.2: [automated] Implement an opt-in Codex wrapper/launcher, wrapper configuration, and invocation event models in new files under [ClaudeUsage/Services](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Services) and [ClaudeUsage/Models](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Models).
-- Step 3.3: [automated] Add a local event ledger that records invocation timing, observable mode, and limit-hit/reset signals without storing raw prompt content.
-- Step 3.4: [automated] Merge wrapper-derived Codex telemetry with passive Codex state and surface Accuracy Mode onboarding/settings controls in [ClaudeUsage/Views/SettingsView.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Views/SettingsView.swift) and [ClaudeUsage/Views/ContentView.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Views/ContentView.swift).
+- Step 3.2: [automated] Add wrapper event types and event ledger model to `ClaudeUsage/Models/CodexTypes.swift`. Types: `CodexInvocationEvent` (start/end timestamps, command mode, model, limitHitDetected), `CodexEventLedger` class with JSONL append/read/rolling-window-trim and `~/Library/Application Support/ClaudeUsage/codex-events.jsonl` persistence.
+- Step 3.3: [automated] Implement Codex wrapper launcher in `ClaudeUsage/Services/CodexWrapper.swift`. Launches `codex` CLI via `Process`, captures start/end timestamps, parses stderr for usage-limit errors, appends `CodexInvocationEvent` to ledger. Opt-in via `ProviderSettingsStore.codexAccuracyMode`.
+- Step 3.4: [automated] Merge wrapper-derived events into `CodexAdapter.refresh()` — feed ledger events alongside passive parser events into `CodexConfidenceEngine`. Update engine so wrapper events can upgrade confidence (e.g., wrapper invocations + limit-hit patterns → `.highConfidence`). Surface Accuracy Mode toggle and status in `ClaudeUsage/Views/SettingsView.swift`.
 
 ### Green
-- Step 3.5: [automated] Make Codex wrapper tests pass, rerun all Phase 1-2 tests, and verify that Codex Accuracy Mode improves freshness/confidence without affecting Claude.
+- Step 3.5: [automated] Make all Codex wrapper tests pass, rerun all Phase 1-2 tests (46 total), and verify that Accuracy Mode improves confidence without affecting Claude.
 
 ### Milestone
 - Codex Accuracy Mode can be enabled independently.
