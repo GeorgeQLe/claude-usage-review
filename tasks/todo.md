@@ -57,7 +57,7 @@
   - Popover shows 3 provider cards: Claude (configured with usage data), Codex (not configured), Gemini (not configured)
   - Existing Claude menu bar label and usage bars are unchanged
   - All 21 tests pass, no regressions
-- [ ] Step 1.5: [automated] Extend settings/onboarding for provider enablement, plan/auth confirmation, and local install detection entry points in `Views/SettingsView.swift`, `Services/AccountStore.swift`, and related persistence files.
+- [x] Step 1.5: [automated] Extend settings/onboarding for provider enablement, plan/auth confirmation, and local install detection entry points in `Views/SettingsView.swift`, `Services/AccountStore.swift`, and related persistence files.
 
   **What:** Add a "Providers" section to SettingsView where users can see all 3 providers (Claude, Codex, Gemini) with their current status and toggle them enabled/disabled. Provider enablement state is persisted to UserDefaults and fed into `ProviderShellViewModel` so disabled providers are excluded from the shell state and tray rotation. Claude is always enabled (toggle disabled). Codex and Gemini default to disabled.
 

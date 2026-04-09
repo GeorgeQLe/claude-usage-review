@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-09 — Step 1.5: Provider Settings UI & Enablement Store
+
+Created `ProviderSettingsStore.swift` — lightweight ObservableObject persisting per-provider enabled state to UserDefaults. Claude always returns true; Codex/Gemini default to disabled. Added "Providers" section to SettingsView with 3 rows: Claude (always-on disabled toggle, "Configured"), Codex/Gemini (toggleable, "Coming in Phase 2"). Wired `ProviderSettingsStore` through `ClaudeUsageApp` → `ProviderShellViewModel` (subscribes to `$enabledProviders` for reactive rebuilds) and → `ContentView` → `SettingsView`. Toggling Codex/Gemini persists to UserDefaults and affects popover card dimming and tray rotation. Build succeeds, all 21 tests pass.
+
 ## 2026-04-09 — Step 1.4: Wire ProviderShellViewModel into UI
 
 Wired `ProviderShellViewModel` into the app's UI layer. Created `ProviderCardView.swift` — compact card view with status dot (green/gray/orange), headline, optional detail text, and session utilization badge. Dimmed opacity for unconfigured providers. Added `@StateObject providerShellViewModel` to `ClaudeUsageApp`, initialized from the existing `UsageViewModel`. Added collapsible "Providers" `DisclosureGroup` section to `ContentView` (collapsed by default, between usage bars and History). Shows 3 provider cards: Claude configured, Codex/Gemini not configured. Existing Claude UI unchanged. Build succeeds, all 21 tests pass.
