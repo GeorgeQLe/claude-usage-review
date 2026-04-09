@@ -3,7 +3,7 @@
 > Project: ClaudeUsage (macOS menu bar app) · Phase 3 of 7
 > Test strategy: tdd
 > Prior phases: Phase 1 (shared provider foundation) ✅, Phase 2 (Codex passive adapter) ✅
-> Current test count: 46 passing (15 Codex + 5 ProviderShell + 26 existing)
+> Current test count: 58 passing, 3 expected failures (15 Codex + 5 ProviderShell + 26 existing + 11 wrapper + 1 confidence passing)
 
 ## Tests First
 - [x] Step 3.1: [automated] Add failing tests for Codex wrapper event models, event-ledger persistence, confidence upgrades from wrapper data, and privacy constraints.
@@ -45,7 +45,7 @@
   - Privacy tests verify no prompt content storage by design
 
 ## Implementation
-- [ ] Step 3.2: [automated] Add wrapper event types and event ledger persistence.
+- [x] Step 3.2: [automated] Add wrapper event types and event ledger persistence.
 
   **What:** Create `CodexInvocationEvent` struct and `CodexEventLedger` class. The event captures derived metrics only (timestamps, mode, model, limitHit flag). The ledger appends JSONL to `~/Library/Application Support/ClaudeUsage/codex-events.jsonl` and supports read-back with rolling window trim.
 

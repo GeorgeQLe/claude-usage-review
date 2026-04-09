@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-09 — Step 3.2: Implement Wrapper Event Types and Event Ledger
+
+Added `CodexInvocationEvent` struct (Codable, Equatable) to `CodexTypes.swift` with start/end timestamps, commandMode, model, limitHitDetected, and computed duration. Created `CodexEventLedger` class in `ClaudeUsage/Services/CodexEventLedger.swift` with JSONL append/read/trim and `defaultDirectory` pointing to `~/Library/Application Support/ClaudeUsage/`. Added `wrapperEvents:` defaulted parameter to `CodexConfidenceEngine.evaluate()` so confidence tests compile (logic deferred to Step 3.4). Registered new file in Xcode project.
+
+Build succeeds. 58 tests pass, 3 expected failures (confidence tests awaiting Step 3.4 engine logic). 0 unexpected failures.
+
 ## 2026-04-09 — Fix Phase 1 Gap: Wire Tray Rotation into Menu Bar
 
 Wired the existing rotation infrastructure (`ProviderCoordinator.selectedTrayProvider`, `ProviderTrayPolicy`, `traySnapshot`) into the actual menu bar label. Previously `menuBarText` was hardcoded to Claude-only data even though rotation types existed.
