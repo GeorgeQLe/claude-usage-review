@@ -175,7 +175,7 @@
   - Accuracy Mode toggle visible in Settings when Codex is detected
 
 ## Green
-- [ ] Step 3.5: [automated] Make all Codex wrapper tests pass, rerun all Phase 1-2 tests, verify no regressions.
+- [x] Step 3.5: [automated] Make all Codex wrapper tests pass, rerun all Phase 1-2 tests, verify no regressions.
 
   **What:** Ensure all CodexWrapperTests pass. Run the full test suite (should be 46 existing + ~15 new wrapper tests ≈ 61 total). Verify Accuracy Mode never claims `.exact` confidence. Fix any compilation or logic issues.
 
@@ -187,9 +187,9 @@
   - Privacy tests confirm no prompt content in ledger
 
 ## Milestone
-- [ ] Codex Accuracy Mode can be enabled independently.
-- [ ] Wrapper-derived Codex events improve confidence and update latency.
-- [ ] Derived telemetry only is stored; raw prompt bodies are not persisted.
-- [ ] Claude remains unaffected when Codex wrapper mode is on.
-- [ ] All Phase 3 tests pass.
-- [ ] No regressions in previous phase tests.
+- [x] Codex Accuracy Mode can be enabled independently.
+- [x] Wrapper-derived Codex events improve confidence and update latency.
+- [x] Derived telemetry only is stored; raw prompt bodies are not persisted.
+- [x] Claude remains unaffected when Codex wrapper mode is on.
+- [x] All Phase 3 tests pass.
+- [x] No regressions in previous phase tests.
