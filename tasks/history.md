@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-10 — Step 3.4: Merge Wrapper Telemetry into Confidence Engine + Accuracy Mode UI
+
+Wired wrapper events into `CodexConfidenceEngine.evaluate()`: 3+ limit hits with a plan yields `.highConfidence`, any non-empty wrapper events yield `.estimated` — checked before existing passive-only logic. Added `CodexEventLedger` to `CodexAdapter` with `wrapperEventCount` tracking; `refresh()` reads wrapper events from ledger, passes to engine, and trims events older than 48h. Added Accuracy Mode toggle to `SettingsView` (conditional on Codex enabled + detected).
+
+Build succeeds. All 61 tests pass, 0 failures. The 3 previously-expected failures (confidence tests) now pass.
+
 ## 2026-04-10 — Step 3.3: Implement Codex Wrapper Launcher
 
 Created `ClaudeUsage/Services/CodexWrapper.swift` — utility class that launches `codex` CLI via `Process`, captures stderr for rate/usage limit detection, records `CodexInvocationEvent` to ledger. Extracts commandMode from first argument, model from `--model` flag. Default codex path resolved via `/usr/bin/which codex`. Privacy-safe: no stdin/stdout capture. Added `codexAccuracyMode()` / `setCodexAccuracyMode(_:)` to `ProviderSettingsStore` backed by UserDefaults. Registered `CodexWrapper.swift` in Xcode project (AA100036 file ref, AA000033 build file).

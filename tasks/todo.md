@@ -3,7 +3,7 @@
 > Project: ClaudeUsage (macOS menu bar app) · Phase 3 of 7
 > Test strategy: tdd
 > Prior phases: Phase 1 (shared provider foundation) ✅, Phase 2 (Codex passive adapter) ✅
-> Current test count: 58 passing, 3 expected failures (15 Codex + 5 ProviderShell + 26 existing + 11 wrapper + 1 confidence passing) → 61 total after 3.2
+> Current test count: 61 passing, 0 expected failures
 
 ## Tests First
 - [x] Step 3.1: [automated] Add failing tests for Codex wrapper event models, event-ledger persistence, confidence upgrades from wrapper data, and privacy constraints.
@@ -129,7 +129,7 @@
   - `xcodebuild build` compiles
   - Wrapper can be instantiated with a mock codex path
 
-- [ ] Step 3.4: [automated] Merge wrapper telemetry into confidence engine and add Accuracy Mode UI.
+- [x] Step 3.4: [automated] Merge wrapper telemetry into confidence engine and add Accuracy Mode UI.
 
   **What:** Update `CodexAdapter.refresh()` to merge ledger events with passive events. Update `CodexConfidenceEngine` to weight wrapper-derived events (they're higher quality than passive-only). Add Accuracy Mode toggle to SettingsView. This step makes the 3 expected-failure confidence tests pass.
 
