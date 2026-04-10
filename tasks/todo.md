@@ -6,7 +6,7 @@
 > Current test count: 61 passing, 0 expected failures
 
 ## Tests First
-- [ ] Step 4.1: [automated] Add failing fixture-based tests for Gemini install detection, auth-mode detection, passive request counting, rate-pressure derivation, and confidence labeling.
+- [x] Step 4.1: [automated] Add failing fixture-based tests for Gemini install detection, auth-mode detection, passive request counting, rate-pressure derivation, and confidence labeling.
 
   **What:** Write red-phase tests that define the Gemini passive adapter contract before production code exists. Tests use temp directories and inline fixtures — no live Gemini CLI invocations. Follows the same pattern as `CodexAdapterTests.swift`.
 

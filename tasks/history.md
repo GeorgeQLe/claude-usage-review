@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-10 — Step 4.1: Red Phase — Failing Tests for Gemini Passive Adapter
+
+Created `GeminiAdapterTests.swift` with 17 tests across 4 classes (GeminiDetectionTests: 4, GeminiActivityParsingTests: 5, GeminiRatePressureTests: 4, GeminiConfidenceTests: 4). Tests define the full Gemini passive adapter contract: install/auth detection, session file parsing with token/model extraction, rate pressure computation, and confidence evaluation. All tests reference not-yet-existing types — test target fails to compile (expected red phase). App target builds clean. Added file to pbxproj test target.
+
 ## 2026-04-10 — Step 3.5: Green Phase — Phase 3 Complete
 
 Verified all 61 tests pass (0 failures): 15 wrapper tests (CodexWrapperEventTests: 3, CodexEventLedgerTests: 5, CodexWrapperConfidenceTests: 4, CodexPrivacyTests: 3) + 46 pre-Phase-3 tests. No regressions. All Phase 3 milestone criteria met. Marked Phase 3 complete in todo.md and roadmap.md.
