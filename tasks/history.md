@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-10 — Step 3.5: Green Phase — Phase 3 Complete
+
+Verified all 61 tests pass (0 failures): 15 wrapper tests (CodexWrapperEventTests: 3, CodexEventLedgerTests: 5, CodexWrapperConfidenceTests: 4, CodexPrivacyTests: 3) + 46 pre-Phase-3 tests. No regressions. All Phase 3 milestone criteria met. Marked Phase 3 complete in todo.md and roadmap.md.
+
 ## 2026-04-10 — Step 3.4: Merge Wrapper Telemetry into Confidence Engine + Accuracy Mode UI
 
 Wired wrapper events into `CodexConfidenceEngine.evaluate()`: 3+ limit hits with a plan yields `.highConfidence`, any non-empty wrapper events yield `.estimated` — checked before existing passive-only logic. Added `CodexEventLedger` to `CodexAdapter` with `wrapperEventCount` tracking; `refresh()` reads wrapper events from ledger, passes to engine, and trims events older than 48h. Added Accuracy Mode toggle to `SettingsView` (conditional on Codex enabled + detected).
