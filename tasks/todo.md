@@ -3,7 +3,7 @@
 > Project: ClauseUsage (macOS menu bar app) · Phase 4 of 7
 > Test strategy: tdd
 > Prior phases: Phase 1 (shared provider foundation) ✅, Phase 2 (Codex passive adapter) ✅, Phase 3 (Codex accuracy mode wrapper) ✅
-> Current test count: 61 passing, 0 expected failures
+> Current test count: 65 passing (61 existing + 4 GeminiDetection), 13 expected failures (stubbed Gemini tests)
 
 ## Tests First
 - [x] Step 4.1: [automated] Add failing fixture-based tests for Gemini install detection, auth-mode detection, passive request counting, rate-pressure derivation, and confidence labeling.
@@ -47,7 +47,7 @@
   - Privacy tests not needed here (Gemini session files are read-only, no prompt content is stored by *our* app)
 
 ## Implementation
-- [ ] Step 4.2: [automated] Implement Gemini install/auth detection.
+- [x] Step 4.2: [automated] Implement Gemini install/auth detection.
 
   **What:** Create `GeminiDetector` that checks for Gemini CLI installation and auth state. Mirrors `CodexDetector` pattern (see `ClaudeUsage/Services/CodexDetector.swift`). This step also requires stub types referenced by other test classes so the test target compiles — but only `GeminiDetectionTests` (4 tests) need to pass.
 

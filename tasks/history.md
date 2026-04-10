@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-10 — Step 4.2: Gemini Install/Auth Detection + Type Stubs
+
+Created `GeminiDetector.swift` with real install/auth detection logic (settings.json presence → install status, security.auth.selectedType → auth mode, oauth_creds.json → authenticated). Created `GeminiActivityParser.swift` and `GeminiTypes.swift` as stubs (fatalError bodies) so the test target compiles. Added all 3 files to pbxproj. 4 GeminiDetectionTests pass, 65 total tests pass, 13 Gemini stub tests expected to fail at runtime.
+
 ## 2026-04-10 — Step 4.1: Red Phase — Failing Tests for Gemini Passive Adapter
 
 Created `GeminiAdapterTests.swift` with 17 tests across 4 classes (GeminiDetectionTests: 4, GeminiActivityParsingTests: 5, GeminiRatePressureTests: 4, GeminiConfidenceTests: 4). Tests define the full Gemini passive adapter contract: install/auth detection, session file parsing with token/model extraction, rate pressure computation, and confidence evaluation. All tests reference not-yet-existing types — test target fails to compile (expected red phase). App target builds clean. Added file to pbxproj test target.
