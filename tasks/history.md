@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-10 — Step 4.3: Gemini Session Parser + Rate Pressure
+
+Replaced 3 `fatalError()` stubs in `GeminiActivityParser.swift` with real implementations. `parseSessionFiles()` enumerates `geminiHome/tmp/*/chats/*.json`, parses session JSON, filters gemini-type messages, extracts timestamp/tokens/model into `GeminiRequestEvent` records. `GeminiRatePressure` inits compute daily request count (24h window), RPM (5min window / 5.0), and optional daily headroom against plan limits. 74 tests pass (9 new Gemini tests: 5 parsing + 4 rate pressure), 4 confidence stubs remain.
+
 ## 2026-04-10 — Step 4.2: Gemini Install/Auth Detection + Type Stubs
 
 Created `GeminiDetector.swift` with real install/auth detection logic (settings.json presence → install status, security.auth.selectedType → auth mode, oauth_creds.json → authenticated). Created `GeminiActivityParser.swift` and `GeminiTypes.swift` as stubs (fatalError bodies) so the test target compiles. Added all 3 files to pbxproj. 4 GeminiDetectionTests pass, 65 total tests pass, 13 Gemini stub tests expected to fail at runtime.
