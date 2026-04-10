@@ -79,18 +79,19 @@ Build the macOS app into a multi-provider CLI usage monitor for Claude Code, Cod
 - No regressions in previous phase tests.
 
 ## Phase 4: Gemini Passive Adapter
+> Test strategy: tdd
 
 ### Tests First
-- Step 4.1: [automated] Add failing fixture-based tests for Gemini install detection, auth-mode detection, passive request counting, rate-pressure derivation, and confidence labeling under [ClaudeUsageTests](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsageTests).
+- Step 4.1: [automated] Add failing fixture-based tests for Gemini install detection, auth-mode detection, passive request counting, rate-pressure derivation, and confidence labeling in `ClaudeUsageTests/GeminiAdapterTests.swift`. ~17 tests across GeminiDetectionTests (4), GeminiActivityParsingTests (5), GeminiRatePressureTests (4), GeminiConfidenceTests (4).
 
 ### Implementation
-- Step 4.2: [automated] Implement Gemini local-state discovery and auth-mode detection in a new adapter/service under [ClaudeUsage/Services](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Services).
-- Step 4.3: [automated] Implement incremental parsing for Gemini state/session artifacts and derive passive request cadence, daily headroom, and stale-state behavior.
-- Step 4.4: [automated] Add Gemini quota profiles and confidence logic to the shared provider model under [ClaudeUsage/Models](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Models).
-- Step 4.5: [automated] Render Gemini-specific provider cards and settings states in [ClaudeUsage/Views/ContentView.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Views/ContentView.swift) and [ClaudeUsage/Views/SettingsView.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Views/SettingsView.swift).
+- Step 4.2: [automated] Implement Gemini install/auth detection in `ClaudeUsage/Services/GeminiDetector.swift`. FileManager-based checks for `~/.gemini/settings.json` (install), `oauth_creds.json` (auth), and `settings.json` `security.auth.selectedType` field (auth mode: oauthPersonal, apiKey, vertexAI, codeAssist).
+- Step 4.3: [automated] Implement Gemini session parser in `ClaudeUsage/Services/GeminiActivityParser.swift`. Walks `~/.gemini/tmp/**/chats/session-*.json`, extracts gemini-type messages with timestamps/tokens/model. Computes `GeminiRatePressure` (daily count, RPM over 5-min window, daily headroom against plan).
+- Step 4.4: [automated] Add Gemini plan profiles, confidence engine, and adapter orchestrator in `ClaudeUsage/Models/GeminiTypes.swift` and `ClaudeUsage/Services/GeminiAdapter.swift`. Plans: Personal (1000/day, 60/min). Confidence: exact (reserved for wrapper), highConfidence (known auth + plan + stable activity), estimated (auth known, counting incomplete), observedOnly (auth detected, no quota evidence). Add `.geminiRich` snapshot case to `ProviderTypes.swift`. Add Gemini plan persistence to `ProviderSettingsStore`.
+- Step 4.5: [automated] Wire `GeminiAdapter` into `ProviderShellViewModel` with 15s polling. Replace Gemini placeholder in `SettingsView` with detection status, enable toggle, auth mode display, plan picker, and rate pressure summary. Add tray text formatting for `.geminiRich` case.
 
 ### Green
-- Step 4.6: [automated] Make Gemini passive tests pass, rerun all previous phase tests, and verify provider rotation works correctly with all three providers enabled.
+- Step 4.6: [automated] Make all Gemini passive tests pass, rerun all Phase 1-3 tests (61 total), and verify that provider rotation works correctly with Claude + Codex + Gemini.
 
 ### Milestone
 - Gemini can be detected and configured as a monitored provider.
