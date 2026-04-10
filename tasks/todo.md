@@ -214,69 +214,149 @@
   - `GeminiRatePressureTests` pass (4 tests)
   - All 65 existing tests still pass
 
-- [ ] Step 4.4: [automated] Add Gemini plan profiles and confidence engine.
+- [ ] Step 4.4: [automated] Add Gemini confidence engine + adapter orchestrator.
 
-  **What:** Create Gemini-specific types for plan profiles and confidence evaluation. Add `GeminiAdapter` orchestrator. Wire into `ProviderTypes.swift` with a new `.geminiRich` snapshot case.
+  **What:** Replace the `fatalError()` stub in `GeminiTypes.swift` with real confidence logic. Create `GeminiAdapter` orchestrator. Wire `.geminiRich` into `ProviderTypes.swift`. Add Gemini plan/auth settings to `ProviderSettingsStore`. This makes the 4 GeminiConfidenceTests pass.
 
-  **Files to create:**
-  - `ClaudeUsage/Models/GeminiTypes.swift` — new file:
-    ```
-    struct GeminiPlanProfile: Equatable {
-        let name: String               // e.g., "Personal Google Auth"
-        let dailyRequestLimit: Int?    // e.g., 1000
-        let requestsPerMinuteLimit: Int? // e.g., 60
-    }
-    struct GeminiEstimate: Equatable {
-        let confidence: GeminiConfidence
-        let ratePressure: GeminiRatePressure?
-        let authMode: GeminiAuthMode?
-    }
-    enum GeminiConfidence: Equatable {
-        case exact, highConfidence, estimated, observedOnly
-    }
-    class GeminiConfidenceEngine {
-        func evaluate(
-            detection: GeminiDetectionResult,
-            events: [GeminiRequestEvent],
-            plan: GeminiPlanProfile?
-        ) -> GeminiEstimate
-    }
-    ```
-    - Confidence rules (from spec):
-      - `.exact` — never in passive mode (reserved for wrapper)
-      - `.highConfidence` — known auth mode (e.g., `.oauthPersonal`) + plan profile + events with stable timestamps
-      - `.estimated` — auth mode known + some events but no plan, OR plan but sparse events
-      - `.observedOnly` — auth detected but insufficient quota evidence
+  ## File to Modify: `ClaudeUsage/Models/GeminiTypes.swift`
 
-  - `ClaudeUsage/Services/GeminiAdapter.swift` — new file:
-    ```
-    enum GeminiAdapterState {
-        case notInstalled
-        case installed(estimate: GeminiEstimate)
-    }
-    class GeminiAdapter: ObservableObject {
-        @Published var state: GeminiAdapterState = .notInstalled
-        let detector: GeminiDetector
-        let parser: GeminiActivityParser
-        let confidenceEngine: GeminiConfidenceEngine
-        var planProfile: GeminiPlanProfile?
-        
-        init(geminiHome: URL = ..., planProfile: GeminiPlanProfile? = nil)
-        func refresh()
-        func toProviderSnapshot(isEnabled: Bool) -> ProviderSnapshot
-    }
-    ```
-    - `refresh()`: detect → parse sessions → evaluate confidence → set state
-    - `toProviderSnapshot()`: returns `.gemini(status:)` if not installed, `.geminiRich(estimate:)` if installed
+  **Already contains:** `GeminiConfidence` enum, `GeminiEstimate` struct, `GeminiConfidenceEngine` class with `fatalError()` body.
 
-  **Files to modify:**
-  - `ClaudeUsage/Models/ProviderTypes.swift` — add `.geminiRich(estimate: GeminiEstimate, isEnabled: Bool)` case to `ProviderSnapshot` enum; update `id`, `isEnabled`, `ProviderCoordinator.makeShellState`, `selectedTrayProvider` to handle new case
-  - `ClaudeUsage/Models/ProviderSettingsStore.swift` — add `geminiPlan() -> GeminiPlanProfile?`, `setGeminiPlan(_:)`, `geminiAuthMode() -> GeminiAuthMode?`, `setGeminiAuthMode(_:)` methods
-  - `ClaudeUsage.xcodeproj/project.pbxproj` — add `GeminiTypes.swift` and `GeminiAdapter.swift` to app Sources build phase
+  **Note:** The existing `GeminiEstimate` struct needs `Equatable` conformance (tests use `XCTAssertEqual`). Add `: Equatable` to `GeminiEstimate` if missing. Also `GeminiRatePressure` needs `Equatable` (it's used inside `GeminiEstimate`).
+
+  **Replace `evaluate()` body with confidence rules:**
+  ```swift
+  func evaluate(detection:events:plan:) -> GeminiEstimate {
+      let authMode: GeminiAuthMode?
+      if case .authenticated(let mode) = detection.authStatus {
+          authMode = mode
+      } else {
+          authMode = nil
+      }
+
+      let ratePressure: GeminiRatePressure?
+      if !events.isEmpty {
+          if let plan = plan {
+              ratePressure = GeminiRatePressure(events: events, plan: plan, now: Date())
+          } else {
+              ratePressure = GeminiRatePressure(events: events, now: Date())
+          }
+      } else {
+          ratePressure = nil
+      }
+
+      // Never claim .exact in passive mode
+      let confidence: GeminiConfidence
+      if authMode != nil && plan != nil && !events.isEmpty {
+          confidence = .highConfidence
+      } else if authMode != nil && !events.isEmpty {
+          confidence = .estimated
+      } else {
+          confidence = .observedOnly
+      }
+
+      return GeminiEstimate(confidence: confidence, ratePressure: ratePressure, authMode: authMode)
+  }
+  ```
+
+  **Test expectations (from `GeminiAdapterTests.swift`):**
+  - `testObservedOnlyWhenAuthDetectedButNoSessions`: auth present, no events, no plan → `.observedOnly`
+  - `testEstimatedWhenAuthModeKnownButCountingIncomplete`: auth + events, no plan → `.estimated`
+  - `testHighConfidenceWhenKnownAuthModeWithPlanAndActivity`: auth + events + plan → `.highConfidence`
+  - `testNeverClaimsExactForPassiveMode`: even with full data → never `.exact`
+
+  ## File to Create: `ClaudeUsage/Services/GeminiAdapter.swift`
+
+  Follow `CodexAdapter.swift` pattern exactly:
+  ```swift
+  import Foundation
+
+  enum GeminiAdapterState {
+      case notInstalled
+      case installed(estimate: GeminiEstimate)
+  }
+
+  class GeminiAdapter: ObservableObject {
+      @Published var state: GeminiAdapterState = .notInstalled
+      let detector: GeminiDetector
+      let parser: GeminiActivityParser
+      let confidenceEngine: GeminiConfidenceEngine
+      var planProfile: GeminiPlanProfile?
+
+      init(geminiHome: URL = FileManager.default.homeDirectoryForCurrentUser
+               .appendingPathComponent(".gemini"),
+           planProfile: GeminiPlanProfile? = nil) {
+          self.detector = GeminiDetector(geminiHome: geminiHome)
+          self.parser = GeminiActivityParser(geminiHome: geminiHome)
+          self.confidenceEngine = GeminiConfidenceEngine()
+          self.planProfile = planProfile
+      }
+
+      func refresh() {
+          let detection = detector.detect()
+          guard detection.installStatus == .installed else {
+              state = .notInstalled
+              return
+          }
+          let events = parser.parseSessionFiles()
+          let estimate = confidenceEngine.evaluate(
+              detection: detection, events: events, plan: planProfile)
+          state = .installed(estimate: estimate)
+      }
+
+      func toProviderSnapshot(isEnabled: Bool) -> ProviderSnapshot {
+          switch state {
+          case .notInstalled:
+              return .gemini(status: .missingConfiguration, isEnabled: isEnabled)
+          case let .installed(estimate):
+              return .geminiRich(estimate: estimate, isEnabled: isEnabled)
+          }
+      }
+  }
+  ```
+
+  ## File to Modify: `ClaudeUsage/Models/ProviderTypes.swift`
+
+  Add new case to `ProviderSnapshot` enum:
+  ```swift
+  case geminiRich(estimate: GeminiEstimate, isEnabled: Bool)
+  ```
+
+  Update `id` computed property — `.geminiRich` returns `.gemini`.
+  Update `isEnabled` computed property — `.geminiRich` returns its `isEnabled`.
+  Update any switch statements in `ProviderCoordinator.makeShellState` and `selectedTrayProvider` to handle `.geminiRich`.
+
+  ## File to Modify: `ClaudeUsage/Models/ProviderSettingsStore.swift`
+
+  Add methods following the Codex pattern (uses UserDefaults keys `provider_gemini_plan`, `provider_gemini_plan_limit`, `provider_gemini_plan_rpm_limit`, `provider_gemini_auth_mode`):
+  ```swift
+  func geminiPlan() -> GeminiPlanProfile? {
+      guard let name = UserDefaults.standard.string(forKey: "provider_gemini_plan"),
+            let limit = UserDefaults.standard.object(forKey: "provider_gemini_plan_limit") as? Int,
+            let rpmLimit = UserDefaults.standard.object(forKey: "provider_gemini_plan_rpm_limit") as? Int
+      else { return nil }
+      return GeminiPlanProfile(name: name, dailyRequestLimit: limit, requestsPerMinuteLimit: rpmLimit)
+  }
+
+  func setGeminiPlan(_ plan: GeminiPlanProfile?) { ... }
+  func geminiAuthMode() -> GeminiAuthMode? { ... }
+  func setGeminiAuthMode(_ mode: GeminiAuthMode?) { ... }
+  ```
+
+  ## File to Modify: `ClaudeUsage.xcodeproj/project.pbxproj`
+
+  Add `GeminiAdapter.swift` to:
+  - PBXFileReference section (next ID: AA100041)
+  - PBXBuildFile section (next ID: AA000038)
+  - Services PBXGroup children
+  - App Sources build phase
+
+  **Note:** `GeminiTypes.swift` is already registered from Step 4.2. Only `GeminiAdapter.swift` needs adding.
 
   **Acceptance criteria:**
   - `xcodebuild build` compiles
   - `GeminiConfidenceTests` pass (4 tests)
+  - All 74 existing tests still pass (78 total)
 
 - [ ] Step 4.5: [automated] Wire GeminiAdapter into ProviderShellViewModel and render Gemini UI.
 
