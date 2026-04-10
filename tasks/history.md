@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-10 — Step 3.3: Implement Codex Wrapper Launcher
+
+Created `ClaudeUsage/Services/CodexWrapper.swift` — utility class that launches `codex` CLI via `Process`, captures stderr for rate/usage limit detection, records `CodexInvocationEvent` to ledger. Extracts commandMode from first argument, model from `--model` flag. Default codex path resolved via `/usr/bin/which codex`. Privacy-safe: no stdin/stdout capture. Added `codexAccuracyMode()` / `setCodexAccuracyMode(_:)` to `ProviderSettingsStore` backed by UserDefaults. Registered `CodexWrapper.swift` in Xcode project (AA100036 file ref, AA000033 build file).
+
+Build succeeds. 61 tests total, 3 expected failures (confidence engine wrapperEvents logic deferred to Step 3.4). 0 unexpected failures.
+
 ## 2026-04-09 — Step 3.2: Implement Wrapper Event Types and Event Ledger
 
 Added `CodexInvocationEvent` struct (Codable, Equatable) to `CodexTypes.swift` with start/end timestamps, commandMode, model, limitHitDetected, and computed duration. Created `CodexEventLedger` class in `ClaudeUsage/Services/CodexEventLedger.swift` with JSONL append/read/trim and `defaultDirectory` pointing to `~/Library/Application Support/ClaudeUsage/`. Added `wrapperEvents:` defaulted parameter to `CodexConfidenceEngine.evaluate()` so confidence tests compile (logic deferred to Step 3.4). Registered new file in Xcode project.

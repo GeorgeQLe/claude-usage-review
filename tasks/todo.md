@@ -3,7 +3,7 @@
 > Project: ClaudeUsage (macOS menu bar app) · Phase 3 of 7
 > Test strategy: tdd
 > Prior phases: Phase 1 (shared provider foundation) ✅, Phase 2 (Codex passive adapter) ✅
-> Current test count: 58 passing, 3 expected failures (15 Codex + 5 ProviderShell + 26 existing + 11 wrapper + 1 confidence passing)
+> Current test count: 58 passing, 3 expected failures (15 Codex + 5 ProviderShell + 26 existing + 11 wrapper + 1 confidence passing) → 61 total after 3.2
 
 ## Tests First
 - [x] Step 3.1: [automated] Add failing tests for Codex wrapper event models, event-ledger persistence, confidence upgrades from wrapper data, and privacy constraints.
@@ -84,7 +84,7 @@
   - `xcodebuild build` compiles
   - `CodexWrapperEventTests` and `CodexEventLedgerTests` and `CodexPrivacyTests` should pass after this step
 
-- [ ] Step 3.3: [automated] Implement Codex wrapper launcher.
+- [x] Step 3.3: [automated] Implement Codex wrapper launcher.
 
   **What:** Create `CodexWrapper` that launches the `codex` CLI via `Process`, captures invocation timing, detects limit-hit errors from stderr, and records events to the ledger. This is the actual wrapper that users opt into.
 
