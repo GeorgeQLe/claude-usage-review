@@ -49,43 +49,123 @@
 ## Implementation
 - [ ] Step 4.2: [automated] Implement Gemini install/auth detection.
 
-  **What:** Create `GeminiDetector` that checks for Gemini CLI installation and authenticaton state. Mirrors `CodexDetector` pattern.
+  **What:** Create `GeminiDetector` that checks for Gemini CLI installation and auth state. Mirrors `CodexDetector` pattern (see `ClaudeUsage/Services/CodexDetector.swift`). This step also requires stub types referenced by other test classes so the test target compiles — but only `GeminiDetectionTests` (4 tests) need to pass.
 
-  **Files to create:**
-  - `ClaudeUsage/Services/GeminiDetector.swift` — new file:
-    ```
-    enum GeminiInstallStatus: Equatable { case installed, notInstalled }
-    enum GeminiAuthMode: Equatable, Codable {
-        case oauthPersonal    // settings.json selectedType: "oauth-personal"
-        case apiKey           // settings.json selectedType: "api-key"
-        case vertexAI         // settings.json selectedType: "vertex-ai"
-        case codeAssist       // settings.json selectedType: "code-assist"
-    }
-    enum GeminiAuthStatus: Equatable {
-        case authenticated(mode: GeminiAuthMode)
-        case authAbsent
-    }
-    struct GeminiDetectionResult: Equatable {
-        let installStatus: GeminiInstallStatus
-        let authStatus: GeminiAuthStatus
-    }
-    class GeminiDetector {
-        let geminiHome: URL   // default: ~/.gemini
-        let fileManager: FileManager
-        init(geminiHome: URL = ..., fileManager: FileManager = .default)
-        func detect() -> GeminiDetectionResult
-    }
-    ```
-    - Check `geminiHome/settings.json` exists → `.installed` vs `.notInstalled`
-    - If installed, read `settings.json` → parse `security.auth.selectedType` → map to `GeminiAuthMode`
-    - Check `oauth_creds.json` (for oauth) or other creds → `.authenticated(mode:)` vs `.authAbsent`
+  **File to create: `ClaudeUsage/Services/GeminiDetector.swift`**
 
-  **Files to modify:**
-  - `ClaudeUsage.xcodeproj/project.pbxproj` — add `GeminiDetector.swift` to Services group and app Sources build phase
+  Follow `CodexDetector.swift` structure. Contains all detection types + detector class:
+
+  ```swift
+  import Foundation
+
+  enum GeminiInstallStatus: Equatable { case installed, notInstalled }
+
+  enum GeminiAuthMode: Equatable, Codable {
+      case oauthPersonal    // settings.json selectedType: "oauth-personal"
+      case apiKey           // settings.json selectedType: "api-key"
+      case vertexAI         // settings.json selectedType: "vertex-ai"
+      case codeAssist       // settings.json selectedType: "code-assist"
+  }
+
+  enum GeminiAuthStatus: Equatable {
+      case authenticated(mode: GeminiAuthMode)
+      case authAbsent
+  }
+
+  struct GeminiDetectionResult: Equatable {
+      let installStatus: GeminiInstallStatus
+      let authStatus: GeminiAuthStatus
+  }
+
+  class GeminiDetector {
+      let geminiHome: URL
+      let fileManager: FileManager
+
+      init(geminiHome: URL = FileManager.default.homeDirectoryForCurrentUser
+               .appendingPathComponent(".gemini"),
+           fileManager: FileManager = .default)
+
+      func detect() -> GeminiDetectionResult
+  }
+  ```
+
+  **Detection logic:**
+  1. Check `geminiHome/settings.json` exists → `.installed` / `.notInstalled`
+  2. If not installed → return `(.notInstalled, .authAbsent)`
+  3. If installed, read `settings.json`, decode JSON to extract `security.auth.selectedType` string
+  4. Map string to `GeminiAuthMode`: `"oauth-personal"` → `.oauthPersonal`, `"api-key"` → `.apiKey`, `"vertex-ai"` → `.vertexAI`, `"code-assist"` → `.codeAssist`
+  5. For OAuth mode: check `oauth_creds.json` exists → `.authenticated(mode:)` / `.authAbsent`
+  6. For API key mode: could check for key presence, but for now `.authAbsent` if no creds file
+
+  **JSON structure of `settings.json`** (from test fixtures):
+  ```json
+  {"security":{"auth":{"selectedType":"oauth-personal"}}}
+  ```
+  Use a nested `Decodable` struct or manual JSONSerialization to extract `selectedType`.
+
+  **File to create: `ClaudeUsage/Services/GeminiActivityParser.swift`** (stub only)
+
+  The test target won't compile without `GeminiActivityParser`, `GeminiRequestEvent`, `GeminiRatePressure`, and `GeminiPlanProfile`. Create stubs with `fatalError("Not yet implemented")` bodies so the test target links. Only the type signatures matter — real implementation is Step 4.3.
+
+  ```swift
+  struct GeminiRequestEvent: Equatable {
+      let timestamp: Date
+      let inputTokens: Int
+      let outputTokens: Int
+      let totalTokens: Int
+      let model: String
+  }
+
+  struct GeminiPlanProfile: Equatable {
+      let name: String
+      let dailyRequestLimit: Int
+      let requestsPerMinuteLimit: Int
+  }
+
+  struct GeminiRatePressure: Equatable {
+      let dailyRequestCount: Int
+      let requestsPerMinute: Double
+      let remainingDailyHeadroom: Int?
+      init(events:now:) // and init(events:plan:now:)
+  }
+
+  class GeminiActivityParser {
+      init(geminiHome: URL, fileManager: FileManager = .default)
+      func parseSessionFiles() -> [GeminiRequestEvent]
+  }
+  ```
+
+  **File to create: `ClaudeUsage/Models/GeminiTypes.swift`** (stub only)
+
+  Stub `GeminiConfidenceEngine`, `GeminiEstimate`, `GeminiConfidence` so confidence tests compile:
+
+  ```swift
+  enum GeminiConfidence: Equatable {
+      case exact, highConfidence, estimated, observedOnly
+  }
+
+  struct GeminiEstimate: Equatable {
+      let confidence: GeminiConfidence
+      let ratePressure: GeminiRatePressure?
+      let authMode: GeminiAuthMode?
+  }
+
+  class GeminiConfidenceEngine {
+      func evaluate(detection:events:plan:) -> GeminiEstimate
+  }
+  ```
+
+  **File to modify: `ClaudeUsage.xcodeproj/project.pbxproj`**
+  - Add `GeminiDetector.swift` → Services group + app Sources build phase (next ID: AA100038/AA000035)
+  - Add `GeminiActivityParser.swift` → Services group + app Sources build phase (AA100039/AA000036)
+  - Add `GeminiTypes.swift` → Models group + app Sources build phase (AA100040/AA000037)
 
   **Acceptance criteria:**
-  - `xcodebuild build` compiles
-  - `GeminiDetectionTests` pass (4 tests)
+  - `xcodebuild build -scheme ClaudeUsage` compiles (app target)
+  - `xcodebuild build-for-testing -scheme ClaudeUsage` compiles (test target links)
+  - `GeminiDetectionTests` pass (4 tests): installed/notInstalled, oauthAuth/authAbsent
+  - Remaining 13 Gemini tests may fail at runtime (stubs) — that's expected
+  - Existing 61 tests still pass
 
 - [ ] Step 4.3: [automated] Implement Gemini session parser for passive request counting.
 
