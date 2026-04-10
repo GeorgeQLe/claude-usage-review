@@ -54,4 +54,12 @@ class ProviderSettingsStore: ObservableObject {
             UserDefaults.standard.removeObject(forKey: "provider_codex_plan_limit")
         }
     }
+
+    func codexAccuracyMode() -> Bool {
+        UserDefaults.standard.bool(forKey: "provider_codex_accuracy_mode")
+    }
+
+    func setCodexAccuracyMode(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: "provider_codex_accuracy_mode")
+    }
 }
