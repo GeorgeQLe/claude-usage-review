@@ -41,6 +41,9 @@
 		AA000032 /* CodexEventLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100035 /* CodexEventLedger.swift */; };
 		AA000033 /* CodexWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100036 /* CodexWrapper.swift */; };
 		AA000034 /* GeminiAdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100037 /* GeminiAdapterTests.swift */; };
+		AA000035 /* GeminiDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100038 /* GeminiDetector.swift */; };
+		AA000036 /* GeminiActivityParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100039 /* GeminiActivityParser.swift */; };
+		AA000037 /* GeminiTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100040 /* GeminiTypes.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,6 +94,9 @@
 		AA100035 /* CodexEventLedger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexEventLedger.swift; sourceTree = "<group>"; };
 		AA100036 /* CodexWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexWrapper.swift; sourceTree = "<group>"; };
 		AA100037 /* GeminiAdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiAdapterTests.swift; sourceTree = "<group>"; };
+		AA100038 /* GeminiDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiDetector.swift; sourceTree = "<group>"; };
+		AA100039 /* GeminiActivityParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiActivityParser.swift; sourceTree = "<group>"; };
+		AA100040 /* GeminiTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiTypes.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -181,6 +187,7 @@
 				AA100025 /* ProviderShellViewModel.swift */,
 				AA100027 /* ProviderSettingsStore.swift */,
 				AA100032 /* CodexTypes.swift */,
+				AA100040 /* GeminiTypes.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -198,6 +205,8 @@
 				AA100033 /* CodexAdapter.swift */,
 				AA100035 /* CodexEventLedger.swift */,
 				AA100036 /* CodexWrapper.swift */,
+				AA100038 /* GeminiDetector.swift */,
+				AA100039 /* GeminiActivityParser.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -313,6 +322,9 @@
 				AA000029 /* CodexAdapter.swift in Sources */,
 				AA000032 /* CodexEventLedger.swift in Sources */,
 				AA000033 /* CodexWrapper.swift in Sources */,
+				AA000035 /* GeminiDetector.swift in Sources */,
+				AA000036 /* GeminiActivityParser.swift in Sources */,
+				AA000037 /* GeminiTypes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
