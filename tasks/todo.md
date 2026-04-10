@@ -131,25 +131,28 @@
 
 - [ ] Step 3.4: [automated] Merge wrapper telemetry into confidence engine and add Accuracy Mode UI.
 
-  **What:** Update `CodexAdapter.refresh()` to merge ledger events with passive events. Update `CodexConfidenceEngine` to weight wrapper-derived events (they're higher quality than passive-only). Add Accuracy Mode toggle to SettingsView.
+  **What:** Update `CodexAdapter.refresh()` to merge ledger events with passive events. Update `CodexConfidenceEngine` to weight wrapper-derived events (they're higher quality than passive-only). Add Accuracy Mode toggle to SettingsView. This step makes the 3 expected-failure confidence tests pass.
 
   **Files to modify:**
-  - `ClaudeUsage/Models/CodexTypes.swift` — update `CodexConfidenceEngine.evaluate()`:
-    - Accept new parameter: `wrapperEvents: [CodexInvocationEvent]`
-    - If `wrapperEvents` is non-empty + plan → at least `.estimated`
-    - If `wrapperEvents` has 3+ limitHit events in recent 24h + plan → `.highConfidence`
-    - Still never returns `.exact` (spec constraint)
+  - `ClaudeUsage/Models/CodexTypes.swift` (line 32-49) — update `CodexConfidenceEngine.evaluate()`:
+    - The `wrapperEvents` parameter already exists (added in Step 3.2) but is currently ignored
+    - Add logic BEFORE the existing checks:
+      - If `wrapperEvents` has 3+ events with `limitHitDetected == true` AND `plan != nil` → return `.highConfidence`
+      - If `wrapperEvents` is non-empty → return at least `.estimated`
+    - The existing `recentResets >= 3 && plan` → `.highConfidence` check stays
+    - Still never returns `.exact` (spec constraint — tests verify this)
 
   - `ClaudeUsage/Services/CodexAdapter.swift` — update:
     - Add `let ledger: CodexEventLedger` property
-    - In `init`, create ledger (same codexHome base or app support directory)
-    - In `refresh()`, call `ledger.readEvents()` and pass to confidence engine
-    - Trim ledger on each refresh (48h rolling window)
+    - In `init`, create ledger using `CodexEventLedger.defaultDirectory`
+    - In `refresh()`, call `ledger.readEvents()` and pass as `wrapperEvents:` to `engine.evaluate()`
+    - Call `ledger.trim(retaining: 48 * 3600)` on each refresh to keep the file small
 
   - `ClaudeUsage/Views/SettingsView.swift` — update Codex provider row:
-    - Add "Accuracy Mode" toggle below the Codex enable toggle (only shown when Codex is enabled + detected)
+    - Add "Accuracy Mode" toggle below the Codex enable toggle (only shown when Codex is enabled + detected via `providerShellViewModel.codexDetected`)
     - Show status text: "Wrapper active · N events recorded" or "Not enabled"
-    - Toggle writes to `providerSettingsStore.codexAccuracyMode`
+    - Toggle reads/writes `providerSettingsStore.codexAccuracyMode` / `setCodexAccuracyMode(_:)`
+    - Need to pass ledger event count — either via `CodexAdapter` state or a new computed property
 
   - `ClaudeUsage/Models/ProviderShellViewModel.swift` — no changes needed (already subscribes to `codexAdapter.$state`)
 
@@ -159,9 +162,16 @@
   - Ledger trim happens on each adapter refresh (every 15s) to keep the file small
   - UI shows event count as feedback that Accuracy Mode is working
 
+  **Tests that should go green:**
+  - `testWrapperEventsUpgradeFromObservedToEstimated` — wrapper events present → `.estimated`
+  - `testWrapperLimitHitsUpgradeToHighConfidence` — 3+ limit hits + plan → `.highConfidence`
+  - `testWrapperEventsAloneWithoutPlanYieldEstimated` — wrapper events, no plan → `.estimated`
+  - `testWrapperDoesNotClaimExactConfidence` — still passes (never `.exact`)
+
   **Acceptance criteria:**
   - `xcodebuild build` compiles
-  - `CodexWrapperConfidenceTests` pass (wrapper events upgrade confidence)
+  - `CodexWrapperConfidenceTests` pass (all 4 tests, 0 expected failures)
+  - All 61 tests pass with 0 failures
   - Accuracy Mode toggle visible in Settings when Codex is detected
 
 ## Green
