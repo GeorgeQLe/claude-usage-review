@@ -169,44 +169,50 @@
 
 - [ ] Step 4.3: [automated] Implement Gemini session parser for passive request counting.
 
-  **What:** Create `GeminiActivityParser` that reads `~/.gemini/tmp/**/chats/session-*.json` files, extracts request timestamps and token usage from gemini-type messages. Computes `GeminiRatePressure` (daily count, RPM, headroom).
+  **What:** Replace the `fatalError()` stubs in `GeminiActivityParser.swift` with real implementations. The file already exists with correct type signatures from Step 4.2 — just fill in the method bodies. Also implement `GeminiRatePressure` init bodies.
 
-  **Files to create:**
-  - `ClaudeUsage/Services/GeminiActivityParser.swift` — new file:
-    ```
-    struct GeminiRequestEvent: Equatable {
-        let timestamp: Date
-        let inputTokens: Int?
-        let outputTokens: Int?
-        let totalTokens: Int?
-        let model: String?
-    }
-    struct GeminiRatePressure: Equatable {
-        let dailyRequestCount: Int
-        let requestsPerMinute: Double?
-        let remainingDailyHeadroom: Int?  // nil when no plan profile
-    }
-    class GeminiActivityParser {
-        let geminiHome: URL
-        let fileManager: FileManager
-        init(geminiHome: URL = ..., fileManager: FileManager = .default)
-        func parseSessionFiles() -> [GeminiRequestEvent]
-        func ratePressure(from events: [GeminiRequestEvent], plan: GeminiPlanProfile?) -> GeminiRatePressure
-    }
-    ```
-    - Walks `geminiHome/tmp/` looking for `**/chats/session-*.json`
-    - For each session file, decodes JSON → extracts messages where `type == "gemini"`
-    - Each gemini message becomes a `GeminiRequestEvent` with timestamp, tokens, model
-    - `ratePressure()` computes daily count (last 24h), RPM (last 5 min sliding window), headroom (plan daily limit − daily count)
-    - Skips unreadable/corrupt files via `try?`
+  **File to modify: `ClaudeUsage/Services/GeminiActivityParser.swift`**
 
-  **Files to modify:**
-  - `ClaudeUsage.xcodeproj/project.pbxproj` — add `GeminiActivityParser.swift` to app Sources build phase
+  Already contains: `GeminiRequestEvent` struct, `GeminiPlanProfile` struct, `GeminiRatePressure` struct (with two fatalError inits), `GeminiActivityParser` class (with fatalError `parseSessionFiles`).
+
+  **`GeminiActivityParser.parseSessionFiles()` implementation:**
+  1. Walk `geminiHome/tmp/` looking for `*/chats/session-*.json` (two-level: project hash dir → chats dir → session files)
+  2. For each session file, `try? Data(contentsOf:)` + `try? JSONSerialization` to decode
+  3. Extract `messages` array, filter where `type == "gemini"`
+  4. For each gemini message, extract:
+     - `timestamp` string → parse with ISO8601DateFormatter (`.withInternetDateTime, .withFractionalSeconds`)
+     - `tokens.input`, `tokens.output`, `tokens.total` as Int
+     - `model` as String
+  5. Return flat `[GeminiRequestEvent]` across all session files
+  6. Skip corrupt/unreadable files silently (use `try?`)
+
+  **`GeminiRatePressure` init implementations:**
+  - `init(events:now:)` — no plan variant:
+    - `dailyRequestCount` = count of events where `timestamp > now - 24h`
+    - `requestsPerMinute` = events in last 5 minutes / 5.0 (the sliding window size)
+    - `remainingDailyHeadroom` = nil
+  - `init(events:plan:now:)` — with plan:
+    - Same daily/RPM computation
+    - `remainingDailyHeadroom` = `plan.dailyRequestLimit - dailyRequestCount`
+
+  **Test expectations (from `GeminiAdapterTests.swift`):**
+  - `testParsesSessionFileExtractsMessageTimestamps`: 5 messages, 3 are type "gemini" → 3 events
+  - `testParsesMultipleSessionFilesAcrossProjectHashes`: 2 project dirs, 1 event each → 2 events total
+  - `testExtractsTokenUsageFromGeminiMessages`: input=200, output=100, total=300
+  - `testExtractsModelFromGeminiMessages`: model="gemini-2.5-flash"
+  - `testSkipsCorruptSessionFiles`: 1 valid + 1 corrupt → 1 event
+  - `testDailyRequestCountSumsEventsInLast24Hours`: 3 events (36h, 12h, 1h ago) → dailyCount=2
+  - `testRequestsPerMinuteOverSlidingWindow`: 10 events every 30s over 5min → RPM=2.0
+  - `testDailyHeadroomCalculatedAgainstPlanQuota`: 400 events + plan 1000/day → headroom=600
+  - `testHeadroomNilWhenNoPlanProfile`: no plan → headroom nil
+
+  **No pbxproj changes needed** — file already registered in Step 4.2.
 
   **Acceptance criteria:**
   - `xcodebuild build` compiles
   - `GeminiActivityParsingTests` pass (5 tests)
   - `GeminiRatePressureTests` pass (4 tests)
+  - All 65 existing tests still pass
 
 - [ ] Step 4.4: [automated] Add Gemini plan profiles and confidence engine.
 
