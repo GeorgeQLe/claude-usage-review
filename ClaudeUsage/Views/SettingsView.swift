@@ -239,6 +239,23 @@ struct SettingsView: View {
                         .controlSize(.mini)
                     }
 
+                    if providerSettingsStore.isEnabled(.codex) && providerShellViewModel.codexDetected {
+                        HStack {
+                            Text("  Accuracy Mode")
+                                .font(.system(size: 11))
+                            Spacer()
+                            Text(providerSettingsStore.codexAccuracyMode() ? "Active" : "Off")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                            Toggle("", isOn: Binding(
+                                get: { providerSettingsStore.codexAccuracyMode() },
+                                set: { providerSettingsStore.setCodexAccuracyMode($0) }
+                            ))
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                        }
+                    }
+
                     HStack {
                         Text("Gemini")
                             .font(.system(size: 12))

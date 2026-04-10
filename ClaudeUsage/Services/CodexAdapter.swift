@@ -12,13 +12,17 @@ class CodexAdapter: ObservableObject {
     let detector: CodexDetector
     let parser: CodexActivityParser
     let confidenceEngine: CodexConfidenceEngine
+    let ledger: CodexEventLedger
     var planProfile: CodexPlanProfile?
+    private(set) var wrapperEventCount: Int = 0
 
     init(codexHome: URL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".codex"),
-         planProfile: CodexPlanProfile? = nil) {
+         planProfile: CodexPlanProfile? = nil,
+         ledgerDirectory: URL = CodexEventLedger.defaultDirectory) {
         self.detector = CodexDetector(codexHome: codexHome)
         self.parser = CodexActivityParser(codexHome: codexHome)
         self.confidenceEngine = CodexConfidenceEngine()
+        self.ledger = CodexEventLedger(directory: ledgerDirectory)
         self.planProfile = planProfile
     }
 
@@ -29,15 +33,19 @@ class CodexAdapter: ObservableObject {
             return
         }
         let events = (try? parser.parseHistory()) ?? []
+        let wrapperEvents = (try? ledger.readEvents()) ?? []
+        wrapperEventCount = wrapperEvents.count
         let recentResets = events.filter {
             $0.eventType == .limitHit && $0.timestamp > Date().addingTimeInterval(-86400)
         }.count
         let estimate = confidenceEngine.evaluate(
             detection: detection, events: events,
-            plan: planProfile, recentResets: recentResets
+            plan: planProfile, recentResets: recentResets,
+            wrapperEvents: wrapperEvents
         )
         let cooldown = confidenceEngine.cooldownStatus(from: events)
         state = .installed(estimate: estimate, cooldown: cooldown)
+        try? ledger.trim(retaining: 48 * 3600)
     }
 
     func toProviderSnapshot(isEnabled: Bool) -> ProviderSnapshot {

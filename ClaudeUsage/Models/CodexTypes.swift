@@ -39,6 +39,15 @@ class CodexConfidenceEngine {
         recentResets: Int,
         wrapperEvents: [CodexInvocationEvent] = []
     ) -> CodexEstimate {
+        // Wrapper events with enough limit hits + plan → highConfidence
+        let wrapperLimitHits = wrapperEvents.filter { $0.limitHitDetected }.count
+        if wrapperLimitHits >= 3 && plan != nil {
+            return CodexEstimate(confidence: .highConfidence)
+        }
+        // Any wrapper events → at least estimated
+        if !wrapperEvents.isEmpty {
+            return CodexEstimate(confidence: .estimated)
+        }
         if recentResets >= 3 && plan != nil {
             return CodexEstimate(confidence: .highConfidence)
         }
