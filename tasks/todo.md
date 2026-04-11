@@ -358,7 +358,7 @@
   - `GeminiConfidenceTests` pass (4 tests)
   - All 74 existing tests still pass (78 total)
 
-- [ ] Step 4.5: [automated] Wire GeminiAdapter into ProviderShellViewModel and render Gemini UI.
+- [x] Step 4.5: [automated] Wire GeminiAdapter into ProviderShellViewModel and render Gemini UI.
 
   **What:** Integrate `GeminiAdapter` into the provider shell with 15s polling, update SettingsView with Gemini provider row (auth mode picker, plan selection, detection status), and update ProviderShellViewModel tray text formatting for Gemini.
 

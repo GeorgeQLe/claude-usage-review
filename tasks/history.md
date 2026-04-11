@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-10 — Step 4.5: Wire GeminiAdapter into Shell + Settings UI
+
+Wired live `GeminiAdapter` into `ProviderShellViewModel`: added `geminiAdapter` property with 15s polling timer, subscribed to state changes for `rebuildFromCurrent()`, added `geminiDetected` computed property, replaced hardcoded `.gemini(status: .missingConfiguration)` placeholder with `geminiAdapter.toProviderSnapshot(...)`. Updated `SettingsView` to show "Detected"/"Not Detected" status for Gemini (replacing "Coming in Phase 2") and conditional Plan display row when enabled + detected. Build succeeds, 78 tests pass, 0 failures.
+
 ## 2026-04-10 — Step 4.4: Gemini Confidence Engine + Adapter Orchestrator
 
 Replaced `fatalError()` stub in `GeminiConfidenceEngine.evaluate()` with confidence logic: extracts authMode from detection, computes ratePressure from events (with/without plan), applies rules (highConfidence when auth+plan+events, estimated when auth+events, observedOnly otherwise, never exact in passive mode). Added `Equatable` to `GeminiEstimate` and `GeminiRatePressure`. Created `GeminiAdapter.swift` orchestrator (detect→parse→evaluate→state). Added `.geminiRich` case to `ProviderSnapshot` with full switch coverage in `ProviderCoordinator` and `ProviderShellViewModel`. Added Gemini plan/auth settings to `ProviderSettingsStore`. Registered `GeminiAdapter.swift` in pbxproj. 78 tests pass (4 new GeminiConfidence), 0 failures.
