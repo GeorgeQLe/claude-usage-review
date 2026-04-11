@@ -85,10 +85,70 @@
   - `tauri-app/src/main.ts` — add provider card rendering below existing usage bars
   - `tauri-app/src/styles.css` — add `.provider-card`, `.confidence-badge`, `.stale-badge` styles
 
+  **Implementation details:**
+
+  ### 1. `tauri-app/src/types.ts` — add types after existing interfaces
+
+  Add these types (must match Rust `#[serde(rename_all = "snake_case")]` serialization):
+  ```typescript
+  export type ProviderId = "claude" | "codex" | "gemini";
+  export type CardState = "configured" | "missing_configuration" | "degraded" | "stale";
+  export type ConfidenceLevel = "exact" | "high_confidence" | "estimated" | "observed_only";
+
+  export interface ProviderCard {
+    id: ProviderId;
+    card_state: CardState;
+    headline: string;
+    detail_text: string | null;
+    session_utilization: number | null;
+    weekly_utilization: number | null;
+    confidence_explanation: string | null;
+  }
+  ```
+
+  Add to `UsageState` interface (after `highest_utilization`):
+  ```typescript
+  provider_cards: ProviderCard[] | null;
+  ```
+
+  ### 2. `tauri-app/src/main.ts` — add card rendering
+
+  In `render()`, after the existing usage bars section, add a provider cards section:
+  - Guard: only render if `state.provider_cards` is non-null and non-empty
+  - For each `ProviderCard`:
+    - Render a `.provider-card` div with provider name as header
+    - Show `headline` text
+    - If `session_utilization` is non-null, render a mini usage bar (reuse `.usage-bar` pattern)
+    - If `confidence_explanation` is non-null, show it as a `.confidence-badge` caption
+    - If `card_state === "stale"`, add a `.stale-badge` label
+    - If `card_state === "degraded"`, add a `.degraded-badge` label
+    - If `card_state === "missing_configuration"`, show a muted "Not configured" message
+  - Provider display names: `claude` → "Claude", `codex` → "Codex CLI", `gemini` → "Gemini CLI"
+
+  ### 3. `tauri-app/src/styles.css` — add card styles
+
+  Add after existing component styles:
+  ```css
+  /* Provider cards */
+  .provider-card { ... }          /* card container, subtle border, padding, margin-top */
+  .provider-card-header { ... }   /* provider name, bold */
+  .provider-card-headline { ... } /* headline text */
+  .confidence-badge { ... }       /* small muted caption text */
+  .stale-badge { ... }            /* yellow warning pill */
+  .degraded-badge { ... }         /* red warning pill */
+  ```
+  Follow existing dark theme (CSS variables already defined). Match `.usage-bar` pattern for utilization bars.
+
+  **Key decisions:**
+  - Progressive enhancement: if `provider_cards` is null, nothing changes — existing Claude-only view works as before
+  - No test framework for Tauri frontend (vanilla TS) — verification is `npm run build` compiles + visual inspection
+  - Provider cards appear below existing usage bars, not replacing them
+
   **Acceptance criteria:**
-  - `npm run build` compiles
-  - Types match Rust serialization
+  - `npm run build` compiles with no errors
+  - Types match Rust `ProviderCard` serialization exactly (snake_case fields, snake_case enum values)
   - Cards render when `provider_cards` present; existing Claude view works when absent
+  - Stale/degraded/missing_configuration states have distinct visual treatment
 
 - [ ] Step 7.4: [automated] Wire provider coordinator into AppState and emit cards on polling.
 
