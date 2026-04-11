@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-11 — Step 7.3: Frontend Provider Cards — TypeScript Types + Card Rendering
+
+Added TypeScript types (`ProviderId`, `CardState`, `ConfidenceLevel`, `ProviderCard`) to `types.ts` matching Rust serde serialization. Extended `UsageState` with optional `provider_cards`. Added `renderProviderCard()` in `main.ts` with provider name mapping, mini usage bars, confidence badges, and stale/degraded/missing_configuration visual states. Added CSS for `.provider-card`, `.confidence-badge`, `.stale-badge`, `.degraded-badge`. Progressive enhancement — cards only render when `provider_cards` is non-null. `npm run build` compiles clean.
+
 ## 2026-04-11 — Step 7.2: Green Phase — Implement Provider Type Methods
 
 Filled in three `todo!()` stubs in `provider_types.rs`: `ProviderSnapshot::id()` (match on variant → ProviderId), `ConfidenceLevel::explanation()` (keyword-matched strings matching Swift counterpart), `ShellState::tray_provider()` (first Configured card). All 17 Rust tests pass (15 provider_types + 2 api), 0 failures.

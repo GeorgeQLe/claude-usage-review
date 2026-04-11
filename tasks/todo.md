@@ -76,7 +76,7 @@
   - `cargo test` — all 17 tests pass (15 new + 2 existing api.rs)
   - No changes to `models.rs` or any other file
 
-- [ ] Step 7.3: [automated] Mirror provider types in Tauri frontend TypeScript and add card rendering.
+- [x] Step 7.3: [automated] Mirror provider types in Tauri frontend TypeScript and add card rendering.
 
   **What:** Add TypeScript interfaces matching Rust provider types. Extend `UsageState` with optional `provider_cards`. Add card rendering to popover (progressive enhancement — Claude-only path still works).
 
