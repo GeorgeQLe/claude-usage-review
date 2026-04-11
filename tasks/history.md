@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-10 — Step 4.4: Gemini Confidence Engine + Adapter Orchestrator
+
+Replaced `fatalError()` stub in `GeminiConfidenceEngine.evaluate()` with confidence logic: extracts authMode from detection, computes ratePressure from events (with/without plan), applies rules (highConfidence when auth+plan+events, estimated when auth+events, observedOnly otherwise, never exact in passive mode). Added `Equatable` to `GeminiEstimate` and `GeminiRatePressure`. Created `GeminiAdapter.swift` orchestrator (detect→parse→evaluate→state). Added `.geminiRich` case to `ProviderSnapshot` with full switch coverage in `ProviderCoordinator` and `ProviderShellViewModel`. Added Gemini plan/auth settings to `ProviderSettingsStore`. Registered `GeminiAdapter.swift` in pbxproj. 78 tests pass (4 new GeminiConfidence), 0 failures.
+
 ## 2026-04-10 — Step 4.3: Gemini Session Parser + Rate Pressure
 
 Replaced 3 `fatalError()` stubs in `GeminiActivityParser.swift` with real implementations. `parseSessionFiles()` enumerates `geminiHome/tmp/*/chats/*.json`, parses session JSON, filters gemini-type messages, extracts timestamp/tokens/model into `GeminiRequestEvent` records. `GeminiRatePressure` inits compute daily request count (24h window), RPM (5min window / 5.0), and optional daily headroom against plan limits. 74 tests pass (9 new Gemini tests: 5 parsing + 4 rate pressure), 4 confidence stubs remain.

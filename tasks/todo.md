@@ -3,7 +3,7 @@
 > Project: ClauseUsage (macOS menu bar app) · Phase 4 of 7
 > Test strategy: tdd
 > Prior phases: Phase 1 (shared provider foundation) ✅, Phase 2 (Codex passive adapter) ✅, Phase 3 (Codex accuracy mode wrapper) ✅
-> Current test count: 74 passing (61 existing + 4 GeminiDetection + 5 GeminiActivityParsing + 4 GeminiRatePressure), 4 expected failures (GeminiConfidence stubs)
+> Current test count: 78 passing (61 existing + 4 GeminiDetection + 5 GeminiActivityParsing + 4 GeminiRatePressure + 4 GeminiConfidence)
 
 ## Tests First
 - [x] Step 4.1: [automated] Add failing fixture-based tests for Gemini install detection, auth-mode detection, passive request counting, rate-pressure derivation, and confidence labeling.
@@ -214,7 +214,7 @@
   - `GeminiRatePressureTests` pass (4 tests)
   - All 65 existing tests still pass
 
-- [ ] Step 4.4: [automated] Add Gemini confidence engine + adapter orchestrator.
+- [x] Step 4.4: [automated] Add Gemini confidence engine + adapter orchestrator.
 
   **What:** Replace the `fatalError()` stub in `GeminiTypes.swift` with real confidence logic. Create `GeminiAdapter` orchestrator. Wire `.geminiRich` into `ProviderTypes.swift`. Add Gemini plan/auth settings to `ProviderSettingsStore`. This makes the 4 GeminiConfidenceTests pass.
 
