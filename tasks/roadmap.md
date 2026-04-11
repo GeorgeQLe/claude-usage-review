@@ -10,7 +10,7 @@ Build the macOS app into a multi-provider CLI usage monitor for Claude Code, Cod
 | ~~4~~ | ~~Gemini passive adapter~~ | ~~Gemini detection, passive quota/rate tracking~~ ✅ |
 | ~~5~~ | ~~Gemini wrapper~~ | ~~Optional Accuracy Mode and event ledger for Gemini~~ ✅ |
 | ~~6~~ | ~~Hardening and onboarding~~ | ~~Diagnostics, docs, regression coverage, product polish~~ ✅ |
-| 7 | Cross-platform follow-through | Tauri parity planning and deferred Windows validation |
+| ~~7~~ | ~~Cross-platform follow-through~~ | ~~Tauri parity planning and deferred Windows validation~~ ✅ |
 
 ## Phase 1: Shared Provider Foundation
 
@@ -366,11 +366,11 @@ Build the macOS app into a multi-provider CLI usage monitor for Claude Code, Cod
   - `tasks/history.md` — append Phase 7 completion record
 
 ### Milestone
-- [ ] Cross-platform follow-through is based on the validated multi-provider model.
-- [ ] Deferred Windows validation is resolved against the new architecture.
-- [ ] Any remaining parity gaps are explicit and documented.
-- [ ] All Phase 7 tests pass.
-- [ ] No regressions in previous phase tests.
+- [x] Cross-platform follow-through is based on the validated multi-provider model.
+- [x] Deferred Windows validation is resolved against the new architecture.
+- [x] Any remaining parity gaps are explicit and documented.
+- [x] All Phase 7 tests pass.
+- [x] No regressions in previous phase tests.
 
 ## Cross-Phase Concerns
 

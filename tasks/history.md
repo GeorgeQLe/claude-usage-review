@@ -531,3 +531,25 @@ Implemented `GeminiInvocationEvent` struct in `GeminiTypes.swift` (mirrors `Code
 ## 2026-04-11 — Step 7.1: Red-Phase Rust Tests for Multi-Provider Model
 
 Created `tauri-app/src-tauri/src/provider_types.rs` with stub types and 15 red-phase tests across 4 groups: ProviderModelTests (5), CardStateTests (4), ConfidenceTests (3), ShellStateTests (3). Types: `ProviderId`, `CardState`, `ConfidenceLevel`, `CodexEstimate`, `GeminiEstimate`, `ProviderSnapshot` (6 variants), `ProviderCard`, `ShellState`. Three `todo!()` stubs define the contract: `ProviderSnapshot::id()`, `ConfidenceLevel::explanation()`, `ShellState::tray_provider()`. Reuses existing `UsageData`, `UsageLimit`, `AuthStatus` from `crate::models`. Result: 8 tests pass (type construction + serialization), 9 tests fail (hitting `todo!()` — expected red phase). Existing 2 api.rs tests unaffected.
+
+## 2026-04-11 — Phase 7 Complete: Cross-Platform Follow-Through (Steps 7.1–7.6)
+
+Completed the full cross-platform follow-through phase across 6 TDD steps, porting the multi-provider model to the Tauri app.
+
+**Step 7.1 — Red phase:** 15 Rust tests defining provider type contracts (ProviderModel, CardState, Confidence, ShellState).
+
+**Step 7.2 — Green phase:** Implemented `ProviderSnapshot::id()`, `ConfidenceLevel::explanation()`, `ShellState::tray_provider()` — all 17 Rust tests pass (15 provider_types + 2 api).
+
+**Step 7.3 — Frontend types:** Added TypeScript interfaces (`ProviderId`, `CardState`, `ConfidenceLevel`, `ProviderCard`) to `types.ts`. Added card rendering to `main.ts` with progressive enhancement. Added card/badge styles to `styles.css`.
+
+**Step 7.4 — Wiring:** Added `provider_cards: Option<Vec<ProviderCard>>` to `UsageState` in `models.rs`. Built `ProviderSnapshot::to_card()` method. Wired into `compute_usage_state()` in `state.rs`.
+
+**Step 7.5 — Parity audit:** Created `docs/cross-platform-parity.md` with full feature matrix (Ported/Partial/Deferred/Gap status for every macOS feature). Updated `tauri-app/README.md` with multi-provider status section.
+
+**Step 7.6 — Final verification gate:**
+- `cargo test`: 17 tests pass (15 provider_types + 2 api)
+- `npm run build`: frontend compiles, 0 errors
+- `xcodebuild test`: 108 tests pass, 0 failures
+- `docs/cross-platform-parity.md`: exists and comprehensive
+
+All 7 phases of the multi-provider CLI monitor roadmap are now complete.

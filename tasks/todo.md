@@ -317,7 +317,7 @@
   - `docs/cross-platform-parity.md` exists with complete feature matrix
 
 ## Green
-- [ ] Step 7.6: [automated] Final verification gate for Phase 7.
+- [x] Step 7.6: [automated] Final verification gate for Phase 7.
 
   **What:** Run all verification commands, confirm no regressions, mark Phase 7 complete.
 
@@ -344,8 +344,8 @@
   - History updated with completion record
 
 ## Milestone
-- [ ] Cross-platform follow-through is based on the validated multi-provider model.
-- [ ] Deferred Windows validation is resolved against the new architecture.
-- [ ] Any remaining parity gaps are explicit and documented.
-- [ ] All Phase 7 tests pass.
-- [ ] No regressions in previous phase tests.
+- [x] Cross-platform follow-through is based on the validated multi-provider model.
+- [x] Deferred Windows validation is resolved against the new architecture.
+- [x] Any remaining parity gaps are explicit and documented.
+- [x] All Phase 7 tests pass.
+- [x] No regressions in previous phase tests.
