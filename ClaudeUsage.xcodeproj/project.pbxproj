@@ -45,6 +45,7 @@
 		AA000036 /* GeminiActivityParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100039 /* GeminiActivityParser.swift */; };
 		AA000037 /* GeminiTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100040 /* GeminiTypes.swift */; };
 		AA000038 /* GeminiAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100041 /* GeminiAdapter.swift */; };
+		AA000039 /* GeminiWrapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100042 /* GeminiWrapperTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -99,6 +100,7 @@
 		AA100039 /* GeminiActivityParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiActivityParser.swift; sourceTree = "<group>"; };
 		AA100040 /* GeminiTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiTypes.swift; sourceTree = "<group>"; };
 		AA100041 /* GeminiAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiAdapter.swift; sourceTree = "<group>"; };
+		AA100042 /* GeminiWrapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiWrapperTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -149,6 +151,7 @@
 				AA100028 /* CodexAdapterTests.swift */,
 				AA100034 /* CodexWrapperTests.swift */,
 				AA100037 /* GeminiAdapterTests.swift */,
+				AA100042 /* GeminiWrapperTests.swift */,
 			);
 			path = ClaudeUsageTests;
 			sourceTree = "<group>";
@@ -340,6 +343,7 @@
 				AA000025 /* CodexAdapterTests.swift in Sources */,
 				AA000031 /* CodexWrapperTests.swift in Sources */,
 				AA000034 /* GeminiAdapterTests.swift in Sources */,
+				AA000039 /* GeminiWrapperTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
