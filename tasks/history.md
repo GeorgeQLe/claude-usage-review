@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-11 — Step 6.4: Multi-Provider Documentation Update
+
+Updated README.md to document the multi-provider product. Changed app description to mention Claude, Codex CLI, and Gemini CLI. Added "Multi-provider monitoring" row to features table. Added new "Multi-Provider Monitoring" section with provider detection table, confidence levels (Exact/High Confidence/Estimated/Observed Only), and Accuracy Mode explanation. Updated Settings section with provider toggles, plan profiles, and Accuracy Mode entries. Added passive monitoring note and Codex/Gemini trademark acknowledgments to disclaimer. No code changes — build compiles clean.
+
 ## 2026-04-11 — Step 6.3: Confidence Explanations & Onboarding Copy
 
 Replaced stub `explanation(for:)` in `CodexConfidenceEngine` with real switch returning keyword-matched strings (plan, wrapper, limit). Added matching `explanation(for:)` to `GeminiConfidenceEngine`. Added `confidenceExplanation: String?` to `ProviderCard`, populated from confidence engines for codexRich/geminiRich cases, preserved in stale-tracking overload. Updated `ProviderCardView` to show explanation as `.caption` text. Added detection helper text in `SettingsView` for Codex/Gemini "Not Detected" state. 108 tests pass, 0 failures.

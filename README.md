@@ -1,6 +1,6 @@
 # ClaudeUsage (fork)
 
-A macOS menu bar app that shows your Claude.ai subscription usage limits at a glance.
+A macOS menu bar app that monitors your AI usage across Claude, Codex CLI, and Gemini CLI — all in one place.
 
 Forked from [linuxlewis/claude-usage](https://github.com/linuxlewis/claude-usage) with additional features.
 
@@ -20,6 +20,7 @@ Forked from [linuxlewis/claude-usage](https://github.com/linuxlewis/claude-usage
 | **GitHub contribution heatmap** | — | Optional 12-week contribution heatmap in popover |
 | **Session reset notifications** | — | macOS notification when your session limit resets |
 | **Pace-aware bar colors** | — | Weekly bar colored by pace status instead of raw percentage |
+| **Multi-provider monitoring** | — | Monitor Claude, Codex CLI, and Gemini CLI usage in one place |
 
 ### Pace indicator
 
@@ -45,6 +46,25 @@ The popover's Weekly bar shows actionable pace guidance: daily budget percentage
 ### Hover tooltip
 
 Hover over the menu bar item to see a floating tooltip with pace guidance — no click needed.
+
+### Multi-Provider Monitoring
+
+ClaudeUsage monitors usage across three AI providers:
+
+| Provider | Detection | Data Source |
+|----------|-----------|-------------|
+| **Claude** | Session key in Settings | Direct API (exact usage) |
+| **Codex** | Auto-detected when Codex CLI is installed | Local activity logs |
+| **Gemini** | Auto-detected when Gemini CLI is installed | Local session files |
+
+**Confidence levels** — each provider card shows how confident the estimate is:
+
+- **Exact** — direct API data (Claude only)
+- **High Confidence** — limit detection patterns observed + plan profile configured
+- **Estimated** — wrapper events or plan profile present, but incomplete data
+- **Observed Only** — activity detected but no plan configured; add a plan in Settings for better accuracy
+
+**Accuracy Mode** (Codex & Gemini) — an optional setting that wraps CLI invocations to capture start/end timestamps and limit-hit signals. No prompt content is captured. Enable in Settings → provider toggle → Accuracy Mode.
 
 ### Usage history
 
@@ -89,6 +109,9 @@ Paste both into the Settings panel and you're good to go.
 - **GitHub integration** — username + personal access token for contribution heatmap
 - **Test connection** — validate credentials without waiting for the next poll
 - **Account management** — add, rename, switch, and delete accounts
+- **Provider toggles** — enable/disable Codex and Gemini monitoring
+- **Provider plans** — configure plan profiles for better accuracy estimates
+- **Accuracy Mode** — optional wrapper for Codex/Gemini (captures timing only, no prompt content)
 
 ## Building from Source
 
@@ -112,7 +135,8 @@ The app will be at:
 - Usage refreshes every 5 minutes; GitHub contributions refresh every hour
 - Session key is automatically updated if the API rotates it via `Set-Cookie`
 - Usage history is stored in `~/Library/Application Support/ClaudeUsage/`
+- Codex and Gemini monitoring is passive — reads local log/session files only, no network calls
 
 ## Disclaimer
 
-This project is not affiliated with, endorsed by, or associated with Anthropic, PBC. "Claude" and "Anthropic" are trademarks of Anthropic, PBC. All trademarks belong to their respective owners. This is an independent, unofficial tool that uses undocumented APIs and may stop working at any time.
+This project is not affiliated with, endorsed by, or associated with Anthropic, PBC, OpenAI, or Google. "Claude" and "Anthropic" are trademarks of Anthropic, PBC. "Codex" is a trademark of OpenAI. "Gemini" is a trademark of Google. All trademarks belong to their respective owners. This is an independent, unofficial tool that uses undocumented APIs and may stop working at any time.

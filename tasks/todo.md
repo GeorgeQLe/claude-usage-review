@@ -112,7 +112,7 @@
   3. All 105 previously-passing tests still pass
   4. Total: 108 tests, 0 failures
 
-- [ ] Step 6.4: [automated] Update user-facing documentation to match multi-provider product.
+- [x] Step 6.4: [automated] Update user-facing documentation to match multi-provider product.
 
   **What:** Update README.md with multi-provider feature descriptions, provider setup instructions, and confidence level documentation. Update CLAUDE.md if any conventions changed. No code changes in this step.
 
