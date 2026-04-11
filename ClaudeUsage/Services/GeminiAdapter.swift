@@ -12,13 +12,16 @@ class GeminiAdapter: ObservableObject {
     let detector: GeminiDetector
     let parser: GeminiActivityParser
     let confidenceEngine: GeminiConfidenceEngine
+    let ledger: GeminiEventLedger
     var planProfile: GeminiPlanProfile?
 
     init(geminiHome: URL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".gemini"),
-         planProfile: GeminiPlanProfile? = nil) {
+         planProfile: GeminiPlanProfile? = nil,
+         ledgerDirectory: URL = GeminiEventLedger.defaultDirectory) {
         self.detector = GeminiDetector(geminiHome: geminiHome)
         self.parser = GeminiActivityParser(geminiHome: geminiHome)
         self.confidenceEngine = GeminiConfidenceEngine()
+        self.ledger = GeminiEventLedger(directory: ledgerDirectory)
         self.planProfile = planProfile
     }
 
@@ -29,10 +32,13 @@ class GeminiAdapter: ObservableObject {
             return
         }
         let events = parser.parseSessionFiles()
+        let wrapperEvents = (try? ledger.readEvents()) ?? []
         let estimate = confidenceEngine.evaluate(
-            detection: detection, events: events, plan: planProfile
+            detection: detection, events: events, plan: planProfile,
+            wrapperEvents: wrapperEvents
         )
         state = .installed(estimate: estimate)
+        try? ledger.trim(retaining: 48 * 3600)
     }
 
     func toProviderSnapshot(isEnabled: Bool) -> ProviderSnapshot {

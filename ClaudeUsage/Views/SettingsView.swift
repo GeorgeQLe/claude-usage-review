@@ -280,6 +280,20 @@ struct SettingsView: View {
                                 .font(.system(size: 10))
                                 .foregroundColor(.secondary)
                         }
+                        HStack {
+                            Text("  Accuracy Mode")
+                                .font(.system(size: 11))
+                            Spacer()
+                            Text(providerSettingsStore.geminiAccuracyMode() ? "Active" : "Off")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                            Toggle("", isOn: Binding(
+                                get: { providerSettingsStore.geminiAccuracyMode() },
+                                set: { providerSettingsStore.setGeminiAccuracyMode($0) }
+                            ))
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                        }
                     }
                 }
             }
