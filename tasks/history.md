@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-11 — Step 7.5: Audit Parity Gaps and Document Them
+
+Created `docs/cross-platform-parity.md` with full feature matrix (44 features across 9 categories). Summary: 25 ported, 11 gaps (macOS-only), 6 deferred (types only, no adapter logic), 1 Tauri-only, 1 N/A. Key gaps: live countdown timer, session reset notification, auto-fetch at reset, usage history/sparklines, pace emoji themes. Updated `tauri-app/README.md` with multi-provider status section noting Claude provider is live, Codex/Gemini adapters deferred, and linking to parity doc. No code changes.
+
 ## 2026-04-11 — Step 7.4: Wire Provider Coordinator into AppState
 
 Added `to_card()` method on `ProviderSnapshot` converting each variant to a `ProviderCard` with appropriate `CardState`, headline, utilization, and confidence. Added `provider_cards: Option<Vec<ProviderCard>>` to `UsageState`. Updated `compute_usage_state()` to build Claude provider cards: `ClaudeRich` when usage data exists, `ClaudeSimple` when auth configured but no data, `None` when not configured. Cards flow to frontend via existing `get_usage` command and `usage-updated` event. 17 Rust tests pass, frontend compiles clean.

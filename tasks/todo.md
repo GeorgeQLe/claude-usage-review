@@ -281,7 +281,7 @@
   - When Claude data is available, `UsageState.provider_cards` contains a Claude card with utilization
   - When no data/not configured, `provider_cards` is `None`
 
-- [ ] Step 7.5: [automated] Audit parity gaps and document them.
+- [x] Step 7.5: [automated] Audit parity gaps and document them.
 
   **What:** Compare macOS and Tauri feature sets. Document ported, deferred, and gap status for every feature.
 
