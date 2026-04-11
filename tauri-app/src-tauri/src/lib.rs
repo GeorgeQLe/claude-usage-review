@@ -4,6 +4,7 @@ mod config;
 mod credentials;
 mod models;
 mod overlay;
+mod provider_types;
 mod state;
 
 use log::{error, info, warn};
