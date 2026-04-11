@@ -260,7 +260,7 @@ struct SettingsView: View {
                         Text("Gemini")
                             .font(.system(size: 12))
                         Spacer()
-                        Text("Coming in Phase 2")
+                        Text(providerShellViewModel.geminiDetected ? "Detected" : "Not Detected")
                             .font(.system(size: 10))
                             .foregroundColor(.secondary)
                         Toggle("", isOn: Binding(
@@ -269,6 +269,17 @@ struct SettingsView: View {
                         ))
                         .toggleStyle(.switch)
                         .controlSize(.mini)
+                    }
+
+                    if providerSettingsStore.isEnabled(.gemini) && providerShellViewModel.geminiDetected {
+                        HStack {
+                            Text("  Plan")
+                                .font(.system(size: 11))
+                            Spacer()
+                            Text(providerSettingsStore.geminiPlan()?.name ?? "None")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
             }

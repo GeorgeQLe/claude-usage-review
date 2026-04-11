@@ -9,7 +9,9 @@ class ProviderShellViewModel: ObservableObject {
     private let coordinator: ProviderCoordinator
     private let settingsStore: ProviderSettingsStore
     private let codexAdapter: CodexAdapter
+    private let geminiAdapter: GeminiAdapter
     private var codexTimer: Timer?
+    private var geminiTimer: Timer?
     private var rotationTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
@@ -19,6 +21,8 @@ class ProviderShellViewModel: ObservableObject {
         self.settingsStore = settingsStore
         let plan = settingsStore.codexPlan()
         self.codexAdapter = CodexAdapter(planProfile: plan)
+        let geminiPlan = settingsStore.geminiPlan()
+        self.geminiAdapter = GeminiAdapter(planProfile: geminiPlan)
         self.shellState = ShellState(providers: [])
 
         usageViewModel.$usageData
@@ -36,6 +40,14 @@ class ProviderShellViewModel: ObservableObject {
         codexTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
             self?.codexAdapter.refresh()
         }
+
+        geminiAdapter.$state
+            .sink { [weak self] _ in self?.rebuildFromCurrent() }
+            .store(in: &cancellables)
+        geminiAdapter.refresh()
+        geminiTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
+            self?.geminiAdapter.refresh()
+        }
         rotationTimer = Timer.scheduledTimer(withTimeInterval: 7, repeats: true) { [weak self] _ in
             self?.rebuildFromCurrent()
         }
@@ -43,6 +55,7 @@ class ProviderShellViewModel: ObservableObject {
 
     deinit {
         codexTimer?.invalidate()
+        geminiTimer?.invalidate()
         rotationTimer?.invalidate()
     }
 
@@ -83,6 +96,11 @@ class ProviderShellViewModel: ObservableObject {
         return false
     }
 
+    var geminiDetected: Bool {
+        if case .installed = geminiAdapter.state { return true }
+        return false
+    }
+
     // MARK: - Private
 
     private var lastUsageData: UsageData?
@@ -106,7 +124,7 @@ class ProviderShellViewModel: ObservableObject {
         }
 
         snapshots.append(codexAdapter.toProviderSnapshot(isEnabled: settingsStore.isEnabled(.codex)))
-        snapshots.append(.gemini(status: .missingConfiguration, isEnabled: settingsStore.isEnabled(.gemini)))
+        snapshots.append(geminiAdapter.toProviderSnapshot(isEnabled: settingsStore.isEnabled(.gemini)))
 
         let now = Date()
         shellState = coordinator.makeShellState(providers: snapshots, now: now)
