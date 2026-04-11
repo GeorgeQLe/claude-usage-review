@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-10 — Step 6.1: Red Phase — Failing Tests for Diagnostics & Hardening
+
+Created `ClaudeUsageTests/DiagnosticsTests.swift` with 15 red-phase tests across 4 classes: AdapterDiagnosticsTests (5 — lastRefreshTime, consecutiveFailures, degraded state, recovery), StaleDetectionTests (4 — stale card state, threshold, tray indicator), ConfidenceExplanationTests (3 — explanation API for observedOnly/estimated/highConfidence), TrayEdgeCaseTests (3 — degraded tray text, all-disabled fallback, rotation skips degraded). Registered in pbxproj. App target builds clean. Test target fails to compile with 22 expected errors referencing not-yet-existing properties (red phase confirmed). 93 existing tests unaffected.
+
 ## 2026-04-10 — Step 5.5: Phase 5 Verification Gate (Complete)
 
 Final green-phase verification gate for Phase 5 (Gemini Accuracy Mode Wrapper). Build succeeds, 93 tests pass (78 existing + 15 Gemini wrapper), 0 failures. Claude files (`UsageService.swift`, `UsageViewModel.swift`) untouched. Codex files (`CodexWrapper.swift`, `CodexAdapter.swift`) untouched. Passive-only path confirmed via `wrapperEvents: [GeminiInvocationEvent] = []` default. All 5 milestone criteria met. Phase 5 complete.
