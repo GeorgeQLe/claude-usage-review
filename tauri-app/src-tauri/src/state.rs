@@ -2,6 +2,7 @@ use crate::api;
 use crate::config::{self, AppConfig};
 use crate::credentials;
 use crate::models::*;
+use crate::provider_types::ProviderSnapshot;
 use chrono::{DateTime, Local, Utc};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager};
@@ -82,16 +83,26 @@ impl AppState {
             })
             .collect();
 
-        let (display_limits, highest, menu_text, tray_color) = if let Some(ref data) = self.usage_data
-        {
-            let limits = self.compute_display_limits(data);
-            let highest = self.highest_utilization(data);
-            let color = tray_color_for_utilization(highest);
-            let menu_text = self.compute_menu_bar_text(data);
-            (limits, highest, menu_text, color)
-        } else {
-            (vec![], 0.0, "—".to_string(), "green".to_string())
-        };
+        let (display_limits, highest, menu_text, tray_color, provider_cards) =
+            if let Some(ref data) = self.usage_data {
+                let limits = self.compute_display_limits(data);
+                let highest = self.highest_utilization(data);
+                let color = tray_color_for_utilization(highest);
+                let menu_text = self.compute_menu_bar_text(data);
+                let snapshot = ProviderSnapshot::ClaudeRich {
+                    usage: data.clone(),
+                    auth_status: self.auth_status.clone(),
+                    is_enabled: true,
+                };
+                let cards = vec![snapshot.to_card()];
+                (limits, highest, menu_text, color, Some(cards))
+            } else if self.auth_status != AuthStatus::NotConfigured {
+                let snapshot = ProviderSnapshot::ClaudeSimple { is_enabled: true };
+                let cards = vec![snapshot.to_card()];
+                (vec![], 0.0, "—".to_string(), "green".to_string(), Some(cards))
+            } else {
+                (vec![], 0.0, "—".to_string(), "green".to_string(), None)
+            };
 
         UsageState {
             display_limits,
@@ -103,6 +114,7 @@ impl AppState {
             error_state: self.error_state.clone(),
             last_updated: self.last_updated.map(|dt| self.last_updated_string(dt)),
             highest_utilization: highest,
+            provider_cards,
         }
     }
 

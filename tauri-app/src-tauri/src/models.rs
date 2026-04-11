@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::provider_types::ProviderCard;
+
 /// Raw API response limit
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct UsageLimit {
@@ -83,6 +85,7 @@ pub struct UsageState {
     pub error_state: Option<ErrorState>,
     pub last_updated: Option<String>,
     pub highest_utilization: f64,
+    pub provider_cards: Option<Vec<ProviderCard>>,
 }
 
 /// Overlay layout options

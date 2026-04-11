@@ -93,6 +93,150 @@ impl ProviderSnapshot {
             Self::Gemini { .. } | Self::GeminiRich { .. } => ProviderId::Gemini,
         }
     }
+
+    pub fn to_card(&self) -> ProviderCard {
+        match self {
+            Self::ClaudeRich { usage, auth_status, is_enabled } => {
+                if !is_enabled {
+                    return ProviderCard {
+                        id: ProviderId::Claude,
+                        card_state: CardState::MissingConfiguration,
+                        headline: "Claude not enabled".into(),
+                        detail_text: None,
+                        session_utilization: None,
+                        weekly_utilization: None,
+                        confidence_explanation: None,
+                    };
+                }
+                let session_util = usage.five_hour.utilization * 100.0;
+                let weekly_util = usage.seven_day.utilization * 100.0;
+                let card_state = if *auth_status == AuthStatus::Expired {
+                    CardState::Degraded
+                } else {
+                    CardState::Configured
+                };
+                ProviderCard {
+                    id: ProviderId::Claude,
+                    card_state,
+                    headline: format!("Claude {}% session", session_util.round() as i64),
+                    detail_text: None,
+                    session_utilization: Some(session_util),
+                    weekly_utilization: Some(weekly_util),
+                    confidence_explanation: Some("Exact usage from API".into()),
+                }
+            }
+            Self::ClaudeSimple { is_enabled } => {
+                if !is_enabled {
+                    return ProviderCard {
+                        id: ProviderId::Claude,
+                        card_state: CardState::MissingConfiguration,
+                        headline: "Claude not configured".into(),
+                        detail_text: None,
+                        session_utilization: None,
+                        weekly_utilization: None,
+                        confidence_explanation: None,
+                    };
+                }
+                ProviderCard {
+                    id: ProviderId::Claude,
+                    card_state: CardState::Configured,
+                    headline: "Waiting for data...".into(),
+                    detail_text: None,
+                    session_utilization: None,
+                    weekly_utilization: None,
+                    confidence_explanation: None,
+                }
+            }
+            Self::Codex { is_enabled } => {
+                if !is_enabled {
+                    return ProviderCard {
+                        id: ProviderId::Codex,
+                        card_state: CardState::MissingConfiguration,
+                        headline: "Codex not configured".into(),
+                        detail_text: None,
+                        session_utilization: None,
+                        weekly_utilization: None,
+                        confidence_explanation: None,
+                    };
+                }
+                ProviderCard {
+                    id: ProviderId::Codex,
+                    card_state: CardState::Configured,
+                    headline: "Monitoring...".into(),
+                    detail_text: None,
+                    session_utilization: None,
+                    weekly_utilization: None,
+                    confidence_explanation: None,
+                }
+            }
+            Self::CodexRich { estimate, is_enabled } => {
+                if !is_enabled {
+                    return ProviderCard {
+                        id: ProviderId::Codex,
+                        card_state: CardState::MissingConfiguration,
+                        headline: "Codex not configured".into(),
+                        detail_text: None,
+                        session_utilization: None,
+                        weekly_utilization: None,
+                        confidence_explanation: None,
+                    };
+                }
+                ProviderCard {
+                    id: ProviderId::Codex,
+                    card_state: CardState::Configured,
+                    headline: "Codex usage estimated".into(),
+                    detail_text: None,
+                    session_utilization: None,
+                    weekly_utilization: None,
+                    confidence_explanation: Some(estimate.confidence.explanation().into()),
+                }
+            }
+            Self::Gemini { is_enabled } => {
+                if !is_enabled {
+                    return ProviderCard {
+                        id: ProviderId::Gemini,
+                        card_state: CardState::MissingConfiguration,
+                        headline: "Gemini not configured".into(),
+                        detail_text: None,
+                        session_utilization: None,
+                        weekly_utilization: None,
+                        confidence_explanation: None,
+                    };
+                }
+                ProviderCard {
+                    id: ProviderId::Gemini,
+                    card_state: CardState::Configured,
+                    headline: "Monitoring...".into(),
+                    detail_text: None,
+                    session_utilization: None,
+                    weekly_utilization: None,
+                    confidence_explanation: None,
+                }
+            }
+            Self::GeminiRich { estimate, is_enabled } => {
+                if !is_enabled {
+                    return ProviderCard {
+                        id: ProviderId::Gemini,
+                        card_state: CardState::MissingConfiguration,
+                        headline: "Gemini not configured".into(),
+                        detail_text: None,
+                        session_utilization: None,
+                        weekly_utilization: None,
+                        confidence_explanation: None,
+                    };
+                }
+                ProviderCard {
+                    id: ProviderId::Gemini,
+                    card_state: CardState::Configured,
+                    headline: "Gemini usage estimated".into(),
+                    detail_text: None,
+                    session_utilization: None,
+                    weekly_utilization: None,
+                    confidence_explanation: Some(estimate.confidence.explanation().into()),
+                }
+            }
+        }
+    }
 }
 
 // MARK: - ProviderCard
