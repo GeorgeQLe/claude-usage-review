@@ -36,7 +36,12 @@ pub enum ConfidenceLevel {
 
 impl ConfidenceLevel {
     pub fn explanation(&self) -> &'static str {
-        todo!()
+        match self {
+            Self::Exact => "Exact usage from API",
+            Self::HighConfidence => "High confidence from limit detection and plan profile",
+            Self::Estimated => "Estimated from wrapper events and plan profile",
+            Self::ObservedOnly => "Observed activity only — configure a plan for better accuracy",
+        }
     }
 }
 
@@ -82,7 +87,11 @@ pub enum ProviderSnapshot {
 
 impl ProviderSnapshot {
     pub fn id(&self) -> ProviderId {
-        todo!()
+        match self {
+            Self::ClaudeRich { .. } | Self::ClaudeSimple { .. } => ProviderId::Claude,
+            Self::Codex { .. } | Self::CodexRich { .. } => ProviderId::Codex,
+            Self::Gemini { .. } | Self::GeminiRich { .. } => ProviderId::Gemini,
+        }
     }
 }
 
@@ -108,7 +117,7 @@ pub struct ShellState {
 
 impl ShellState {
     pub fn tray_provider(&self) -> Option<&ProviderCard> {
-        todo!()
+        self.providers.iter().find(|p| p.card_state == CardState::Configured)
     }
 }
 
