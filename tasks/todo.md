@@ -408,7 +408,23 @@
 ## Green
 - [ ] Step 4.6: [automated] Make all Gemini passive tests pass, rerun all Phase 1-3 tests, verify no regressions.
 
-  **What:** Ensure all GeminiAdapterTests pass. Run the full test suite (should be 61 existing + ~17 new Gemini tests ≈ 78 total). Verify provider rotation works with all three providers. Fix any compilation or logic issues.
+  **What:** Final green-phase verification for Phase 4. All 78 tests already pass as of Step 4.5, so this step is primarily a verification gate — run the full suite, confirm no regressions, and mark Phase 4 milestone complete.
+
+  **Current state (as of Step 4.5 completion):**
+  - Build: clean (`xcodebuild build` succeeds)
+  - Tests: 78 pass, 0 failures (`xcodebuild test`)
+  - All Gemini tests already passing: GeminiDetectionTests (4), GeminiActivityParsingTests (5), GeminiRatePressureTests (4), GeminiConfidenceTests (4) = 17 Gemini tests
+  - All pre-Phase-4 tests passing: 61 tests
+  - GeminiAdapter wired into ProviderShellViewModel with 15s polling
+  - SettingsView shows live Gemini detection status + plan display
+
+  **Steps:**
+  1. Run `xcodebuild build -scheme ClaudeUsage -destination 'platform=macOS'` — confirm clean compile
+  2. Run `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` — confirm 78 pass, 0 fail
+  3. Verify no changes to `ClaudeUsage/Services/UsageService.swift` or `ClaudeUsage/Models/UsageViewModel.swift` (Claude networking untouched)
+  4. Verify no changes to `ClaudeUsage/Services/CodexAdapter.swift` or `ClaudeUsage/Services/CodexDetector.swift` (Codex logic untouched)
+  5. Check all milestone criteria in the Milestone section below and mark them complete
+  6. Mark Phase 4 complete in `tasks/roadmap.md`
 
   **Acceptance criteria:**
   - All GeminiAdapterTests pass (~17 tests)
