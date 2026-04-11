@@ -157,9 +157,17 @@
   4. Codex wrapper/confidence logic untouched (only diagnostics added)
   5. Gemini wrapper/confidence logic untouched (only diagnostics added)
 
+  **Verification checklist (detailed):**
+  1. `xcodebuild -scheme ClaudeUsage -destination 'platform=macOS' build` — must succeed
+  2. `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` — all 108 tests pass, 0 failures
+  3. Verify no changes to core files: `UsageService.swift`, `UsageViewModel.swift` unchanged since Phase 5
+  4. Verify `CodexAdapter.swift`, `CodexDetector.swift`, `CodexWrapper.swift` unchanged since Phase 5 (only diagnostics added in Phase 6)
+  5. Verify `GeminiAdapter.swift`, `GeminiDetector.swift`, `GeminiWrapper.swift` unchanged since Phase 5
+
   **Files to modify:**
-  - `tasks/todo.md` — check off milestone items
+  - `tasks/todo.md` — check off Step 6.5 and all milestone items
   - `tasks/roadmap.md` — mark Phase 6 milestone complete
+  - `tasks/history.md` — append Phase 6 completion record
 
 ## Milestone
 - [ ] Users can understand why each provider is exact, estimated, passive-only, or degraded.
