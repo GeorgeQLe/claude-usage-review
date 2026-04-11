@@ -507,3 +507,7 @@ Implemented the full Gemini passive adapter across 6 TDD steps, adding 17 new te
 ## 2026-04-10 — Step 5.2: Green Phase — Gemini Wrapper Event Types and Event Ledger
 
 Implemented `GeminiInvocationEvent` struct in `GeminiTypes.swift` (mirrors `CodexInvocationEvent`). Created `GeminiEventLedger.swift` in Services (mirrors `CodexEventLedger` — JSONL append/read/trim for `gemini-events.jsonl`). Updated `GeminiConfidenceEngine.evaluate()` with `wrapperEvents:` parameter and wrapper confidence upgrade logic (3+ limit hits + plan → highConfidence, any wrapper events → estimated). Fixed test file label mismatch (`.authenticated(.oauthPersonal)` → `.authenticated(mode: .oauthPersonal)`). All 93 tests pass (78 existing + 15 new), 0 failures.
+
+## 2026-04-11 — Step 7.1: Red-Phase Rust Tests for Multi-Provider Model
+
+Created `tauri-app/src-tauri/src/provider_types.rs` with stub types and 15 red-phase tests across 4 groups: ProviderModelTests (5), CardStateTests (4), ConfidenceTests (3), ShellStateTests (3). Types: `ProviderId`, `CardState`, `ConfidenceLevel`, `CodexEstimate`, `GeminiEstimate`, `ProviderSnapshot` (6 variants), `ProviderCard`, `ShellState`. Three `todo!()` stubs define the contract: `ProviderSnapshot::id()`, `ConfidenceLevel::explanation()`, `ShellState::tray_provider()`. Reuses existing `UsageData`, `UsageLimit`, `AuthStatus` from `crate::models`. Result: 8 tests pass (type construction + serialization), 9 tests fail (hitting `todo!()` — expected red phase). Existing 2 api.rs tests unaffected.

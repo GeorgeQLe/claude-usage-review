@@ -6,7 +6,7 @@
 > Current test count: 108 macOS tests passing, 2 Tauri Rust tests passing
 
 ## Tests First
-- [ ] Step 7.1: [automated] Add failing Rust tests for multi-provider model types, provider snapshot serialization, confidence labels, card state mapping, and tray text generation.
+- [x] Step 7.1: [automated] Add failing Rust tests for multi-provider model types, provider snapshot serialization, confidence labels, card state mapping, and tray text generation.
 
   **What:** Write red-phase Rust unit tests in a new `provider_types.rs` module that define the provider abstraction contract before porting implementation. Tests use `#[cfg(test)] mod tests` blocks. No frontend test framework (Tauri frontend is vanilla TS with no test runner).
 
