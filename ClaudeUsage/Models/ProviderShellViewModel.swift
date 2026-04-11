@@ -147,6 +147,17 @@ class ProviderShellViewModel: ObservableObject {
                 return "Gemini · Not configured"
             }
             return "Gemini"
+        case let .geminiRich(estimate, _):
+            switch estimate.confidence {
+            case .exact:
+                return "Gemini Exact"
+            case .highConfidence:
+                return "Gemini High"
+            case .estimated:
+                return "Gemini Est. only"
+            case .observedOnly:
+                return "Gemini Observed"
+            }
         }
     }
 

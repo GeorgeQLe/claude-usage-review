@@ -62,4 +62,53 @@ class ProviderSettingsStore: ObservableObject {
     func setCodexAccuracyMode(_ enabled: Bool) {
         UserDefaults.standard.set(enabled, forKey: "provider_codex_accuracy_mode")
     }
+
+    func geminiPlan() -> GeminiPlanProfile? {
+        guard let name = UserDefaults.standard.string(forKey: "provider_gemini_plan"),
+              let dailyLimit = UserDefaults.standard.object(forKey: "provider_gemini_plan_daily_limit") as? Int,
+              let rpmLimit = UserDefaults.standard.object(forKey: "provider_gemini_plan_rpm_limit") as? Int else {
+            return nil
+        }
+        return GeminiPlanProfile(name: name, dailyRequestLimit: dailyLimit, requestsPerMinuteLimit: rpmLimit)
+    }
+
+    func setGeminiPlan(_ plan: GeminiPlanProfile?) {
+        if let plan = plan {
+            UserDefaults.standard.set(plan.name, forKey: "provider_gemini_plan")
+            UserDefaults.standard.set(plan.dailyRequestLimit, forKey: "provider_gemini_plan_daily_limit")
+            UserDefaults.standard.set(plan.requestsPerMinuteLimit, forKey: "provider_gemini_plan_rpm_limit")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "provider_gemini_plan")
+            UserDefaults.standard.removeObject(forKey: "provider_gemini_plan_daily_limit")
+            UserDefaults.standard.removeObject(forKey: "provider_gemini_plan_rpm_limit")
+        }
+    }
+
+    func geminiAuthMode() -> GeminiAuthMode? {
+        guard let raw = UserDefaults.standard.string(forKey: "provider_gemini_auth_mode") else {
+            return nil
+        }
+        switch raw {
+        case "oauthPersonal": return .oauthPersonal
+        case "apiKey": return .apiKey
+        case "vertexAI": return .vertexAI
+        case "codeAssist": return .codeAssist
+        default: return nil
+        }
+    }
+
+    func setGeminiAuthMode(_ mode: GeminiAuthMode?) {
+        if let mode = mode {
+            let raw: String
+            switch mode {
+            case .oauthPersonal: raw = "oauthPersonal"
+            case .apiKey: raw = "apiKey"
+            case .vertexAI: raw = "vertexAI"
+            case .codeAssist: raw = "codeAssist"
+            }
+            UserDefaults.standard.set(raw, forKey: "provider_gemini_auth_mode")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "provider_gemini_auth_mode")
+        }
+    }
 }

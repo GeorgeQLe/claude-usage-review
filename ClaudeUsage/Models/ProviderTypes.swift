@@ -32,6 +32,7 @@ enum ProviderSnapshot {
     case codex(status: ProviderStatus, isEnabled: Bool)
     case codexRich(estimate: CodexEstimate, isEnabled: Bool)
     case gemini(status: ProviderStatus, isEnabled: Bool)
+    case geminiRich(estimate: GeminiEstimate, isEnabled: Bool)
 
     // Static factory methods matching test API
     static func claude(usage: UsageData, authStatus: AuthStatus, isEnabled: Bool) -> ProviderSnapshot {
@@ -46,7 +47,7 @@ enum ProviderSnapshot {
         switch self {
         case .claudeRich, .claudeSimple: return .claude
         case .codex, .codexRich: return .codex
-        case .gemini: return .gemini
+        case .gemini, .geminiRich: return .gemini
         }
     }
 
@@ -57,6 +58,7 @@ enum ProviderSnapshot {
         case .codex(_, let enabled): return enabled
         case .codexRich(_, let enabled): return enabled
         case .gemini(_, let enabled): return enabled
+        case .geminiRich(_, let enabled): return enabled
         }
     }
 }
@@ -160,6 +162,20 @@ class ProviderCoordinator {
                     detailText: degradedReason(from: status),
                     sessionUtilization: nil,
                     weeklyUtilization: nil
+                )
+            case let .geminiRich(estimate, _):
+                let headline: String
+                switch estimate.confidence {
+                case .exact: headline = "Gemini — Exact"
+                case .highConfidence: headline = "Gemini — High Confidence"
+                case .estimated: headline = "Gemini — Estimated"
+                case .observedOnly: headline = "Gemini — Observed Only"
+                }
+                return ProviderCard(
+                    id: .gemini, cardState: .configured,
+                    headline: headline,
+                    detailText: "Confidence: \(estimate.confidence)",
+                    sessionUtilization: nil, weeklyUtilization: nil
                 )
             }
         }

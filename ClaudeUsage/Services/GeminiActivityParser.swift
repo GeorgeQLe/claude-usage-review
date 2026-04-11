@@ -14,7 +14,7 @@ struct GeminiPlanProfile {
     let requestsPerMinuteLimit: Int
 }
 
-struct GeminiRatePressure {
+struct GeminiRatePressure: Equatable {
     let dailyRequestCount: Int
     let requestsPerMinute: Double
     let remainingDailyHeadroom: Int?

@@ -1,0 +1,46 @@
+import Foundation
+import Combine
+
+enum GeminiAdapterState {
+    case notInstalled
+    case installed(estimate: GeminiEstimate)
+}
+
+class GeminiAdapter: ObservableObject {
+    @Published var state: GeminiAdapterState = .notInstalled
+
+    let detector: GeminiDetector
+    let parser: GeminiActivityParser
+    let confidenceEngine: GeminiConfidenceEngine
+    var planProfile: GeminiPlanProfile?
+
+    init(geminiHome: URL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".gemini"),
+         planProfile: GeminiPlanProfile? = nil) {
+        self.detector = GeminiDetector(geminiHome: geminiHome)
+        self.parser = GeminiActivityParser(geminiHome: geminiHome)
+        self.confidenceEngine = GeminiConfidenceEngine()
+        self.planProfile = planProfile
+    }
+
+    func refresh() {
+        let detection = detector.detect()
+        guard detection.installStatus == .installed else {
+            state = .notInstalled
+            return
+        }
+        let events = parser.parseSessionFiles()
+        let estimate = confidenceEngine.evaluate(
+            detection: detection, events: events, plan: planProfile
+        )
+        state = .installed(estimate: estimate)
+    }
+
+    func toProviderSnapshot(isEnabled: Bool) -> ProviderSnapshot {
+        switch state {
+        case .notInstalled:
+            return .gemini(status: .missingConfiguration, isEnabled: isEnabled)
+        case let .installed(estimate):
+            return .geminiRich(estimate: estimate, isEnabled: isEnabled)
+        }
+    }
+}
