@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-11 — Step 6.2: Adapter Diagnostics — Stale Tracking, Degraded States, Failure Counting
+
+Implemented production code for 12 Phase 6 tests. CodexAdapter/GeminiAdapter: added `lastRefreshTime`, `consecutiveFailures`, `.degraded(reason:)` state with do/catch error tracking in `refresh()` (degraded after 3 consecutive parse failures, recovery on success). ProviderTypes: added `.stale` CardState, `staleThreshold=300`, `makeShellState(providers:now:refreshTimes:)` overload, `isDegraded` on ProviderSnapshot, tray rotation filters degraded providers. ProviderShellViewModel: added `formatDegradedTrayText`/`formatStaleText` static methods, degraded handling in `formatTrayText`. Added stub `explanation(for:)` on CodexConfidenceEngine so ConfidenceExplanationTests compile (fail at assertion, Step 6.3 scope). 105/108 tests pass, 3 expected failures.
+
 ## 2026-04-10 — Step 6.1: Red Phase — Failing Tests for Diagnostics & Hardening
 
 Created `ClaudeUsageTests/DiagnosticsTests.swift` with 15 red-phase tests across 4 classes: AdapterDiagnosticsTests (5 — lastRefreshTime, consecutiveFailures, degraded state, recovery), StaleDetectionTests (4 — stale card state, threshold, tray indicator), ConfidenceExplanationTests (3 — explanation API for observedOnly/estimated/highConfidence), TrayEdgeCaseTests (3 — degraded tray text, all-disabled fallback, rotation skips degraded). Registered in pbxproj. App target builds clean. Test target fails to compile with 22 expected errors referencing not-yet-existing properties (red phase confirmed). 93 existing tests unaffected.

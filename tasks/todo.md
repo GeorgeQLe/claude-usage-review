@@ -45,7 +45,7 @@
   - All 93 existing tests still pass
 
 ## Implementation
-- [ ] Step 6.2: [automated] Add adapter diagnostics — stale tracking, degraded states, and failure counting.
+- [x] Step 6.2: [automated] Add adapter diagnostics — stale tracking, degraded states, and failure counting.
 
   **What:** Add `lastRefreshTime`, `consecutiveFailures`, and `.degraded` state to Codex and Gemini adapters. Add `.stale` card state to `ProviderTypes`. Wire degraded/stale into `ProviderCoordinator` card building and tray text.
 
