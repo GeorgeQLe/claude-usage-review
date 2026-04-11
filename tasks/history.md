@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-11 — Bugfix: todayUsagePercent pre-midnight baseline
+
+Fixed `todayUsagePercent` in `UsageViewModel.swift` to prefer the last pre-midnight snapshot as baseline instead of only looking at today's snapshots. Previously, fresh app launches showed 0% because the first snapshot IS the current reading (delta=0). Now uses pre-midnight history (up to 24h stored in `historySnapshots`) to compute a meaningful delta since midnight. Falls back to earliest-today snapshot for fresh installs.
+
 ## 2026-04-11 — Step 7.5: Audit Parity Gaps and Document Them
 
 Created `docs/cross-platform-parity.md` with full feature matrix (44 features across 9 categories). Summary: 25 ported, 11 gaps (macOS-only), 6 deferred (types only, no adapter logic), 1 Tauri-only, 1 N/A. Key gaps: live countdown timer, session reset notification, auto-fetch at reset, usage history/sparklines, pace emoji themes. Updated `tauri-app/README.md` with multi-provider status section noting Claude provider is live, Codex/Gemini adapters deferred, and linking to parity doc. No code changes.
