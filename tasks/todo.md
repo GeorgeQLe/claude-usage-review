@@ -3,7 +3,7 @@
 > Project: ClauseUsage (macOS menu bar app) · Phase 5 of 7
 > Test strategy: tdd
 > Prior phases: Phase 1 (shared provider foundation) ✅, Phase 2 (Codex passive adapter) ✅, Phase 3 (Codex accuracy mode wrapper) ✅, Phase 4 (Gemini passive adapter) ✅
-> Current test count: 78 passing
+> Current test count: 93 passing
 
 ## Tests First
 - [x] Step 5.1: [automated] Add failing tests for Gemini wrapper event capture, event-ledger persistence, confidence upgrades from wrapper data, and privacy constraints.
@@ -46,7 +46,7 @@
   - Privacy tests verify no prompt content storage by design
 
 ## Implementation
-- [ ] Step 5.2: [automated] Add wrapper event types and event ledger persistence.
+- [x] Step 5.2: [automated] Add wrapper event types and event ledger persistence.
 
   **What:** Create `GeminiInvocationEvent` struct and `GeminiEventLedger` class in `GeminiTypes.swift`. The event captures derived metrics only (timestamps, mode, model, limitHit flag). The ledger appends JSONL to `~/Library/Application Support/ClaudeUsage/gemini-events.jsonl` and supports read-back with rolling window trim.
 

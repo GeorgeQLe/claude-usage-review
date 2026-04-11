@@ -467,3 +467,7 @@ Implemented the full Gemini passive adapter across 6 TDD steps, adding 17 new te
 **Step 4.5 — Shell wiring + settings UI:** Wired `GeminiAdapter` into `ProviderShellViewModel` with 15s polling. Added Gemini settings row with detection status badge, enable toggle, auth mode display, plan picker (Personal preset), and rate pressure summary.
 
 **Step 4.6 — Green gate:** Build clean, 78 tests pass (0 failures). Verified isolation: `UsageService.swift`, `UsageViewModel.swift`, `CodexAdapter.swift`, `CodexDetector.swift` all untouched during Phase 4. All milestone criteria met.
+
+## 2026-04-10 — Step 5.2: Green Phase — Gemini Wrapper Event Types and Event Ledger
+
+Implemented `GeminiInvocationEvent` struct in `GeminiTypes.swift` (mirrors `CodexInvocationEvent`). Created `GeminiEventLedger.swift` in Services (mirrors `CodexEventLedger` — JSONL append/read/trim for `gemini-events.jsonl`). Updated `GeminiConfidenceEngine.evaluate()` with `wrapperEvents:` parameter and wrapper confidence upgrade logic (3+ limit hits + plan → highConfidence, any wrapper events → estimated). Fixed test file label mismatch (`.authenticated(.oauthPersonal)` → `.authenticated(mode: .oauthPersonal)`). All 93 tests pass (78 existing + 15 new), 0 failures.
