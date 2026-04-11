@@ -362,25 +362,48 @@
 
   **What:** Integrate `GeminiAdapter` into the provider shell with 15s polling, update SettingsView with Gemini provider row (auth mode picker, plan selection, detection status), and update ProviderShellViewModel tray text formatting for Gemini.
 
-  **Files to modify:**
-  - `ClaudeUsage/Models/ProviderShellViewModel.swift` — add:
-    - `private let geminiAdapter: GeminiAdapter` property
-    - `private var geminiTimer: Timer?` (15s polling, same as Codex)
-    - Initialize in `init` with plan from `settingsStore.geminiPlan()`
-    - Add `geminiDetected: Bool` computed property
-    - In `rebuildShellState`, append `geminiAdapter.toProviderSnapshot(isEnabled:)`
-    - Add tray text formatting for `.geminiRich` case (e.g., "Gemini 412/1000" or "Gemini Observed")
+  **File to modify: `ClaudeUsage/Models/ProviderShellViewModel.swift`**
 
-  - `ClaudeUsage/Views/SettingsView.swift` — replace Gemini placeholder with:
-    - "Gemini" row with detection status ("Detected" / "Not Detected") + enable toggle
-    - When enabled + detected: auth mode display, plan picker (Personal: 1000/day, 60/min)
-    - Rate pressure summary: "412 req today · 16h left" or "No data"
+  Changes (follow Codex wiring pattern exactly):
+  1. Add `private let geminiAdapter: GeminiAdapter` property (line ~11, after `codexAdapter`)
+  2. Add `private var geminiTimer: Timer?` (line ~12, after `codexTimer`)
+  3. In `init` (~line 16-42):
+     - Read plan: `let geminiPlan = settingsStore.geminiPlan()`
+     - Init adapter: `self.geminiAdapter = GeminiAdapter(planProfile: geminiPlan)`
+     - Subscribe to `geminiAdapter.$state` → `rebuildFromCurrent()` (like codexAdapter on line 32-34)
+     - Call `geminiAdapter.refresh()` (like line 35)
+     - Start timer: `geminiTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { ... geminiAdapter.refresh() }` (like line 36-38)
+  4. In `deinit` (~line 44-47): add `geminiTimer?.invalidate()`
+  5. Add computed property `geminiDetected: Bool` (like `codexDetected` on line 81-84):
+     ```swift
+     var geminiDetected: Bool {
+         if case .installed = geminiAdapter.state { return true }
+         return false
+     }
+     ```
+  6. In `rebuildShellState` (~line 109): replace the hardcoded `.gemini(status: .missingConfiguration, ...)` with:
+     ```swift
+     snapshots.append(geminiAdapter.toProviderSnapshot(isEnabled: settingsStore.isEnabled(.gemini)))
+     ```
+  7. Tray text formatting for `.geminiRich` is already handled (added in Step 4.4).
+
+  **File to modify: `ClaudeUsage/Views/SettingsView.swift`**
+
+  Replace the minimal Gemini section (~line 258-270) with a richer configuration row:
+  - Detection status badge: "Detected" (green) / "Not Detected" (gray) based on `providerShellViewModel.geminiDetected`
+  - Enable toggle (existing binding to `providerSettingsStore.isEnabled(.gemini)`)
+  - When enabled + detected, show:
+    - Auth mode display (read-only, from adapter detection)
+    - Plan picker: "Personal" preset (1000/day, 60/min) or "None"
+    - Rate pressure summary if available: "X req today" or "No activity data"
+  - Follow the existing Codex settings pattern in the same file
 
   **Acceptance criteria:**
   - `xcodebuild build` compiles
   - Gemini provider card appears in stacked popover when enabled + detected
   - Tray rotates across Claude, Codex, and Gemini when all three are enabled
-  - Settings shows Gemini configuration row
+  - Settings shows Gemini configuration row with detection status
+  - 78 tests still pass (no new tests in this step)
 
 ## Green
 - [ ] Step 4.6: [automated] Make all Gemini passive tests pass, rerun all Phase 1-3 tests, verify no regressions.
