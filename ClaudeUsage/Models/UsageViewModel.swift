@@ -578,20 +578,23 @@ class UsageViewModel: ObservableObject {
     }
 
     /// Estimated usage today: delta in weekly utilization since midnight (or earliest snapshot today).
+    /// Uses today's minimum weekly utilization as baseline, which naturally handles weekly resets
+    /// (the post-reset trough becomes the baseline instead of the pre-reset peak).
     var todayUsagePercent: Int? {
         guard let currentWeekly = usageData?.sevenDay.utilization else { return nil }
 
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: Date())
-
-        // Find the earliest snapshot from today (closest to midnight)
+        let startOfDay = Calendar.current.startOfDay(for: Date())
         let todaySnapshots = historySnapshots.filter { $0.timestamp >= startOfDay }
-        guard let earliest = todaySnapshots.first else {
-            // No snapshots from today yet — usage since we started tracking is 0
-            return 0
+        guard var baseline = todaySnapshots.map(\.weeklyUtilization).min() else { return nil }
+
+        // If a pre-midnight snapshot has a lower value (no reset gap),
+        // prefer it for slightly better accuracy (captures overnight usage).
+        if let lastPreMidnight = historySnapshots.last(where: { $0.timestamp < startOfDay }),
+           lastPreMidnight.weeklyUtilization < baseline {
+            baseline = lastPreMidnight.weeklyUtilization
         }
 
-        let delta = currentWeekly - earliest.weeklyUtilization
+        let delta = currentWeekly - baseline
         return max(0, Int(delta.rounded()))
     }
 

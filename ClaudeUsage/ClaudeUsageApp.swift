@@ -32,11 +32,11 @@ struct ClaudeUsageApp: App {
         var parts = ["\(sessionEmoji) \(sessionPct)%"]
 
         let targetEmoji = viewModel.paceTheme.targetEmoji
-        let todayPct = viewModel.todayUsagePercent ?? 0
+        let todayPctStr = viewModel.todayUsagePercent.map { "\($0)" } ?? "–"
         if let budget = viewModel.dailyBudgetPercent {
-            parts.append("\(targetEmoji) \(todayPct)%/\(budget)%/day")
+            parts.append("\(targetEmoji) \(todayPctStr)%/\(budget)%/day")
         } else {
-            parts.append("\(targetEmoji) \(todayPct)%/day")
+            parts.append("\(targetEmoji) \(todayPctStr)%/day")
         }
 
         let weeklyPct = Int(viewModel.usageData?.sevenDay.utilization ?? 0)
