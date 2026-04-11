@@ -14,8 +14,19 @@ class GeminiConfidenceEngine {
     func evaluate(
         detection: GeminiDetectionResult,
         events: [GeminiRequestEvent],
-        plan: GeminiPlanProfile?
+        plan: GeminiPlanProfile?,
+        wrapperEvents: [GeminiInvocationEvent] = []
     ) -> GeminiEstimate {
+        // Wrapper events with enough limit hits + plan → highConfidence
+        let wrapperLimitHits = wrapperEvents.filter { $0.limitHitDetected }.count
+        if wrapperLimitHits >= 3 && plan != nil {
+            return GeminiEstimate(confidence: .highConfidence, ratePressure: nil, authMode: nil)
+        }
+        // Any wrapper events → at least estimated
+        if !wrapperEvents.isEmpty {
+            return GeminiEstimate(confidence: .estimated, ratePressure: nil, authMode: nil)
+        }
+
         let authMode: GeminiAuthMode?
         if case .authenticated(let mode) = detection.authStatus {
             authMode = mode
@@ -43,5 +54,17 @@ class GeminiConfidenceEngine {
         }
 
         return GeminiEstimate(confidence: confidence, ratePressure: ratePressure, authMode: authMode)
+    }
+}
+
+struct GeminiInvocationEvent: Codable, Equatable {
+    let startTime: Date
+    let endTime: Date
+    let commandMode: String
+    let model: String
+    let limitHitDetected: Bool
+
+    var duration: TimeInterval {
+        endTime.timeIntervalSince(startTime)
     }
 }

@@ -189,7 +189,7 @@ final class GeminiWrapperConfidenceTests: XCTestCase {
     func testWrapperEventsUpgradeFromObservedToEstimated() {
         let detection = GeminiDetectionResult(
             installStatus: .installed,
-            authStatus: .authenticated(.oauthPersonal)
+            authStatus: .authenticated(mode: .oauthPersonal)
         )
         let wrapperEvents = [
             GeminiInvocationEvent(
@@ -224,7 +224,7 @@ final class GeminiWrapperConfidenceTests: XCTestCase {
     func testWrapperLimitHitsUpgradeToHighConfidence() {
         let detection = GeminiDetectionResult(
             installStatus: .installed,
-            authStatus: .authenticated(.oauthPersonal)
+            authStatus: .authenticated(mode: .oauthPersonal)
         )
         let plan = GeminiPlanProfile(name: "pro", dailyRequestLimit: 1500, requestsPerMinuteLimit: 15)
 
@@ -253,7 +253,7 @@ final class GeminiWrapperConfidenceTests: XCTestCase {
     func testWrapperEventsAloneWithoutPlanYieldEstimated() {
         let detection = GeminiDetectionResult(
             installStatus: .installed,
-            authStatus: .authenticated(.oauthPersonal)
+            authStatus: .authenticated(mode: .oauthPersonal)
         )
         let wrapperEvents = [
             GeminiInvocationEvent(
@@ -279,7 +279,7 @@ final class GeminiWrapperConfidenceTests: XCTestCase {
     func testWrapperDoesNotClaimExactConfidence() {
         let detection = GeminiDetectionResult(
             installStatus: .installed,
-            authStatus: .authenticated(.oauthPersonal)
+            authStatus: .authenticated(mode: .oauthPersonal)
         )
         let plan = GeminiPlanProfile(name: "pro", dailyRequestLimit: 1500, requestsPerMinuteLimit: 15)
 
