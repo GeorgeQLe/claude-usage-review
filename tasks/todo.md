@@ -45,7 +45,7 @@
   - Existing 2 cookie-parsing tests in `api.rs` still pass
 
 ## Implementation
-- [ ] Step 7.2: [automated] Implement the three `todo!()` method bodies to turn red tests green.
+- [x] Step 7.2: [automated] Implement the three `todo!()` method bodies to turn red tests green.
 
   **What:** Fill in the three stub methods in `tauri-app/src-tauri/src/provider_types.rs`. No new types needed — all types, enums, and structs already exist from Step 7.1.
 

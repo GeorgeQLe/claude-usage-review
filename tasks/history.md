@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-11 — Step 7.2: Green Phase — Implement Provider Type Methods
+
+Filled in three `todo!()` stubs in `provider_types.rs`: `ProviderSnapshot::id()` (match on variant → ProviderId), `ConfidenceLevel::explanation()` (keyword-matched strings matching Swift counterpart), `ShellState::tray_provider()` (first Configured card). All 17 Rust tests pass (15 provider_types + 2 api), 0 failures.
+
 ## 2026-04-11 — Step 6.5: Phase 6 Verification Gate (Complete)
 
 Final green-phase gate for Phase 6: Onboarding, Diagnostics, and Product Hardening. Build succeeded, 108 tests pass with 0 failures across 27 test suites. All 5 milestones confirmed: confidence explanations surface for all providers, stale/degraded states handled gracefully, documentation matches the multi-provider product, all Phase 6 tests pass, no regressions in Phases 1–5 tests. Phase 6 complete.
