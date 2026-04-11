@@ -291,9 +291,30 @@
   **Files to modify:**
   - `tauri-app/README.md` — add multi-provider status note
 
+  **Implementation plan:**
+
+  ### 1. Audit macOS features
+  Read the macOS app source to enumerate all features:
+  - `ClaudeUsage/` — Models, Views, Services directories
+  - `SPEC.md` / `prd.json` — specified features
+  - Key areas: auth/keychain, polling, usage display, overlay, tray icon, settings, multi-account, multi-provider (Codex/Gemini), confidence levels, pace indicators, notifications
+
+  ### 2. Audit Tauri features
+  Read `tauri-app/src-tauri/src/` and `tauri-app/src/` to enumerate implemented features:
+  - API polling, auth, keychain, usage display, overlay, tray icon, settings, multi-account
+  - Provider types (7.1-7.4), frontend cards, provider snapshots
+
+  ### 3. Create `docs/cross-platform-parity.md`
+  Structure as a table with columns: Feature | macOS | Tauri | Status (Ported/Partial/Deferred/Gap) | Notes
+  Categories: Core, Auth, Display, Overlay, Multi-Provider, Settings, Platform-Specific
+
+  ### 4. Update `tauri-app/README.md`
+  Add a "Multi-Provider Status" section noting that provider card types and rendering are wired up, with Codex/Gemini adapters deferred to future work.
+
   **Acceptance criteria:**
   - Every macOS feature listed with status
   - No code changes
+  - `docs/cross-platform-parity.md` exists with complete feature matrix
 
 ## Green
 - [ ] Step 7.6: [automated] Final verification gate for Phase 7.
