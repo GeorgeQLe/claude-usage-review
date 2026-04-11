@@ -213,13 +213,31 @@
 
   **What:** Merge wrapper-derived events into `GeminiAdapter.refresh()` — feed ledger events alongside passive parser events into `GeminiConfidenceEngine`. Surface Accuracy Mode toggle in SettingsView.
 
-  **File to modify: `ClaudeUsage/Services/GeminiAdapter.swift`**
+  ## Files to modify
 
-  Changes (mirror Codex adapter pattern):
-  1. Add `let ledger: GeminiEventLedger` property
-  2. In `init`: create ledger instance
-  3. In `refresh()`: read wrapper events from ledger, pass to `confidenceEngine.evaluate(..., wrapperEvents:)`
+  ### 1. `ClaudeUsage/Services/GeminiAdapter.swift` (46 lines → ~55 lines)
 
+  Mirror the `CodexAdapter` pattern (`ClaudeUsage/Services/CodexAdapter.swift`):
+
+  **Add ledger property** (after `confidenceEngine` at line 14):
+  ```swift
+  let ledger: GeminiEventLedger
+  ```
+
+  **Update `init`** to accept and create ledger (line 17-23):
+  ```swift
+  init(geminiHome: URL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".gemini"),
+       planProfile: GeminiPlanProfile? = nil,
+       ledgerDirectory: URL = GeminiEventLedger.defaultDirectory) {
+      self.detector = GeminiDetector(geminiHome: geminiHome)
+      self.parser = GeminiActivityParser(geminiHome: geminiHome)
+      self.confidenceEngine = GeminiConfidenceEngine()
+      self.ledger = GeminiEventLedger(directory: ledgerDirectory)
+      self.planProfile = planProfile
+  }
+  ```
+
+  **Update `refresh()`** (lines 25-36) — read wrapper events, pass to evaluate, trim ledger:
   ```swift
   func refresh() {
       let detection = detector.detect()
@@ -228,36 +246,50 @@
           return
       }
       let events = parser.parseSessionFiles()
-      let wrapperEvents = ledger.readEvents()
+      let wrapperEvents = (try? ledger.readEvents()) ?? []
       let estimate = confidenceEngine.evaluate(
           detection: detection, events: events,
           plan: planProfile, wrapperEvents: wrapperEvents)
       state = .installed(estimate: estimate)
+      try? ledger.trim(retaining: 48 * 3600)
   }
   ```
 
-  **File to modify: `ClaudeUsage/Views/SettingsView.swift`**
+  ### 2. `ClaudeUsage/Views/SettingsView.swift`
 
-  Add Accuracy Mode toggle under Gemini section (mirror Codex UI at ~lines 242-257):
+  **Insert Accuracy Mode toggle** after the Gemini Plan row (after line 283, before the closing `}`). Mirror the exact Codex pattern at lines 242-257:
+
   ```swift
   if providerSettingsStore.isEnabled(.gemini) && providerShellViewModel.geminiDetected {
       HStack {
           Text("  Accuracy Mode")
+              .font(.system(size: 11))
           Spacer()
           Text(providerSettingsStore.geminiAccuracyMode() ? "Active" : "Off")
+              .font(.system(size: 10))
+              .foregroundColor(.secondary)
           Toggle("", isOn: Binding(
               get: { providerSettingsStore.geminiAccuracyMode() },
               set: { providerSettingsStore.setGeminiAccuracyMode($0) }
           ))
+          .toggleStyle(.switch)
+          .controlSize(.mini)
       }
   }
   ```
 
-  **Acceptance criteria:**
-  - `xcodebuild build` compiles
-  - `GeminiWrapperConfidenceTests` pass (4 tests) — wrapper events now flow through adapter
-  - All 78 existing tests still pass
-  - Settings shows Gemini Accuracy Mode toggle when Gemini is enabled + detected
+  Insert this block at line 283, right after the existing `if providerSettingsStore.isEnabled(.gemini) && providerShellViewModel.geminiDetected { ... }` block that shows the Plan row. The new block is a sibling — a separate `if` block with the same condition, matching the Codex pattern where Plan and Accuracy Mode are separate conditional blocks.
+
+  ## Key notes
+  - `GeminiEventLedger.readEvents()` is `throws` — use `(try? ...) ?? []` like CodexAdapter
+  - `ledger.trim(retaining: 48 * 3600)` at end of refresh keeps the ledger file bounded
+  - The SettingsView toggle uses `.font(.system(size: 11))`, `.font(.system(size: 10))`, `.toggleStyle(.switch)`, `.controlSize(.mini)` — exact match to Codex accuracy mode toggle
+  - No new tests in this step — confidence tests already pass (they test `GeminiConfidenceEngine` directly, not through the adapter)
+
+  ## Verification
+  1. `xcodebuild build -scheme ClaudeUsage -destination 'platform=macOS'` — compiles
+  2. `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` — 93 tests pass, 0 failures
+  3. Settings UI shows Gemini Accuracy Mode toggle when Gemini is enabled + detected
 
 ## Green
 - [ ] Step 5.5: [automated] Make all Gemini wrapper tests pass, rerun all Phase 1-4 tests, verify no regressions.
