@@ -292,25 +292,28 @@
   3. Settings UI shows Gemini Accuracy Mode toggle when Gemini is enabled + detected
 
 ## Green
-- [ ] Step 5.5: [automated] Make all Gemini wrapper tests pass, rerun all Phase 1-4 tests, verify no regressions.
+- [ ] Step 5.5: [automated] Final green-phase verification gate for Phase 5.
 
-  **What:** Final green-phase verification for Phase 5. All tests should already pass as of Step 5.4. This step is a verification gate — run the full suite, confirm no regressions, and mark Phase 5 milestone complete.
+  **What:** All tests should already pass. This step is a verification gate — run the full suite, confirm no regressions, and mark Phase 5 milestone complete.
 
-  **Steps:**
-  1. Run `xcodebuild build -scheme ClaudeUsage -destination 'platform=macOS'` — confirm clean compile
-  2. Run `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` — confirm ~93 pass (78 existing + ~15 new), 0 fail
-  3. Verify no changes to `UsageService.swift`, `UsageViewModel.swift` (Claude untouched)
-  4. Verify no changes to `CodexWrapper.swift`, `CodexAdapter.swift` (Codex untouched)
-  5. Verify passive-only Gemini path still works (GeminiConfidenceEngine with empty wrapperEvents)
-  6. Check all milestone criteria and mark complete
+  ## Verification checklist
+
+  1. `xcodebuild build -scheme ClaudeUsage -destination 'platform=macOS'` — clean compile
+  2. `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` — 93 tests pass, 0 failures
+  3. Verify Claude files untouched: `git diff main~6..main -- ClaudeUsage/Services/UsageService.swift ClaudeUsage/Models/UsageViewModel.swift` — empty
+  4. Verify Codex files untouched: `git diff main~6..main -- ClaudeUsage/Services/CodexWrapper.swift ClaudeUsage/Services/CodexAdapter.swift` — empty
+  5. Verify passive-only path: `GeminiConfidenceEngine.evaluate()` defaults `wrapperEvents: []` — already in signature
+  6. Check off all milestone criteria in `tasks/todo.md`
   7. Mark Phase 5 complete in `tasks/roadmap.md`
 
-  **Acceptance criteria:**
-  - All GeminiWrapperTests pass (~15 tests)
-  - All 78 existing tests still pass
-  - `xcodebuild build` compiles cleanly
-  - No changes to Claude or Codex adapter code
-  - Passive-only Gemini still works (wrapperEvents defaults to empty array)
+  ## Files to modify
+  - `tasks/todo.md` — check off milestone items
+  - `tasks/roadmap.md` — mark Phase 5 milestone complete
+
+  ## Acceptance criteria
+  - All 93 tests pass (78 existing + 15 wrapper)
+  - No code changes in this step — verification only
+  - Phase 5 milestone marked complete
 
 ## Milestone
 - [ ] Gemini Accuracy Mode can be enabled independently.
