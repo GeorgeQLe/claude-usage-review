@@ -1,5 +1,13 @@
 # ClaudeUsage — Session History
 
+## 2026-04-10 — Step 5.3: Gemini Wrapper Launcher
+
+Created `GeminiWrapper.swift` mirroring `CodexWrapper.swift` — launches `gemini` CLI via `Foundation.Process`, captures start/end timestamps, parses stderr for "rate limit"/"usage limit", extracts model from `--model` flag, appends `GeminiInvocationEvent` to `GeminiEventLedger`. Added `geminiAccuracyMode()`/`setGeminiAccuracyMode(_:)` to `ProviderSettingsStore`. Registered in pbxproj. Build succeeds, 93 tests pass, 0 failures.
+
+## 2026-04-10 — Step 5.2: Gemini Wrapper Event Types and Event Ledger
+
+Created `GeminiInvocationEvent` struct (Codable, Equatable) and `GeminiEventLedger` class in separate files. Updated `GeminiConfidenceEngine.evaluate()` to accept `wrapperEvents:` parameter with confidence upgrade logic. Registered `GeminiEventLedger.swift` in pbxproj. 93 tests pass, 0 failures.
+
 ## 2026-04-10 — Step 5.1: Red Phase — Failing Tests for Gemini Wrapper
 
 Created `GeminiWrapperTests.swift` with 15 tests across 4 classes (GeminiWrapperEventTests: 3, GeminiEventLedgerTests: 5, GeminiWrapperConfidenceTests: 4, GeminiPrivacyTests: 3). Tests define the full Gemini Accuracy Mode wrapper contract: invocation event model, JSONL event ledger persistence, confidence upgrades from wrapper data, and privacy constraints. All tests reference not-yet-existing types (`GeminiInvocationEvent`, `GeminiEventLedger`, `wrapperEvents:` parameter on `GeminiConfidenceEngine`). Test target fails to compile (expected red phase). App target builds clean. 78 existing tests unaffected.

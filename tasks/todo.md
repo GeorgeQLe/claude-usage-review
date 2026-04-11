@@ -107,7 +107,7 @@
   - `GeminiWrapperConfidenceTests` may still fail (wrapper integration in adapter not yet wired)
   - All 78 existing tests still pass
 
-- [ ] Step 5.3: [automated] Implement Gemini wrapper launcher.
+- [x] Step 5.3: [automated] Implement Gemini wrapper launcher.
 
   **What:** Create `GeminiWrapper` class that launches the `gemini` CLI via `Foundation.Process`, captures start/end timestamps, parses stderr for rate-limit errors, and appends a `GeminiInvocationEvent` to the ledger. Also add `geminiAccuracyMode` toggle to `ProviderSettingsStore`.
 
