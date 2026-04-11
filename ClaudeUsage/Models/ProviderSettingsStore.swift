@@ -63,6 +63,14 @@ class ProviderSettingsStore: ObservableObject {
         UserDefaults.standard.set(enabled, forKey: "provider_codex_accuracy_mode")
     }
 
+    func geminiAccuracyMode() -> Bool {
+        UserDefaults.standard.bool(forKey: "provider_gemini_accuracy_mode")
+    }
+
+    func setGeminiAccuracyMode(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: "provider_gemini_accuracy_mode")
+    }
+
     func geminiPlan() -> GeminiPlanProfile? {
         guard let name = UserDefaults.standard.string(forKey: "provider_gemini_plan"),
               let dailyLimit = UserDefaults.standard.object(forKey: "provider_gemini_plan_daily_limit") as? Int,
