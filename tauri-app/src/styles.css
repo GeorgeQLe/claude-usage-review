@@ -539,6 +539,70 @@ body {
   font-weight: 600;
 }
 
+/* Provider Cards */
+.provider-cards {
+  margin-top: 12px;
+}
+
+.provider-card {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+}
+
+.provider-card:last-child {
+  margin-bottom: 0;
+}
+
+.provider-card-header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.provider-card-headline {
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.confidence-badge {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.stale-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  background: rgba(255, 170, 0, 0.2);
+  color: var(--yellow);
+  padding: 1px 6px;
+  border-radius: 8px;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+.degraded-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  background: rgba(255, 68, 68, 0.2);
+  color: var(--red);
+  padding: 1px 6px;
+  border-radius: 8px;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 4px;

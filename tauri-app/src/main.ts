@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { UsageState } from "./types";
+import { UsageState, ProviderCard } from "./types";
 import { createUsageBar } from "./components/usage-bar";
 import { createAccountPicker } from "./components/account-picker";
 
@@ -29,6 +29,55 @@ async function init() {
       console.error("Render error on usage-updated:", e);
     }
   });
+}
+
+const PROVIDER_NAMES: Record<string, string> = {
+  claude: "Claude",
+  codex: "Codex CLI",
+  gemini: "Gemini CLI",
+};
+
+function utilColor(pct: number): string {
+  if (pct >= 80) return "var(--red)";
+  if (pct >= 50) return "var(--yellow)";
+  return "var(--green)";
+}
+
+function renderProviderCard(card: ProviderCard): string {
+  const name = PROVIDER_NAMES[card.id] ?? card.id;
+
+  if (card.card_state === "missing_configuration") {
+    return `
+      <div class="provider-card">
+        <div class="provider-card-header">${name}</div>
+        <div class="provider-card-headline" style="color:var(--text-muted)">Not configured</div>
+      </div>`;
+  }
+
+  let inner = `<div class="provider-card-header">${name}`;
+  if (card.card_state === "stale") {
+    inner += ' <span class="stale-badge">stale</span>';
+  } else if (card.card_state === "degraded") {
+    inner += ' <span class="degraded-badge">degraded</span>';
+  }
+  inner += `</div>`;
+  inner += `<div class="provider-card-headline">${card.headline}</div>`;
+
+  if (card.session_utilization !== null) {
+    const pct = Math.round(card.session_utilization);
+    inner += `
+      <div class="usage-bar" style="margin-top:6px">
+        <div class="usage-bar-track">
+          <div class="usage-bar-fill" style="width:${pct}%;background:${utilColor(pct)}"></div>
+        </div>
+      </div>`;
+  }
+
+  if (card.confidence_explanation) {
+    inner += `<div class="confidence-badge">${card.confidence_explanation}</div>`;
+  }
+
+  return `<div class="provider-card">${inner}</div>`;
 }
 
 function render(state: UsageState) {
@@ -72,6 +121,15 @@ function render(state: UsageState) {
     for (const limit of state.display_limits) {
       html += createUsageBar(limit);
     }
+  }
+
+  // Provider cards
+  if (state.provider_cards && state.provider_cards.length > 0) {
+    html += '<div class="provider-cards">';
+    for (const card of state.provider_cards) {
+      html += renderProviderCard(card);
+    }
+    html += '</div>';
   }
 
   // Add account form

@@ -31,10 +31,25 @@ export interface UsageState {
   error_state: ErrorState;
   last_updated: string | null;
   highest_utilization: number;
+  provider_cards: ProviderCard[] | null;
 }
 
 export type OverlayLayout = "compact" | "minimal" | "sidebar";
 export type TimeDisplayFormat = "reset_time" | "remaining_time";
+
+export type ProviderId = "claude" | "codex" | "gemini";
+export type CardState = "configured" | "missing_configuration" | "degraded" | "stale";
+export type ConfidenceLevel = "exact" | "high_confidence" | "estimated" | "observed_only";
+
+export interface ProviderCard {
+  id: ProviderId;
+  card_state: CardState;
+  headline: string;
+  detail_text: string | null;
+  session_utilization: number | null;
+  weekly_utilization: number | null;
+  confidence_explanation: string | null;
+}
 
 export interface AppConfig {
   time_display_format: TimeDisplayFormat;
