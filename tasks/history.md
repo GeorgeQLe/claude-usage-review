@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-10 — Step 5.4: Wire GeminiAdapter Ledger + Accuracy Mode UI
+
+Wired `GeminiEventLedger` into `GeminiAdapter`: added `ledger` property, `ledgerDirectory` init param, reads wrapper events in `refresh()` and passes to `confidenceEngine.evaluate(wrapperEvents:)`, trims ledger to 48h window. Added Accuracy Mode toggle to `SettingsView` after Gemini Plan row, mirroring Codex pattern. Build succeeds, 93 tests pass, 0 failures.
+
 ## 2026-04-10 — Step 5.3: Gemini Wrapper Launcher
 
 Created `GeminiWrapper.swift` mirroring `CodexWrapper.swift` — launches `gemini` CLI via `Foundation.Process`, captures start/end timestamps, parses stderr for "rate limit"/"usage limit", extracts model from `--model` flag, appends `GeminiInvocationEvent` to `GeminiEventLedger`. Added `geminiAccuracyMode()`/`setGeminiAccuracyMode(_:)` to `ProviderSettingsStore`. Registered in pbxproj. Build succeeds, 93 tests pass, 0 failures.

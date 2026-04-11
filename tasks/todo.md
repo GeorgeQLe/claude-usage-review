@@ -209,7 +209,7 @@
   - `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` — all 93 tests pass, 0 failures
   - No new tests in this step (wrapper launcher tested indirectly via Step 5.2 types)
 
-- [ ] Step 5.4: [automated] Wire wrapper events into GeminiAdapter and add Accuracy Mode UI.
+- [x] Step 5.4: [automated] Wire wrapper events into GeminiAdapter and add Accuracy Mode UI.
 
   **What:** Merge wrapper-derived events into `GeminiAdapter.refresh()` — feed ledger events alongside passive parser events into `GeminiConfidenceEngine`. Surface Accuracy Mode toggle in SettingsView.
 
