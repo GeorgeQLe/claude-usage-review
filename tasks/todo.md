@@ -146,7 +146,7 @@
   - `xcodebuild build` still compiles (sanity check)
 
 ## Green
-- [ ] Step 6.5: [automated] Final green-phase verification gate for Phase 6.
+- [x] Step 6.5: [automated] Final green-phase verification gate for Phase 6.
 
   **What:** All tests should pass. Run the full suite, confirm no regressions, and mark Phase 6 milestone complete.
 
@@ -170,8 +170,8 @@
   - `tasks/history.md` — append Phase 6 completion record
 
 ## Milestone
-- [ ] Users can understand why each provider is exact, estimated, passive-only, or degraded.
-- [ ] The app handles stale and degraded states gracefully.
-- [ ] Product copy and documentation match the multi-provider product.
-- [ ] All Phase 6 tests pass.
-- [ ] No regressions in previous phase tests.
+- [x] Users can understand why each provider is exact, estimated, passive-only, or degraded.
+- [x] The app handles stale and degraded states gracefully.
+- [x] Product copy and documentation match the multi-provider product.
+- [x] All Phase 6 tests pass.
+- [x] No regressions in previous phase tests.
