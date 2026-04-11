@@ -101,17 +101,18 @@ Build the macOS app into a multi-provider CLI usage monitor for Claude Code, Cod
 - No regressions in previous phase tests.
 
 ## Phase 5: Gemini Accuracy Mode Wrapper
+> Test strategy: tdd
 
 ### Tests First
-- Step 5.1: [automated] Add failing tests for Gemini wrapper event capture, structured-output ingestion, event-ledger persistence, and confidence upgrades under [ClaudeUsageTests](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsageTests).
+- Step 5.1: [automated] Add failing tests for Gemini wrapper event capture, event-ledger persistence, confidence upgrades from wrapper data, and privacy constraints in `ClaudeUsageTests/GeminiWrapperTests.swift`. ~15 tests across GeminiWrapperEventTests (3), GeminiEventLedgerTests (5), GeminiWrapperConfidenceTests (4), GeminiPrivacyTests (3).
 
 ### Implementation
-- Step 5.2: [automated] Implement an opt-in Gemini wrapper/launcher and wrapper configuration in new files under [ClaudeUsage/Services](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Services).
-- Step 5.3: [automated] Add structured-event ingestion for Gemini wrapper runs and merge wrapper-derived telemetry with passive Gemini state.
-- Step 5.4: [automated] Expose Gemini Accuracy Mode controls, status, and explanations in [ClaudeUsage/Views/SettingsView.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Views/SettingsView.swift) and [ClaudeUsage/Views/ContentView.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Views/ContentView.swift).
+- Step 5.2: [automated] Add wrapper event types and event ledger model to `ClaudeUsage/Models/GeminiTypes.swift`. Types: `GeminiInvocationEvent` (start/end timestamps, command mode, model, limitHitDetected), `GeminiEventLedger` class with JSONL append/read/rolling-window-trim and `~/Library/Application Support/ClaudeUsage/gemini-events.jsonl` persistence.
+- Step 5.3: [automated] Implement Gemini wrapper launcher in `ClaudeUsage/Services/GeminiWrapper.swift`. Launches `gemini` CLI via `Process`, captures start/end timestamps, parses stderr for usage-limit errors, appends `GeminiInvocationEvent` to ledger. Opt-in via `ProviderSettingsStore.geminiAccuracyMode`.
+- Step 5.4: [automated] Merge wrapper-derived events into `GeminiAdapter.refresh()` — feed ledger events alongside passive parser events into `GeminiConfidenceEngine`. Update engine so wrapper events can upgrade confidence (e.g., wrapper invocations + limit-hit patterns → `.highConfidence`). Surface Accuracy Mode toggle and status in `ClaudeUsage/Views/SettingsView.swift`.
 
 ### Green
-- Step 5.5: [automated] Make Gemini wrapper tests pass, rerun all previous phase tests, and verify passive-only users still work without enabling wrappers.
+- Step 5.5: [automated] Make all Gemini wrapper tests pass, rerun all Phase 1-4 tests (78 total), and verify that Accuracy Mode improves confidence without affecting Claude or Codex.
 
 ### Milestone
 - Gemini Accuracy Mode can be enabled independently.
