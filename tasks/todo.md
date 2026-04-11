@@ -150,7 +150,7 @@
   - Cards render when `provider_cards` present; existing Claude view works when absent
   - Stale/degraded/missing_configuration states have distinct visual treatment
 
-- [ ] Step 7.4: [automated] Wire provider coordinator into AppState and emit cards on polling.
+- [x] Step 7.4: [automated] Wire provider coordinator into AppState and emit cards on polling.
 
   **What:** Integrate `ProviderCoordinator` into `AppState`. After each Claude poll, build `ProviderSnapshot::ClaudeRich` and run `make_shell_state()` to populate `provider_cards` in `UsageState`.
 

@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-11 — Step 7.4: Wire Provider Coordinator into AppState
+
+Added `to_card()` method on `ProviderSnapshot` converting each variant to a `ProviderCard` with appropriate `CardState`, headline, utilization, and confidence. Added `provider_cards: Option<Vec<ProviderCard>>` to `UsageState`. Updated `compute_usage_state()` to build Claude provider cards: `ClaudeRich` when usage data exists, `ClaudeSimple` when auth configured but no data, `None` when not configured. Cards flow to frontend via existing `get_usage` command and `usage-updated` event. 17 Rust tests pass, frontend compiles clean.
+
 ## 2026-04-11 — Step 7.3: Frontend Provider Cards — TypeScript Types + Card Rendering
 
 Added TypeScript types (`ProviderId`, `CardState`, `ConfidenceLevel`, `ProviderCard`) to `types.ts` matching Rust serde serialization. Extended `UsageState` with optional `provider_cards`. Added `renderProviderCard()` in `main.ts` with provider name mapping, mini usage bars, confidence badges, and stale/degraded/missing_configuration visual states. Added CSS for `.provider-card`, `.confidence-badge`, `.stale-badge`, `.degraded-badge`. Progressive enhancement — cards only render when `provider_cards` is non-null. `npm run build` compiles clean.
