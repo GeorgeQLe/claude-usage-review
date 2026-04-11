@@ -62,7 +62,7 @@
   - `TrayEdgeCaseTests` pass (3 tests)
   - All 93 existing tests still pass
 
-- [ ] Step 6.3: [automated] Add confidence explanations and refine onboarding/settings copy.
+- [x] Step 6.3: [automated] Add confidence explanations and refine onboarding/settings copy.
 
   **What:** Add human-readable confidence explanations to Codex and Gemini estimate types. Surface them in provider cards and settings. Add detection troubleshooting hints when provider is "Not Detected".
 
