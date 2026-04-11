@@ -155,13 +155,131 @@
   **What:** Integrate `ProviderCoordinator` into `AppState`. After each Claude poll, build `ProviderSnapshot::ClaudeRich` and run `make_shell_state()` to populate `provider_cards` in `UsageState`.
 
   **Files to modify:**
-  - `tauri-app/src-tauri/src/state.rs` — add coordinator to AppState; build provider card after poll
-  - `tauri-app/src-tauri/src/models.rs` — add `provider_cards: Option<Vec<ProviderCard>>` to `UsageState`
-  - `tauri-app/src-tauri/src/commands.rs` — ensure `get_usage_state` returns the new field
+
+  ### 1. `tauri-app/src-tauri/src/models.rs` — add `provider_cards` to UsageState
+
+  Add import at top: `use crate::provider_types::ProviderCard;`
+
+  Add field to `UsageState` struct (after `highest_utilization: f64`):
+  ```rust
+  pub provider_cards: Option<Vec<ProviderCard>>,
+  ```
+
+  ### 2. `tauri-app/src-tauri/src/state.rs` — build provider cards in `compute_usage_state()`
+
+  Add import: `use crate::provider_types::{ProviderSnapshot, ShellState, CardState, ProviderCard, ProviderId};`
+
+  In `compute_usage_state()` (~line 71), after computing `display_limits`/`highest`/etc., build provider cards from current state:
+
+  ```rust
+  // Build provider cards from current state
+  let provider_cards = if self.usage_data.is_some() || self.auth_status != AuthStatus::NotConfigured {
+      let claude_snapshot = if let Some(ref data) = self.usage_data {
+          ProviderSnapshot::ClaudeRich {
+              usage: data.clone(),
+              auth_status: self.auth_status.clone(),
+              is_enabled: true,
+          }
+      } else {
+          ProviderSnapshot::ClaudeSimple { is_enabled: true }
+      };
+      let shell = ShellState { providers: vec![claude_snapshot.to_card()] };
+      Some(shell.providers)
+  } else {
+      None
+  };
+  ```
+
+  Then add `provider_cards` to the `UsageState { ... }` return struct.
+
+  **Key:** `ProviderSnapshot` needs a `to_card()` method. Add it in `provider_types.rs`:
+
+  ### 3. `tauri-app/src-tauri/src/provider_types.rs` — add `to_card()` method on ProviderSnapshot
+
+  Add a `pub fn to_card(&self) -> ProviderCard` method to the `impl ProviderSnapshot` block:
+
+  ```rust
+  pub fn to_card(&self) -> ProviderCard {
+      match self {
+          ProviderSnapshot::ClaudeRich { usage, auth_status, is_enabled } => {
+              if !is_enabled {
+                  return ProviderCard {
+                      id: ProviderId::Claude,
+                      card_state: CardState::MissingConfiguration,
+                      headline: "Disabled".to_string(),
+                      detail_text: None,
+                      session_utilization: None,
+                      weekly_utilization: None,
+                      confidence_explanation: None,
+                  };
+              }
+              let session_util = usage.five_hour.utilization * 100.0;
+              let weekly_util = usage.seven_day.utilization * 100.0;
+              let card_state = match auth_status {
+                  AuthStatus::Expired => CardState::Degraded,
+                  _ => CardState::Configured,
+              };
+              ProviderCard {
+                  id: ProviderId::Claude,
+                  card_state,
+                  headline: format!("{:.0}% session", session_util),
+                  detail_text: Some(format!("{:.0}% weekly", weekly_util)),
+                  session_utilization: Some(session_util),
+                  weekly_utilization: Some(weekly_util),
+                  confidence_explanation: Some("Exact usage from API".to_string()),
+              }
+          }
+          ProviderSnapshot::ClaudeSimple { is_enabled } => ProviderCard {
+              id: ProviderId::Claude,
+              card_state: if *is_enabled { CardState::Configured } else { CardState::MissingConfiguration },
+              headline: if *is_enabled { "Waiting for data...".to_string() } else { "Disabled".to_string() },
+              detail_text: None,
+              session_utilization: None,
+              weekly_utilization: None,
+              confidence_explanation: None,
+          },
+          ProviderSnapshot::Codex { is_enabled } | ProviderSnapshot::Gemini { is_enabled } => ProviderCard {
+              id: self.id(),
+              card_state: if *is_enabled { CardState::Configured } else { CardState::MissingConfiguration },
+              headline: if *is_enabled { "Monitoring...".to_string() } else { "Not configured".to_string() },
+              detail_text: None,
+              session_utilization: None,
+              weekly_utilization: None,
+              confidence_explanation: None,
+          },
+          ProviderSnapshot::CodexRich { estimate, is_enabled } => ProviderCard {
+              id: ProviderId::Codex,
+              card_state: if *is_enabled { CardState::Configured } else { CardState::MissingConfiguration },
+              headline: format!("{:.0}% estimated", estimate.utilization * 100.0),
+              detail_text: None,
+              session_utilization: Some(estimate.utilization * 100.0),
+              weekly_utilization: None,
+              confidence_explanation: Some(estimate.confidence.explanation().to_string()),
+          },
+          ProviderSnapshot::GeminiRich { estimate, is_enabled } => ProviderCard {
+              id: ProviderId::Gemini,
+              card_state: if *is_enabled { CardState::Configured } else { CardState::MissingConfiguration },
+              headline: format!("{:.0}% estimated", estimate.utilization * 100.0),
+              detail_text: None,
+              session_utilization: Some(estimate.utilization * 100.0),
+              weekly_utilization: None,
+              confidence_explanation: Some(estimate.confidence.explanation().to_string()),
+          },
+      }
+  }
+  ```
+
+  Also add `#[derive(Clone)]` to `UsageData` in `models.rs` if not already present (needed for `data.clone()` in state.rs).
+
+  ### 4. `tauri-app/src-tauri/src/commands.rs` — no changes needed
+
+  The `get_usage` command already calls `compute_usage_state()` and returns the full `UsageState`. Adding the field to `UsageState` is sufficient.
 
   **Acceptance criteria:**
-  - `cargo build` and `cargo test` pass
-  - Claude account produces a `ProviderCard` in `UsageState`
+  - `cargo build` and `cargo test` pass (all 17 existing tests + 2 api tests)
+  - `npm run build` in `tauri-app/` still compiles
+  - When Claude data is available, `UsageState.provider_cards` contains a Claude card with utilization
+  - When no data/not configured, `provider_cards` is `None`
 
 - [ ] Step 7.5: [automated] Audit parity gaps and document them.
 
