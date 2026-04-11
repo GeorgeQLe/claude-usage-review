@@ -83,6 +83,7 @@ struct ProviderCard: Equatable {
     let detailText: String?
     let sessionUtilization: Double?
     let weeklyUtilization: Double?
+    let confidenceExplanation: String?
 }
 
 // MARK: - ShellState
@@ -133,7 +134,8 @@ class ProviderCoordinator {
                     headline: "Claude \(Int(usage.fiveHour.utilization))% session",
                     detailText: nil,
                     sessionUtilization: usage.fiveHour.utilization,
-                    weeklyUtilization: usage.sevenDay.utilization
+                    weeklyUtilization: usage.sevenDay.utilization,
+                    confidenceExplanation: nil
                 )
             case let .claudeSimple(status, _):
                 return ProviderCard(
@@ -142,7 +144,8 @@ class ProviderCoordinator {
                     headline: "Claude",
                     detailText: degradedReason(from: status),
                     sessionUtilization: nil,
-                    weeklyUtilization: nil
+                    weeklyUtilization: nil,
+                    confidenceExplanation: nil
                 )
             case let .codex(status, _):
                 return ProviderCard(
@@ -151,7 +154,8 @@ class ProviderCoordinator {
                     headline: "Codex",
                     detailText: degradedReason(from: status),
                     sessionUtilization: nil,
-                    weeklyUtilization: nil
+                    weeklyUtilization: nil,
+                    confidenceExplanation: nil
                 )
             case let .codexRich(estimate, _):
                 let headline: String
@@ -165,7 +169,8 @@ class ProviderCoordinator {
                     id: .codex, cardState: .configured,
                     headline: headline,
                     detailText: "Confidence: \(estimate.confidence)",
-                    sessionUtilization: nil, weeklyUtilization: nil
+                    sessionUtilization: nil, weeklyUtilization: nil,
+                    confidenceExplanation: CodexConfidenceEngine().explanation(for: estimate.confidence)
                 )
             case let .gemini(status, _):
                 return ProviderCard(
@@ -174,7 +179,8 @@ class ProviderCoordinator {
                     headline: "Gemini",
                     detailText: degradedReason(from: status),
                     sessionUtilization: nil,
-                    weeklyUtilization: nil
+                    weeklyUtilization: nil,
+                    confidenceExplanation: nil
                 )
             case let .geminiRich(estimate, _):
                 let headline: String
@@ -188,7 +194,8 @@ class ProviderCoordinator {
                     id: .gemini, cardState: .configured,
                     headline: headline,
                     detailText: "Confidence: \(estimate.confidence)",
-                    sessionUtilization: nil, weeklyUtilization: nil
+                    sessionUtilization: nil, weeklyUtilization: nil,
+                    confidenceExplanation: GeminiConfidenceEngine().explanation(for: estimate.confidence)
                 )
             }
         }
@@ -207,7 +214,8 @@ class ProviderCoordinator {
                     headline: card.headline,
                     detailText: card.detailText,
                     sessionUtilization: card.sessionUtilization,
-                    weeklyUtilization: card.weeklyUtilization
+                    weeklyUtilization: card.weeklyUtilization,
+                    confidenceExplanation: card.confidenceExplanation
                 )
             }
             return card

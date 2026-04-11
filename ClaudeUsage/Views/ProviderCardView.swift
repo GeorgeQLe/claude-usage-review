@@ -18,6 +18,12 @@ struct ProviderCardView: View {
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }
+
+                if let explanation = card.confidenceExplanation {
+                    Text(explanation)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
 
             Spacer()

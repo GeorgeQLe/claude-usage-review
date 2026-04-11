@@ -55,6 +55,15 @@ class GeminiConfidenceEngine {
 
         return GeminiEstimate(confidence: confidence, ratePressure: ratePressure, authMode: authMode)
     }
+
+    func explanation(for confidence: GeminiConfidence) -> String {
+        switch confidence {
+        case .exact: return "Exact usage from API"
+        case .highConfidence: return "High confidence from limit detection and plan profile"
+        case .estimated: return "Estimated from wrapper events and plan profile"
+        case .observedOnly: return "Observed activity only — configure a plan for better accuracy"
+        }
+    }
 }
 
 struct GeminiInvocationEvent: Codable, Equatable {

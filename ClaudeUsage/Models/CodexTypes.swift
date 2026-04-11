@@ -58,8 +58,12 @@ class CodexConfidenceEngine {
     }
 
     func explanation(for confidence: CodexConfidence) -> String {
-        // TODO: Step 6.3 — implement real explanations
-        return ""
+        switch confidence {
+        case .exact: return "Exact usage from API"
+        case .highConfidence: return "High confidence from limit detection and plan profile"
+        case .estimated: return "Estimated from wrapper events and plan profile"
+        case .observedOnly: return "Observed activity only — configure a plan for better accuracy"
+        }
     }
 
     func cooldownStatus(from events: [CodexActivityEvent]) -> CooldownStatus {

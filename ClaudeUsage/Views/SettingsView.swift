@@ -239,6 +239,13 @@ struct SettingsView: View {
                         .controlSize(.mini)
                     }
 
+                    if !providerShellViewModel.codexDetected {
+                        Text("Install Codex CLI and run it once to enable monitoring")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                            .padding(.leading, 12)
+                    }
+
                     if providerSettingsStore.isEnabled(.codex) && providerShellViewModel.codexDetected {
                         HStack {
                             Text("  Accuracy Mode")
@@ -269,6 +276,13 @@ struct SettingsView: View {
                         ))
                         .toggleStyle(.switch)
                         .controlSize(.mini)
+                    }
+
+                    if !providerShellViewModel.geminiDetected {
+                        Text("Install Gemini CLI and run it once to enable monitoring")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                            .padding(.leading, 12)
                     }
 
                     if providerSettingsStore.isEnabled(.gemini) && providerShellViewModel.geminiDetected {
