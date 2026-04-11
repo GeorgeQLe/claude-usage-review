@@ -114,16 +114,36 @@
 
 - [ ] Step 6.4: [automated] Update user-facing documentation to match multi-provider product.
 
-  **What:** Update README.md with multi-provider feature descriptions, provider setup instructions, and confidence level documentation. Update CLAUDE.md if any conventions changed.
+  **What:** Update README.md with multi-provider feature descriptions, provider setup instructions, and confidence level documentation. Update CLAUDE.md if any conventions changed. No code changes in this step.
 
-  **Files to modify:**
-  - `README.md` — update feature list, add provider setup section (Claude/Codex/Gemini), document confidence levels, document Accuracy Mode, update screenshots description if applicable
-  - `CLAUDE.md` — update test count, add Phase 6 conventions if any
+  ## Changes
 
-  **Acceptance criteria:**
-  - README documents all three providers
-  - README explains confidence levels
-  - No code changes in this step
+  ### 1. `README.md`
+  Add a new "## Multi-Provider Monitoring" section after the existing features table. Include:
+  - Brief overview: app now monitors Claude, Codex, and Gemini CLI usage
+  - **Provider setup:** for each provider, explain what gets detected and how to enable:
+    - Claude: session key in Settings (existing flow)
+    - Codex: install Codex CLI, run once, detected automatically
+    - Gemini: install Gemini CLI, run once, detected automatically
+  - **Confidence levels:** explain the 4 levels:
+    - Exact: direct API data (Claude only)
+    - High Confidence: limit detection + plan profile configured
+    - Estimated: wrapper events or plan profile present
+    - Observed Only: activity detected but no plan configured
+  - **Accuracy Mode:** optional wrapper mode for Codex/Gemini that captures start/end timestamps and limit-hit signals (no prompt content)
+  - Add "Multi-provider monitoring" row to the features comparison table
+
+  ### 2. `CLAUDE.md`
+  - Update test count reference from any stale number to 108
+  - No convention changes needed
+
+  ## Acceptance criteria
+  - README documents all three providers with setup instructions
+  - README explains the 4 confidence levels
+  - README mentions Accuracy Mode
+  - CLAUDE.md test count is current
+  - No code files modified
+  - `xcodebuild build` still compiles (sanity check)
 
 ## Green
 - [ ] Step 6.5: [automated] Final green-phase verification gate for Phase 6.
