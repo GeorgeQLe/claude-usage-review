@@ -292,7 +292,7 @@
   3. Settings UI shows Gemini Accuracy Mode toggle when Gemini is enabled + detected
 
 ## Green
-- [ ] Step 5.5: [automated] Final green-phase verification gate for Phase 5.
+- [x] Step 5.5: [automated] Final green-phase verification gate for Phase 5.
 
   **What:** All tests should already pass. This step is a verification gate — run the full suite, confirm no regressions, and mark Phase 5 milestone complete.
 
@@ -316,8 +316,8 @@
   - Phase 5 milestone marked complete
 
 ## Milestone
-- [ ] Gemini Accuracy Mode can be enabled independently.
-- [ ] Structured wrapper telemetry improves Gemini request counting and freshness.
-- [ ] Passive-only Gemini usage remains fully supported.
-- [ ] All Phase 5 tests pass.
-- [ ] No regressions in previous phase tests.
+- [x] Gemini Accuracy Mode can be enabled independently.
+- [x] Structured wrapper telemetry improves Gemini request counting and freshness.
+- [x] Passive-only Gemini usage remains fully supported.
+- [x] All Phase 5 tests pass.
+- [x] No regressions in previous phase tests.

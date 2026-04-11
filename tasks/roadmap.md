@@ -8,7 +8,7 @@ Build the macOS app into a multi-provider CLI usage monitor for Claude Code, Cod
 | ~~2~~ | ~~Codex passive adapter~~ | ~~Codex detection, passive estimation, confidence labeling~~ ✅ |
 | ~~3~~ | ~~Codex wrapper~~ | ~~Optional Accuracy Mode and event ledger for Codex~~ ✅ |
 | ~~4~~ | ~~Gemini passive adapter~~ | ~~Gemini detection, passive quota/rate tracking~~ ✅ |
-| 5 | Gemini wrapper | Optional Accuracy Mode and event ledger for Gemini |
+| ~~5~~ | ~~Gemini wrapper~~ | ~~Optional Accuracy Mode and event ledger for Gemini~~ ✅ |
 | 6 | Hardening and onboarding | Diagnostics, docs, regression coverage, product polish |
 | 7 | Cross-platform follow-through | Tauri parity planning and deferred Windows validation |
 

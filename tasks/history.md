@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-10 — Step 5.5: Phase 5 Verification Gate (Complete)
+
+Final green-phase verification gate for Phase 5 (Gemini Accuracy Mode Wrapper). Build succeeds, 93 tests pass (78 existing + 15 Gemini wrapper), 0 failures. Claude files (`UsageService.swift`, `UsageViewModel.swift`) untouched. Codex files (`CodexWrapper.swift`, `CodexAdapter.swift`) untouched. Passive-only path confirmed via `wrapperEvents: [GeminiInvocationEvent] = []` default. All 5 milestone criteria met. Phase 5 complete.
+
 ## 2026-04-10 — Step 5.4: Wire GeminiAdapter Ledger + Accuracy Mode UI
 
 Wired `GeminiEventLedger` into `GeminiAdapter`: added `ledger` property, `ledgerDirectory` init param, reads wrapper events in `refresh()` and passes to `confidenceEngine.evaluate(wrapperEvents:)`, trims ledger to 48h window. Added Accuracy Mode toggle to `SettingsView` after Gemini Plan row, mirroring Codex pattern. Build succeeds, 93 tests pass, 0 failures.
