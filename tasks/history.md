@@ -447,3 +447,19 @@ Created `ClaudeUsageTests/CodexWrapperTests.swift` with 15 tests across 4 test c
 - **CodexPrivacyTests** (3): structural checks — no prompt fields, JSONL key whitelist, App Support directory
 
 Updated `project.pbxproj` to include the new test file in the test target. App target compiles; test target fails with expected missing-type errors (`CodexInvocationEvent`, `CodexEventLedger`, `wrapperEvents:` parameter) — confirming red phase.
+
+## 2026-04-10 — Phase 4 Complete: Gemini Passive Adapter (Steps 4.1–4.6)
+
+Implemented the full Gemini passive adapter across 6 TDD steps, adding 17 new tests (78 total).
+
+**Step 4.1 — Red phase:** Created `GeminiAdapterTests.swift` with 17 failing tests across 4 classes: GeminiDetectionTests (4), GeminiActivityParsingTests (5), GeminiRatePressureTests (4), GeminiConfidenceTests (4).
+
+**Step 4.2 — Gemini detection:** `GeminiDetector` checks `~/.gemini/settings.json` for install status, reads `security.auth.selectedType` for auth mode (oauthPersonal, apiKey, vertexAI, codeAssist), checks `oauth_creds.json` for auth presence. Stub types created for activity parser, rate pressure, and confidence engine.
+
+**Step 4.3 — Session parser:** `GeminiActivityParser` walks `~/.gemini/tmp/**/chats/session-*.json`, extracts gemini-type messages with timestamps/tokens/model. `GeminiRatePressure` computes daily request count, 5-min RPM window, and daily headroom against plan quotas.
+
+**Step 4.4 — Confidence engine + adapter:** `GeminiConfidenceEngine` evaluates detection/events/plan → confidence level (highConfidence, estimated, observedOnly — never exact in passive mode). `GeminiAdapter` orchestrates detect→parse→evaluate. Added `.geminiRich` snapshot case to `ProviderTypes.swift`. Added Gemini plan/auth persistence to `ProviderSettingsStore`.
+
+**Step 4.5 — Shell wiring + settings UI:** Wired `GeminiAdapter` into `ProviderShellViewModel` with 15s polling. Added Gemini settings row with detection status badge, enable toggle, auth mode display, plan picker (Personal preset), and rate pressure summary.
+
+**Step 4.6 — Green gate:** Build clean, 78 tests pass (0 failures). Verified isolation: `UsageService.swift`, `UsageViewModel.swift`, `CodexAdapter.swift`, `CodexDetector.swift` all untouched during Phase 4. All milestone criteria met.

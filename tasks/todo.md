@@ -406,7 +406,7 @@
   - 78 tests still pass (no new tests in this step)
 
 ## Green
-- [ ] Step 4.6: [automated] Make all Gemini passive tests pass, rerun all Phase 1-3 tests, verify no regressions.
+- [x] Step 4.6: [automated] Make all Gemini passive tests pass, rerun all Phase 1-3 tests, verify no regressions.
 
   **What:** Final green-phase verification for Phase 4. All 78 tests already pass as of Step 4.5, so this step is primarily a verification gate — run the full suite, confirm no regressions, and mark Phase 4 milestone complete.
 
@@ -435,8 +435,8 @@
   - Provider rotation works correctly with Claude + Codex + Gemini
 
 ## Milestone
-- [ ] Gemini can be detected and configured as a monitored provider.
-- [ ] Gemini passive monitoring shows auth-mode-aware quota/rate guidance with explicit confidence.
-- [ ] Provider rotation and stacked cards work with Claude, Codex, and Gemini together.
-- [ ] All Phase 4 tests pass.
-- [ ] No regressions in previous phase tests.
+- [x] Gemini can be detected and configured as a monitored provider.
+- [x] Gemini passive monitoring shows auth-mode-aware quota/rate guidance with explicit confidence.
+- [x] Provider rotation and stacked cards work with Claude, Codex, and Gemini together.
+- [x] All Phase 4 tests pass.
+- [x] No regressions in previous phase tests.
