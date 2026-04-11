@@ -1,5 +1,9 @@
 # ClaudeUsage — Session History
 
+## 2026-04-10 — Step 5.1: Red Phase — Failing Tests for Gemini Wrapper
+
+Created `GeminiWrapperTests.swift` with 15 tests across 4 classes (GeminiWrapperEventTests: 3, GeminiEventLedgerTests: 5, GeminiWrapperConfidenceTests: 4, GeminiPrivacyTests: 3). Tests define the full Gemini Accuracy Mode wrapper contract: invocation event model, JSONL event ledger persistence, confidence upgrades from wrapper data, and privacy constraints. All tests reference not-yet-existing types (`GeminiInvocationEvent`, `GeminiEventLedger`, `wrapperEvents:` parameter on `GeminiConfidenceEngine`). Test target fails to compile (expected red phase). App target builds clean. 78 existing tests unaffected.
+
 ## 2026-04-10 — Step 4.5: Wire GeminiAdapter into Shell + Settings UI
 
 Wired live `GeminiAdapter` into `ProviderShellViewModel`: added `geminiAdapter` property with 15s polling timer, subscribed to state changes for `rebuildFromCurrent()`, added `geminiDetected` computed property, replaced hardcoded `.gemini(status: .missingConfiguration)` placeholder with `geminiAdapter.toProviderSnapshot(...)`. Updated `SettingsView` to show "Detected"/"Not Detected" status for Gemini (replacing "Coming in Phase 2") and conditional Plan display row when enabled + detected. Build succeeds, 78 tests pass, 0 failures.

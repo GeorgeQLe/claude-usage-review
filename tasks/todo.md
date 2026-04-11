@@ -6,7 +6,7 @@
 > Current test count: 78 passing
 
 ## Tests First
-- [ ] Step 5.1: [automated] Add failing tests for Gemini wrapper event capture, event-ledger persistence, confidence upgrades from wrapper data, and privacy constraints.
+- [x] Step 5.1: [automated] Add failing tests for Gemini wrapper event capture, event-ledger persistence, confidence upgrades from wrapper data, and privacy constraints.
 
   **What:** Write red-phase tests that define the Gemini Accuracy Mode wrapper contract before production code exists. Tests use temp directories and inline fixtures — no live CLI invocations. Mirrors `CodexWrapperTests.swift` pattern exactly.
 
