@@ -109,50 +109,86 @@
 
 - [ ] Step 5.3: [automated] Implement Gemini wrapper launcher.
 
-  **What:** Create `GeminiWrapper` class that launches the `gemini` CLI via `Foundation.Process`, captures start/end timestamps, parses stderr for rate-limit errors, and appends a `GeminiInvocationEvent` to the ledger.
+  **What:** Create `GeminiWrapper` class that launches the `gemini` CLI via `Foundation.Process`, captures start/end timestamps, parses stderr for rate-limit errors, and appends a `GeminiInvocationEvent` to the ledger. Also add `geminiAccuracyMode` toggle to `ProviderSettingsStore`.
 
-  **File to create: `ClaudeUsage/Services/GeminiWrapper.swift`**
+  **Files to create:**
+  - `ClaudeUsage/Services/GeminiWrapper.swift` — new file, ~82 lines mirroring `CodexWrapper.swift`
 
-  Mirror `CodexWrapper.swift` (82 lines):
+  **Files to modify:**
+  - `ClaudeUsage/Models/ProviderSettingsStore.swift` — add accuracy mode methods
+  - `ClaudeUsage.xcodeproj/project.pbxproj` — register `GeminiWrapper.swift` in app target
+
+  ### Implementation Details
+
+  **1. Create `ClaudeUsage/Services/GeminiWrapper.swift`**
+
+  Mirror `CodexWrapper.swift` (82 lines) exactly, substituting Gemini types:
 
   ```swift
   import Foundation
 
   class GeminiWrapper {
       let ledger: GeminiEventLedger
-      let geminiPath: String?
+      let geminiPath: String
 
       init(ledger: GeminiEventLedger, geminiPath: String? = nil) {
+          if let path = geminiPath {
+              self.geminiPath = path
+          } else {
+              self.geminiPath = GeminiWrapper.findGeminiPath() ?? "/usr/local/bin/gemini"
+          }
           self.ledger = ledger
-          self.geminiPath = geminiPath ?? findGeminiPath()
       }
 
       func launch(arguments: [String]) throws -> GeminiInvocationEvent {
-          // 1. Record startTime = Date()
-          // 2. Set up Process with geminiPath + arguments
-          // 3. Capture stderr via Pipe
-          // 4. Run process, wait for exit
-          // 5. Record endTime = Date()
-          // 6. Parse stderr for "rate limit" / "usage limit" → limitHitDetected
-          // 7. Extract model from arguments (--model flag)
-          // 8. Extract commandMode from first argument
-          // 9. Create GeminiInvocationEvent, append to ledger
-          // 10. Return event
+          let startTime = Date()
+          let process = Process()
+          process.executableURL = URL(fileURLWithPath: geminiPath)
+          process.arguments = arguments
+          let stderrPipe = Pipe()
+          process.standardError = stderrPipe
+          try process.run()
+          process.waitUntilExit()
+          let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+          let stderrOutput = String(data: stderrData, encoding: .utf8) ?? ""
+          let endTime = Date()
+          let limitHit = stderrOutput.contains("rate limit") || stderrOutput.contains("usage limit")
+          let commandMode = arguments.first ?? "unknown"
+          let model = extractModel(from: arguments)
+          let event = GeminiInvocationEvent(
+              startTime: startTime, endTime: endTime,
+              commandMode: commandMode, model: model, limitHitDetected: limitHit)
+          try ledger.append(event)
+          return event
       }
 
-      func extractModel(from arguments: [String]) -> String {
-          // Parse --model flag, default "gemini-2.5-pro"
+      private func extractModel(from arguments: [String]) -> String {
+          guard let idx = arguments.firstIndex(of: "--model"),
+                idx + 1 < arguments.count else { return "default" }
+          return arguments[idx + 1]
       }
 
-      func findGeminiPath() -> String? {
-          // Use `which gemini` to locate binary
+      private static func findGeminiPath() -> String? {
+          let process = Process()
+          process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+          process.arguments = ["gemini"]
+          let pipe = Pipe()
+          process.standardOutput = pipe
+          process.standardError = FileHandle.nullDevice
+          do {
+              try process.run()
+              process.waitUntilExit()
+              guard process.terminationStatus == 0 else { return nil }
+              let data = pipe.fileHandleForReading.readDataToEndOfFile()
+              return String(data: data, encoding: .utf8)?
+                  .trimmingCharacters(in: .whitespacesAndNewlines)
+          } catch { return nil }
       }
   }
   ```
 
-  **File to modify: `ClaudeUsage/Models/ProviderSettingsStore.swift`**
+  **2. Add to `ProviderSettingsStore.swift`** (after `setCodexAccuracyMode` at ~line 64):
 
-  Add Gemini accuracy mode toggle (mirror Codex pattern):
   ```swift
   func geminiAccuracyMode() -> Bool {
       UserDefaults.standard.bool(forKey: "provider_gemini_accuracy_mode")
@@ -162,18 +198,16 @@
   }
   ```
 
-  **File to modify: `ClaudeUsage.xcodeproj/project.pbxproj`**
-
-  Add `GeminiWrapper.swift` to:
-  - PBXFileReference section (next ID: AA100042)
-  - PBXBuildFile section (next ID: AA000039)
-  - Services PBXGroup children
-  - App Sources build phase
+  **3. Update `project.pbxproj`** — add `GeminiWrapper.swift` to app target:
+  - PBXBuildFile: `AA000041` → fileRef `AA100044`
+  - PBXFileReference: `AA100044` — `GeminiWrapper.swift`
+  - PBXGroup Services children: add after `AA100043 /* GeminiEventLedger.swift */`
+  - App Sources build phase (AA800001): add `AA000041`
 
   **Acceptance criteria:**
-  - `xcodebuild build` compiles
-  - All 78 existing tests still pass
-  - No new tests in this step (wrapper launcher is tested indirectly via Steps 5.2 types)
+  - `xcodebuild build -scheme ClaudeUsage -destination 'platform=macOS'` compiles
+  - `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` — all 93 tests pass, 0 failures
+  - No new tests in this step (wrapper launcher tested indirectly via Step 5.2 types)
 
 - [ ] Step 5.4: [automated] Wire wrapper events into GeminiAdapter and add Accuracy Mode UI.
 
