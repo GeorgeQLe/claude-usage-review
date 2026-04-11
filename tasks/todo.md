@@ -45,26 +45,36 @@
   - Existing 2 cookie-parsing tests in `api.rs` still pass
 
 ## Implementation
-- [ ] Step 7.2: [automated] Add provider type definitions and coordinator logic to Tauri Rust backend.
+- [ ] Step 7.2: [automated] Implement the three `todo!()` method bodies to turn red tests green.
 
-  **What:** Port the macOS Swift `ProviderTypes.swift` model into Rust. Add `ProviderId`, `ProviderStatus`, `CardState`, `ProviderSnapshot`, `ProviderCard`, `ShellState`, `ConfidenceLevel`, and coordinator logic. Existing Claude-only types in `models.rs` stay unchanged.
+  **What:** Fill in the three stub methods in `tauri-app/src-tauri/src/provider_types.rs`. No new types needed — all types, enums, and structs already exist from Step 7.1.
 
-  **Context:** The Swift model lives in `ClaudeUsage/Models/ProviderTypes.swift`. Key types to port:
-  - `ProviderId` (claude/codex/gemini)
-  - `CardState` (configured/missingConfiguration/degraded/stale)
-  - `ProviderSnapshot` (enum with 6 variants: claudeRich, claudeSimple, codexSimple, codexRich, geminiSimple, geminiRich)
-  - `ProviderCard` (id, cardState, headline, detailText, sessionUtilization, weeklyUtilization, confidenceExplanation)
-  - `ShellState` (providers array + tray_provider computed property)
-  - `ProviderCoordinator` with `make_shell_state()` mapping snapshots → cards
+  **Exactly what to implement:**
+
+  1. **`ProviderSnapshot::id()`** (line ~85) — match on self, return `ProviderId`:
+     - `ClaudeRich { .. } | ClaudeSimple { .. }` → `ProviderId::Claude`
+     - `Codex { .. } | CodexRich { .. }` → `ProviderId::Codex`
+     - `Gemini { .. } | GeminiRich { .. }` → `ProviderId::Gemini`
+
+  2. **`ConfidenceLevel::explanation()`** (line ~46) — match on self, return `&'static str`:
+     - `Exact` → `"Exact usage from API"`
+     - `HighConfidence` → `"High confidence from limit detection and plan profile"`
+     - `Estimated` → `"Estimated from wrapper events and plan profile"`
+     - `ObservedOnly` → `"Observed activity only — configure a plan for better accuracy"`
+     (These match the Swift `CodexConfidenceEngine.explanation()` strings exactly)
+
+  3. **`ShellState::tray_provider()`** (line ~110) — return first provider with `card_state == CardState::Configured`:
+     ```rust
+     self.providers.iter().find(|p| p.card_state == CardState::Configured)
+     ```
 
   **Files to modify:**
-  - `tauri-app/src-tauri/src/provider_types.rs` — fill in all type definitions and coordinator logic
-  - `tauri-app/src-tauri/src/models.rs` — no changes
+  - `tauri-app/src-tauri/src/provider_types.rs` — replace 3 `todo!()` bodies (no other changes)
 
   **Acceptance criteria:**
   - `cargo build` compiles
-  - All 15 red-phase tests pass
-  - Existing 2 `api.rs` tests still pass
+  - `cargo test` — all 17 tests pass (15 new + 2 existing api.rs)
+  - No changes to `models.rs` or any other file
 
 - [ ] Step 7.3: [automated] Mirror provider types in Tauri frontend TypeScript and add card rendering.
 
