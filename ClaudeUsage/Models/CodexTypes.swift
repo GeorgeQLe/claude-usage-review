@@ -57,6 +57,11 @@ class CodexConfidenceEngine {
         return CodexEstimate(confidence: .observedOnly)
     }
 
+    func explanation(for confidence: CodexConfidence) -> String {
+        // TODO: Step 6.3 — implement real explanations
+        return ""
+    }
+
     func cooldownStatus(from events: [CodexActivityEvent]) -> CooldownStatus {
         let limitHits = events.filter { $0.eventType == .limitHit }
         guard let mostRecent = limitHits.max(by: { $0.timestamp < $1.timestamp }) else {

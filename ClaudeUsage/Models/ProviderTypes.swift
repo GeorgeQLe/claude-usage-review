@@ -22,6 +22,7 @@ enum CardState: Equatable {
     case configured
     case missingConfiguration
     case degraded
+    case stale
 }
 
 // MARK: - ProviderSnapshot
@@ -48,6 +49,16 @@ enum ProviderSnapshot {
         case .claudeRich, .claudeSimple: return .claude
         case .codex, .codexRich: return .codex
         case .gemini, .geminiRich: return .gemini
+        }
+    }
+
+    var isDegraded: Bool {
+        switch self {
+        case .claudeSimple(let status, _), .codex(let status, _), .gemini(let status, _):
+            if case .degraded = status { return true }
+            return false
+        default:
+            return false
         }
     }
 
@@ -104,6 +115,8 @@ struct ProviderTrayPolicy {
 // MARK: - ProviderCoordinator
 
 class ProviderCoordinator {
+    static let staleThreshold: TimeInterval = 300
+
     var trayPolicy: ProviderTrayPolicy
 
     init(trayPolicy: ProviderTrayPolicy = ProviderTrayPolicy()) {
@@ -182,22 +195,46 @@ class ProviderCoordinator {
         return ShellState(providers: cards)
     }
 
+    func makeShellState(providers: [ProviderSnapshot], now: Date, refreshTimes: [ProviderId: Date]) -> ShellState {
+        let base = makeShellState(providers: providers, now: now)
+        let updatedCards = base.providers.map { card -> ProviderCard in
+            if let lastRefresh = refreshTimes[card.id],
+               now.timeIntervalSince(lastRefresh) > Self.staleThreshold,
+               card.cardState == .configured {
+                return ProviderCard(
+                    id: card.id,
+                    cardState: .stale,
+                    headline: card.headline,
+                    detailText: card.detailText,
+                    sessionUtilization: card.sessionUtilization,
+                    weeklyUtilization: card.weeklyUtilization
+                )
+            }
+            return card
+        }
+        return ShellState(providers: updatedCards)
+    }
+
     func selectedTrayProvider(from providers: [ProviderSnapshot], now: Date) -> ProviderSnapshot? {
         let enabled = providers.filter(\.isEnabled)
         guard !enabled.isEmpty else { return nil }
 
+        // Filter out degraded providers, fall back to all enabled if none are non-degraded
+        let nonDegraded = enabled.filter { !$0.isDegraded }
+        let candidates = nonDegraded.isEmpty ? enabled : nonDegraded
+
         // Priority: pinned > manualOverride > rotation
         if let pinned = trayPolicy.pinnedProvider {
-            return enabled.first { $0.id == pinned }
+            return candidates.first { $0.id == pinned }
         }
 
         if let override = trayPolicy.manualOverride {
-            return enabled.first { $0.id == override }
+            return candidates.first { $0.id == override }
         }
 
-        // Rotation: cycle through enabled providers based on time
-        let index = Int(floor(now.timeIntervalSince1970 / trayPolicy.rotationInterval)) % enabled.count
-        return enabled[index]
+        // Rotation: cycle through candidates based on time
+        let index = Int(floor(now.timeIntervalSince1970 / trayPolicy.rotationInterval)) % candidates.count
+        return candidates[index]
     }
 
     // MARK: - Private helpers

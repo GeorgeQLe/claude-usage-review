@@ -36,6 +36,7 @@ struct ProviderCardView: View {
         case .configured: return .green
         case .missingConfiguration: return .gray
         case .degraded: return .orange
+        case .stale: return .yellow
         }
     }
 }

@@ -134,6 +134,26 @@ class ProviderShellViewModel: ObservableObject {
         }
     }
 
+    static func formatDegradedTrayText(from snapshot: ProviderSnapshot) -> String {
+        let name: String
+        switch snapshot.id {
+        case .claude: name = "Claude"
+        case .codex: name = "Codex"
+        case .gemini: name = "Gemini"
+        }
+        return "\(name) · Degraded"
+    }
+
+    static func formatStaleText(from snapshot: ProviderSnapshot) -> String {
+        let name: String
+        switch snapshot.id {
+        case .claude: name = "Claude"
+        case .codex: name = "Codex"
+        case .gemini: name = "Gemini"
+        }
+        return "\(name) · Stale"
+    }
+
     func formatTrayText(from snapshot: ProviderSnapshot) -> String {
         switch snapshot {
         case let .claudeRich(usage, _, _):
@@ -159,10 +179,16 @@ class ProviderShellViewModel: ObservableObject {
             if case .missingConfiguration = status {
                 return "Codex · Not configured"
             }
+            if case .degraded = status {
+                return "Codex · Degraded"
+            }
             return "Codex"
         case let .gemini(status, _):
             if case .missingConfiguration = status {
                 return "Gemini · Not configured"
+            }
+            if case .degraded = status {
+                return "Gemini · Degraded"
             }
             return "Gemini"
         case let .geminiRich(estimate, _):

@@ -4,6 +4,7 @@ import Combine
 enum CodexAdapterState {
     case notInstalled
     case installed(estimate: CodexEstimate, cooldown: CooldownStatus)
+    case degraded(reason: String)
 }
 
 class CodexAdapter: ObservableObject {
@@ -15,6 +16,8 @@ class CodexAdapter: ObservableObject {
     let ledger: CodexEventLedger
     var planProfile: CodexPlanProfile?
     private(set) var wrapperEventCount: Int = 0
+    private(set) var lastRefreshTime: Date?
+    private(set) var consecutiveFailures: Int = 0
 
     init(codexHome: URL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".codex"),
          planProfile: CodexPlanProfile? = nil,
@@ -32,7 +35,26 @@ class CodexAdapter: ObservableObject {
             state = .notInstalled
             return
         }
-        let events = (try? parser.parseHistory()) ?? []
+
+        let historyFile = parser.codexHome.appendingPathComponent("history.jsonl")
+        let events: [CodexActivityEvent]
+        if FileManager.default.fileExists(atPath: historyFile.path) {
+            do {
+                events = try parser.parseHistory()
+            } catch {
+                consecutiveFailures += 1
+                if consecutiveFailures >= 3 {
+                    state = .degraded(reason: "Parse error: \(error.localizedDescription)")
+                }
+                return
+            }
+        } else {
+            events = []
+        }
+
+        consecutiveFailures = 0
+        lastRefreshTime = Date()
+
         let wrapperEvents = (try? ledger.readEvents()) ?? []
         wrapperEventCount = wrapperEvents.count
         let recentResets = events.filter {
@@ -54,6 +76,8 @@ class CodexAdapter: ObservableObject {
             return .codex(status: .missingConfiguration, isEnabled: isEnabled)
         case let .installed(estimate, _):
             return .codexRich(estimate: estimate, isEnabled: isEnabled)
+        case let .degraded(reason):
+            return .codex(status: .degraded(reason: reason), isEnabled: isEnabled)
         }
     }
 }

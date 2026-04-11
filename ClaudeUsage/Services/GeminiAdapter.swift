@@ -4,6 +4,7 @@ import Combine
 enum GeminiAdapterState {
     case notInstalled
     case installed(estimate: GeminiEstimate)
+    case degraded(reason: String)
 }
 
 class GeminiAdapter: ObservableObject {
@@ -14,6 +15,8 @@ class GeminiAdapter: ObservableObject {
     let confidenceEngine: GeminiConfidenceEngine
     let ledger: GeminiEventLedger
     var planProfile: GeminiPlanProfile?
+    private(set) var lastRefreshTime: Date?
+    private(set) var consecutiveFailures: Int = 0
 
     init(geminiHome: URL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".gemini"),
          planProfile: GeminiPlanProfile? = nil,
@@ -32,6 +35,8 @@ class GeminiAdapter: ObservableObject {
             return
         }
         let events = parser.parseSessionFiles()
+        consecutiveFailures = 0
+        lastRefreshTime = Date()
         let wrapperEvents = (try? ledger.readEvents()) ?? []
         let estimate = confidenceEngine.evaluate(
             detection: detection, events: events, plan: planProfile,
@@ -47,6 +52,8 @@ class GeminiAdapter: ObservableObject {
             return .gemini(status: .missingConfiguration, isEnabled: isEnabled)
         case let .installed(estimate):
             return .geminiRich(estimate: estimate, isEnabled: isEnabled)
+        case let .degraded(reason):
+            return .gemini(status: .degraded(reason: reason), isEnabled: isEnabled)
         }
     }
 }
