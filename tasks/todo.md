@@ -66,18 +66,51 @@
 
   **What:** Add human-readable confidence explanations to Codex and Gemini estimate types. Surface them in provider cards and settings. Add detection troubleshooting hints when provider is "Not Detected".
 
-  **Files to modify:**
-  - `ClaudeUsage/Models/CodexTypes.swift` — add `static func explanation(for confidence: CodexConfidence) -> String` to `CodexConfidenceEngine` (or as computed property on `CodexEstimate`)
-  - `ClaudeUsage/Models/GeminiTypes.swift` — same pattern for Gemini
-  - `ClaudeUsage/Models/ProviderTypes.swift` — add `confidenceExplanation: String?` to `ProviderCard`; update `ProviderCoordinator` to populate from estimates
-  - `ClaudeUsage/Views/SettingsView.swift` — add detection help text below "Not Detected" status (e.g., "Install Codex CLI and run it once to enable monitoring"); add brief Accuracy Mode description; add privacy note for wrapper mode ("Only timestamps and metadata are stored — no prompt content")
-  - `ClaudeUsage/Views/ContentView.swift` — show `confidenceExplanation` as secondary text on provider cards (if non-nil)
+  **Context from Step 6.2:** A stub `explanation(for:)` was added to `CodexConfidenceEngine` (returns `""`) so `ConfidenceExplanationTests` compile. This step replaces the stub with real implementations.
 
-  **Acceptance criteria:**
-  - `xcodebuild build` compiles
-  - `ConfidenceExplanationTests` pass (3 tests)
-  - All existing tests still pass
-  - Settings shows detection help text when provider not detected
+  ## Changes
+
+  ### 1. `ClaudeUsage/Models/CodexTypes.swift` (~line 60)
+  Replace the stub `explanation(for:)` in `CodexConfidenceEngine` with real explanations. The 3 ConfidenceExplanationTests assert:
+  - `.observedOnly` → text must contain "plan" (lowercased)
+  - `.estimated` → text must contain "wrapper" or "plan" (lowercased)
+  - `.highConfidence` → text must contain "limit" (lowercased)
+
+  Example implementation:
+  ```swift
+  func explanation(for confidence: CodexConfidence) -> String {
+      switch confidence {
+      case .exact: return "Exact usage from API"
+      case .highConfidence: return "High confidence from limit detection and plan profile"
+      case .estimated: return "Estimated from wrapper events and plan profile"
+      case .observedOnly: return "Observed activity only — configure a plan for better accuracy"
+      }
+  }
+  ```
+
+  ### 2. `ClaudeUsage/Models/GeminiTypes.swift`
+  Add matching `explanation(for confidence: GeminiConfidence) -> String` to `GeminiConfidenceEngine` (no tests yet, but needed for symmetry and `ProviderCard` population).
+
+  ### 3. `ClaudeUsage/Models/ProviderTypes.swift`
+  - Add `confidenceExplanation: String?` field to `ProviderCard` struct
+  - Update `ProviderCoordinator.makeShellState()` — for `.codexRich` and `.geminiRich` cases, populate `confidenceExplanation` using `CodexConfidenceEngine().explanation(for:)` / `GeminiConfidenceEngine().explanation(for:)`
+  - All other cases set `confidenceExplanation: nil`
+  - **Important:** Also update the `makeShellState(providers:now:refreshTimes:)` overload's card mapping to preserve the `confidenceExplanation` field
+
+  ### 4. `ClaudeUsage/Views/SettingsView.swift`
+  - Below the "Not Detected" text for Codex (~line 233), add helper text: "Install Codex CLI and run it once to enable monitoring"
+  - Below the "Not Detected" text for Gemini (~line 264), add helper text: "Install Gemini CLI and run it once to enable monitoring"
+  - Optionally add brief Accuracy Mode description and privacy note for wrapper mode
+
+  ### 5. `ClaudeUsage/Views/ContentView.swift`
+  - In the provider card rendering section (~line 191), show `confidenceExplanation` as secondary text if non-nil (can be done via ProviderCardView or inline)
+  - Alternatively update `ClaudeUsage/Views/ProviderCardView.swift` to show `card.confidenceExplanation` as a `.caption` text below the headline
+
+  ## Verification
+  1. `xcodebuild build` compiles
+  2. `xcodebuild test` — ConfidenceExplanationTests (3) pass
+  3. All 105 previously-passing tests still pass
+  4. Total: 108 tests, 0 failures
 
 - [ ] Step 6.4: [automated] Update user-facing documentation to match multi-provider product.
 
