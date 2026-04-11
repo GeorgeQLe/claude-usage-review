@@ -319,16 +319,29 @@
 ## Green
 - [ ] Step 7.6: [automated] Final verification gate for Phase 7.
 
-  **Verification:**
-  1. `cargo test` in `tauri-app/src-tauri/` — all tests pass
-  2. `npm run build` in `tauri-app/` — frontend compiles
-  3. `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` — 108 tests pass
-  4. Parity document exists
+  **What:** Run all verification commands, confirm no regressions, mark Phase 7 complete.
 
-  **Files to modify:**
-  - `tasks/todo.md` — check off Step 7.6 and milestones
-  - `tasks/roadmap.md` — mark Phase 7 complete
-  - `tasks/history.md` — append completion record
+  **Verification commands (run in order):**
+  1. `cd tauri-app/src-tauri && cargo test` — expect 17 tests pass (15 provider_types + 2 api)
+  2. `cd tauri-app && npm run build` — frontend compiles with no errors
+  3. `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` — 108+ tests pass (may be higher after bugfix)
+  4. Verify `docs/cross-platform-parity.md` exists and is non-empty
+
+  **After all pass — mark Phase 7 complete:**
+  - `tasks/todo.md` — check off Step 7.6 and all milestone checkboxes
+  - `tasks/roadmap.md` — check off Phase 7 milestone
+  - `tasks/history.md` — append Phase 7 completion record
+
+  **Context from this session:**
+  - A bugfix was applied to `todayUsagePercent` (uses min-based baseline for weekly reset handling) — this may have changed test count slightly
+  - The parity doc was created in Step 7.5 at `docs/cross-platform-parity.md`
+  - All builds and tests were passing as of the last run
+
+  **Acceptance criteria:**
+  - All 3 test suites green (cargo test, npm build, xcodebuild test)
+  - Phase 7 milestones checked off in todo.md
+  - Phase 7 marked complete in roadmap.md
+  - History updated with completion record
 
 ## Milestone
 - [ ] Cross-platform follow-through is based on the validated multi-provider model.
