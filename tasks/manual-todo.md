@@ -1,8 +1,7 @@
 # Manual Tasks
 
-- [ ] Confirm a real Codex account/plan is available for passive-adapter validation. _(after: Step 2.5 — deferred from Phase 2)_
-- [ ] Run real Codex sessions to compare passive estimates against observed cooldown/limit behavior. _(deferred from Phase 2, blocks: Step 2.6 — overridden by user 2026-04-09)_
-- [ ] Enable the Codex wrapper/launcher in the user shell environment and confirm wrapper adoption instructions are accurate. _(after: Step 3.4 — deferred from Phase 3)_
-- [ ] Confirm a real Gemini account/auth mode is available for passive-adapter validation. _(after: Step 4.5 — deferred from Phase 4)_
-- [ ] Run real Gemini sessions to validate passive quota/rate calculations against observed behavior. _(blocks: Step 4.6 — overridden by user 2026-04-10)_
-- [ ] Enable the Gemini wrapper/launcher in the user shell environment and confirm wrapper adoption instructions are accurate. _(blocks: Step 5.4 — overridden by user 2026-04-10)_
+- [ ] Validate generated Codex wrapper setup instructions in a real user shell without allowing the app to edit shell profiles automatically. _(after: Step 5.6)_
+- [ ] Validate generated Gemini wrapper setup instructions in a real user shell without allowing the app to edit shell profiles automatically. _(after: Step 5.6)_
+- [ ] Run a live Claude credential smoke test with a real session key and org ID, then confirm the Electron app stores secrets only through the secret store and does not render them back in Settings. _(after: Step 6.7)_
+- [ ] Validate the Windows NSIS installer and portable build on a real Windows machine, including tray behavior, launch at login, notifications, and packaged app startup. _(after: Step 6.7)_
+- [ ] Validate the Linux AppImage and `deb` package on the selected target desktop environments, including tray fallback behavior, notifications, `safeStorage` backend warning, and packaged app startup. _(after: Step 6.7)_

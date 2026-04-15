@@ -1,538 +1,168 @@
-# Multi-Provider CLI Monitor — Phase Plan
+# Electron Cross-Platform AI Usage Monitor — Phase Plan
 
-Build the macOS app into a multi-provider CLI usage monitor for Claude Code, Codex, and Gemini while preserving the existing Claude ingestion path exactly as it works today. The critical path is: establish a provider-aware app shell without regressing Claude, ship Codex passive monitoring, add the Codex wrapper for higher-confidence telemetry, then repeat the pattern for Gemini before hardening and cross-platform follow-through.
+Build `electron-app/` as the full Windows/Linux implementation of ClaudeUsage while keeping the Swift app as the premium canonical macOS menu-bar product. The Electron path should port the complete product behavior from the Swift implementation where cross-platform APIs allow it: Claude exact usage, history, pace, GitHub heatmap, overlay, notifications, provider rotation, Codex/Gemini monitoring, Accuracy Mode wrappers, migration, diagnostics, and packaged Windows/Linux artifacts.
 
 | Phase | Focus | Outcome |
 | --- | --- | --- |
-| ~~1~~ | ~~Shared provider foundation~~ | ~~Provider-aware state, rotating tray, stacked popover, Claude preserved~~ ✅ |
-| ~~2~~ | ~~Codex passive adapter~~ | ~~Codex detection, passive estimation, confidence labeling~~ ✅ |
-| ~~3~~ | ~~Codex wrapper~~ | ~~Optional Accuracy Mode and event ledger for Codex~~ ✅ |
-| ~~4~~ | ~~Gemini passive adapter~~ | ~~Gemini detection, passive quota/rate tracking~~ ✅ |
-| ~~5~~ | ~~Gemini wrapper~~ | ~~Optional Accuracy Mode and event ledger for Gemini~~ ✅ |
-| ~~6~~ | ~~Hardening and onboarding~~ | ~~Diagnostics, docs, regression coverage, product polish~~ ✅ |
-| ~~7~~ | ~~Cross-platform follow-through~~ | ~~Tauri parity planning and deferred Windows validation~~ ✅ |
+| 1 | Electron runtime foundation | Secure Electron/React app shell with typed IPC, storage skeleton, tray/windows, and baseline UI |
+| 2 | Claude exact usage and accounts | Claude account workflows, exact API polling, backoff, reset fetch, secret storage, and live tray/popover state |
+| 3 | Product UI parity | Pace, history, GitHub heatmap, overlay, notifications, and polished settings/onboarding |
+| 4 | Provider shell and passive adapters | Shared provider model plus Codex/Gemini passive monitoring, Gemini `/stats`, confidence, stale/degraded handling |
+| 5 | Accuracy Mode wrappers | Explicit opt-in Codex/Gemini wrappers, setup verification, event ledgers, and privacy guarantees |
+| 6 | Migration, diagnostics, packaging | Non-secret migration, diagnostics export, Windows/Linux packages, and final regression gates |
 
-## Phase 1: Shared Provider Foundation
-
-### Tests First
-- Step 1.1: [automated] Add failing Swift tests for provider aggregation, rotating tray selection, provider pinning, and Claude non-regression in [ClaudeUsageTests/ClaudeUsageTests.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsageTests/ClaudeUsageTests.swift) or split them into new provider-focused test files under [ClaudeUsageTests](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsageTests).
+## Phase 1: Electron Runtime Foundation
+> Test strategy: tests-after
 
 ### Implementation
-- Step 1.2: [automated] Introduce provider-aware domain types for shared provider state, confidence labels, plan/auth configuration, and tray rotation policy in new or adjacent files under [ClaudeUsage/Models](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Models).
-- Step 1.3: [automated] Add a provider coordinator/store that maps the existing Claude `UsageViewModel` output into the new provider shell without altering Claude fetching behavior, likely in [ClaudeUsage/Models/UsageViewModel.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Models/UsageViewModel.swift) plus one or more new service/model files.
-- Step 1.4: [automated] Update the menu bar and popover shell for rotating provider headlines, manual override, pinning, and stacked provider cards in [ClaudeUsage/ClaudeUsageApp.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/ClaudeUsageApp.swift), [ClaudeUsage/AppDelegate.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/AppDelegate.swift), and [ClaudeUsage/Views/ContentView.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Views/ContentView.swift).
-- Step 1.5: [automated] Extend settings/onboarding for provider enablement, plan/auth confirmation, and local install detection entry points in [ClaudeUsage/Views/SettingsView.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Views/SettingsView.swift), [ClaudeUsage/Services/AccountStore.swift](/home/georgeqle/projects/tools/dev/claude-review-usage/ClaudeUsage/Services/AccountStore.swift), and any new configuration persistence files.
+- Step 1.1: [automated] Scaffold `electron-app/` with Electron, React, TypeScript, Vite, Electron Builder, Vitest, and project scripts in `electron-app/package.json`, `electron-app/vite.config.ts`, `electron-app/electron-builder.yml`, `electron-app/tsconfig*.json`, and `electron-app/src/`.
+- Step 1.2: [automated] Add the initial folder/module structure from the spec: `electron-app/src/main/`, `electron-app/src/preload/`, `electron-app/src/renderer/`, and `electron-app/src/shared/`, including shared type/schema placeholders for accounts, usage state, provider cards, settings, and IPC payloads.
+- Step 1.3: [automated] Implement the secure Electron main-process bootstrap in `electron-app/src/main/app.ts`, `electron-app/src/main/windows.ts`, and `electron-app/src/main/tray.ts`: single-instance lock, app lifecycle, tray creation, context menu skeleton, popover/settings/overlay/onboarding windows, CSP-ready local loading, and Linux tray fallback handling.
+- Step 1.4: [automated] Add a narrow preload bridge in `electron-app/src/preload/index.ts` and `electron-app/src/preload/api.ts` using `contextBridge`, with Node integration disabled and context isolation/sandbox options set on all renderer windows.
+- Step 1.5: [automated] Add IPC registration and validation skeletons in `electron-app/src/main/ipc.ts` plus shared schemas under `electron-app/src/shared/schemas/` for the commands listed in the spec.
+- Step 1.6: [automated] Add storage primitives in `electron-app/src/main/storage/`: SQLite connection/migrations for structured app data, `safeStorage` secret wrapper, redaction helpers, and a Linux `basic_text` backend warning surfaced through derived app state.
+- Step 1.7: [automated] Add minimal React renderer entries for popover, settings, onboarding, and overlay under `electron-app/src/renderer/`, with placeholder state loaded through the preload API and no direct filesystem or Node access.
 
 ### Green
-- Step 1.6: [automated] Make the new provider-shell tests pass, verify the existing Claude tests still pass, and run macOS build/test checks for the updated shell.
+- Step 1.8: [automated] Add regression coverage for the foundation: Vitest tests for schema validation/redaction/storage wrappers where possible, an Electron main-process smoke test for window/tray action routing, and a renderer smoke test proving placeholder windows mount without secret/Node access.
+- Step 1.9: [automated] Run Phase 1 verification: `npm run typecheck`, `npm test`, `npm run build`, and an Electron dev launch smoke command from `electron-app/`.
 
 ### Milestone
-- Provider-aware state exists and can represent Claude, Codex, and Gemini side by side.
-- Claude still renders through the current ingestion path with no fetch/auth behavior changes.
-- The tray rotates across enabled providers, supports manual override, and supports pinning.
-- The popover can show stacked provider cards for configured, missing, and degraded providers.
-- All Phase 1 tests pass.
-- No regressions in previous phase tests.
+- `electron-app/` exists and starts locally.
+- Main/preload/renderer boundaries are in place and secure by default.
+- Renderer windows mount through React and only use the typed preload API.
+- SQLite and secret-storage abstractions exist, with Linux weak-backend warning plumbing.
+- Tray, popover, settings, onboarding, and overlay window shells exist.
+- All phase tests pass.
+- No regressions.
 
-## Phase 2: Codex Passive Adapter
-
-### Tests First
-- Step 2.1: [automated] Add failing fixture-based tests for Codex install detection, auth presence, passive activity parsing, cooldown detection, and confidence labeling in `ClaudeUsageTests/CodexAdapterTests.swift`. ~15 tests across CodexDetectionTests, CodexActivityParsingTests, CodexCooldownTests, CodexConfidenceTests.
-
-### Implementation
-- Step 2.2: [automated] Implement Codex install/auth detection in `ClaudeUsage/Services/CodexDetector.swift`. FileManager-based checks for `~/.codex/`, `config.toml`, `auth.json`. Respects `CODEX_HOME` env var.
-- Step 2.3: [automated] Implement incremental JSONL parser in `ClaudeUsage/Services/CodexActivityParser.swift`. Reads `history.jsonl` and `sessions/YYYY/MM/DD/rollout-*.jsonl` with byte-offset bookmarks. Handles corrupt lines gracefully.
-- Step 2.4: [automated] Add plan profiles, confidence engine, and headroom estimation in `ClaudeUsage/Models/CodexTypes.swift`. Plans: Plus/Pro/Business with published 5-hour ranges. Confidence: exact/highConfidence/estimated/observedOnly. Headroom as band, never single number.
-- Step 2.5: [automated] Wire `CodexAdapter` into `ProviderShellViewModel`. Create `ClaudeUsage/Services/CodexAdapter.swift` orchestrating detect→parse→evaluate. Add `.codexRich` snapshot case to `ProviderTypes.swift`. Update `ProviderCardView` for confidence badge/headroom. Update `SettingsView` Codex row with plan picker. Add Codex plan persistence to `ProviderSettingsStore`.
-
-### Green
-- Step 2.6: [automated] Make all Codex passive tests pass, run existing 21 tests, verify no regressions. Codex never claims exact remaining quota without a defensible source.
-
-### Milestone
-- Codex can be detected and configured as a monitored provider.
-- Codex passive monitoring shows observed local activity, estimate/headroom guidance, and explicit confidence.
-- Unknown or degraded Codex states remain visible and explained.
-- Claude behavior remains unchanged while Codex is enabled.
-- All Phase 2 tests pass.
-- No regressions in previous phase tests.
-
-## Phase 3: Codex Accuracy Mode Wrapper
+## Phase 2: Claude Exact Usage and Accounts
 > Test strategy: tdd
 
 ### Tests First
-- Step 3.1: [automated] Add failing tests for Codex wrapper event models, event-ledger persistence, confidence upgrades from wrapper data, and privacy constraints in `ClaudeUsageTests/CodexWrapperTests.swift`. ~15 tests across CodexWrapperEventTests, CodexEventLedgerTests, CodexWrapperConfidenceTests, CodexPrivacyTests.
+- Step 2.1: [automated] Add failing tests for Claude API parsing, `Set-Cookie` session-key rotation, account metadata CRUD, secret write/read/delete, polling backoff, reset-time fetch scheduling, auth-expired handling, and typed IPC command validation under `electron-app/src/main/**/__tests__/` and `electron-app/src/shared/**/__tests__/`.
 
 ### Implementation
-- Step 3.2: [automated] Add wrapper event types and event ledger model to `ClaudeUsage/Models/CodexTypes.swift`. Types: `CodexInvocationEvent` (start/end timestamps, command mode, model, limitHitDetected), `CodexEventLedger` class with JSONL append/read/rolling-window-trim and `~/Library/Application Support/ClaudeUsage/codex-events.jsonl` persistence.
-- Step 3.3: [automated] Implement Codex wrapper launcher in `ClaudeUsage/Services/CodexWrapper.swift`. Launches `codex` CLI via `Process`, captures start/end timestamps, parses stderr for usage-limit errors, appends `CodexInvocationEvent` to ledger. Opt-in via `ProviderSettingsStore.codexAccuracyMode`.
-- Step 3.4: [automated] Merge wrapper-derived events into `CodexAdapter.refresh()` — feed ledger events alongside passive parser events into `CodexConfidenceEngine`. Update engine so wrapper events can upgrade confidence (e.g., wrapper invocations + limit-hit patterns → `.highConfidence`). Surface Accuracy Mode toggle and status in `ClaudeUsage/Views/SettingsView.swift`.
+- Step 2.2: [automated] Implement account metadata and active-account persistence in `electron-app/src/main/storage/accounts.ts`, with session keys stored only through the secret store and never serialized to renderer state.
+- Step 2.3: [automated] Implement the Claude usage client in `electron-app/src/main/services/claudeUsage.ts`, matching the Swift/Tauri API behavior: `sessionKey` cookie, `anthropic-client-platform: web_claude_ai`, all known usage limit fields, 401/403 auth expiry, and session-key rotation.
+- Step 2.4: [automated] Implement polling and scheduling in `electron-app/src/main/services/polling.ts`: 5-minute default cadence, exponential network backoff, manual refresh, reset-time fetch, cancellation on account switch, and event emission to renderers.
+- Step 2.5: [automated] Wire account and Claude commands through `electron-app/src/main/ipc.ts` and `electron-app/src/preload/api.ts`, including add/rename/remove/switch account, save credentials, test connection, get usage state, refresh now, and subscribe to usage updates.
+- Step 2.6: [automated] Implement Claude-aware tray/popover/settings/onboarding UI in `electron-app/src/renderer/`, including write-only credential fields, account picker, auth status, exact usage bars, refresh actions, and basic error states.
+- Step 2.7: [automated] Persist Claude usage snapshots in SQLite through `electron-app/src/main/storage/history.ts`, but keep advanced history visualization for Phase 3.
 
 ### Green
-- Step 3.5: [automated] Make all Codex wrapper tests pass, rerun all Phase 1-2 tests (46 total), and verify that Accuracy Mode improves confidence without affecting Claude.
+- Step 2.8: [automated] Make all Phase 2 tests pass and add integration coverage proving renderer state omits secrets while main-process state can fetch/update Claude usage.
+- Step 2.9: [automated] Run Phase 2 verification: `npm run typecheck`, `npm test`, `npm run build`, and an Electron smoke launch using mocked Claude responses.
 
 ### Milestone
-- Codex Accuracy Mode can be enabled independently.
-- Wrapper-derived Codex events improve confidence and update latency.
-- Derived telemetry only is stored; raw prompt bodies are not persisted.
-- Claude remains unaffected when Codex wrapper mode is on.
-- All Phase 3 tests pass.
-- No regressions in previous phase tests.
+- Claude exact usage works end-to-end in Electron with account management and secure secrets.
+- Auth expiry, network errors, manual refresh, backoff, reset fetch, and session-key rotation are covered.
+- Renderer never receives session keys.
+- Tray and popover show live Claude state.
+- All phase tests pass.
+- No regressions.
 
-## Phase 4: Gemini Passive Adapter
+## Phase 3: Product UI Parity
+> Test strategy: tests-after
+
+### Implementation
+- Step 3.1: [automated] Port Swift pace semantics into shared pure functions under `electron-app/src/shared/formatting/pace.ts`: session/weekly pace windows, unknown guards, behind/way-behind/warning/critical/limit-hit status, daily budget, today usage baseline, and time display formatting.
+- Step 3.2: [automated] Expand history storage and visualization with `electron-app/src/main/storage/history.ts` and renderer components under `electron-app/src/renderer/components/`: 24-hour snapshots, 24h-to-7d hourly compaction, session/weekly sparklines, and last-updated text.
+- Step 3.3: [automated] Implement GitHub contribution heatmap support in `electron-app/src/main/services/github.ts`, secret GitHub token storage, settings controls, hourly refresh behavior, GraphQL variables, and renderer heatmap components.
+- Step 3.4: [automated] Implement the complete settings/onboarding experience in `electron-app/src/renderer/settings/` and `electron-app/src/renderer/onboarding/`: time display, pace theme, weekly color mode, launch at login, provider enablement placeholders, migration prompt placeholders, and notification preferences.
+- Step 3.5: [automated] Implement overlay behavior in `electron-app/src/main/windows.ts` and `electron-app/src/renderer/overlay/`: compact/minimal/sidebar layouts, always-on-top behavior, opacity, drag-to-move, position persistence, double-click popover, and context hide/disable action.
+- Step 3.6: [automated] Implement local notifications in `electron-app/src/main/services/notifications.ts`: session reset, auth expired, provider degraded placeholder, and user-configurable threshold warnings.
+- Step 3.7: [automated] Polish tray/menu behavior in `electron-app/src/main/tray.ts`: exact Claude countdown/reset text, color/icon state, context menu actions, and launch-at-login handling.
+
+### Green
+- Step 3.8: [automated] Add regression tests for pace functions, history compaction, GitHub GraphQL request construction, overlay settings persistence, notification preferences, and renderer component state.
+- Step 3.9: [automated] Add Electron/Playwright smoke coverage for settings, onboarding, popover, overlay layouts, error states, and GitHub disabled/configured states.
+- Step 3.10: [automated] Run Phase 3 verification: `npm run typecheck`, `npm test`, `npm run build`, and renderer smoke tests.
+
+### Milestone
+- Electron matches the Swift product's non-provider Claude UI behavior where cross-platform APIs allow it.
+- Pace, countdown, history, heatmap, overlay, notifications, and settings work without exposing secrets.
+- All phase tests pass.
+- No regressions.
+
+## Phase 4: Provider Shell and Passive Adapters
 > Test strategy: tdd
 
 ### Tests First
-- Step 4.1: [automated] Add failing fixture-based tests for Gemini install detection, auth-mode detection, passive request counting, rate-pressure derivation, and confidence labeling in `ClaudeUsageTests/GeminiAdapterTests.swift`. ~17 tests across GeminiDetectionTests (4), GeminiActivityParsingTests (5), GeminiRatePressureTests (4), GeminiConfidenceTests (4).
+- Step 4.1: [automated] Add failing tests for shared provider normalization, tray rotation/manual override/pinning, stale/degraded card mapping, Codex detection and parsing, Codex bookmarks, Gemini detection and parsing, Gemini `/stats` summary parsing, confidence engines, and provider settings persistence.
 
 ### Implementation
-- Step 4.2: [automated] Implement Gemini install/auth detection in `ClaudeUsage/Services/GeminiDetector.swift`. FileManager-based checks for `~/.gemini/settings.json` (install), `oauth_creds.json` (auth), and `settings.json` `security.auth.selectedType` field (auth mode: oauthPersonal, apiKey, vertexAI, codeAssist).
-- Step 4.3: [automated] Implement Gemini session parser in `ClaudeUsage/Services/GeminiActivityParser.swift`. Walks `~/.gemini/tmp/**/chats/session-*.json`, extracts gemini-type messages with timestamps/tokens/model. Computes `GeminiRatePressure` (daily count, RPM over 5-min window, daily headroom against plan).
-- Step 4.4: [automated] Add Gemini plan profiles, confidence engine, and adapter orchestrator in `ClaudeUsage/Models/GeminiTypes.swift` and `ClaudeUsage/Services/GeminiAdapter.swift`. Plans: Personal (1000/day, 60/min). Confidence: exact (reserved for wrapper), highConfidence (known auth + plan + stable activity), estimated (auth known, counting incomplete), observedOnly (auth detected, no quota evidence). Add `.geminiRich` snapshot case to `ProviderTypes.swift`. Add Gemini plan persistence to `ProviderSettingsStore`.
-- Step 4.5: [automated] Wire `GeminiAdapter` into `ProviderShellViewModel` with 15s polling. Replace Gemini placeholder in `SettingsView` with detection status, enable toggle, auth mode display, plan picker, and rate pressure summary. Add tray text formatting for `.geminiRich` case.
+- Step 4.2: [automated] Implement shared provider models and coordinator logic under `electron-app/src/shared/types/provider.ts`, `electron-app/src/shared/confidence/`, and `electron-app/src/main/providers/providerCoordinator.ts`.
+- Step 4.3: [automated] Implement Codex passive adapter under `electron-app/src/main/providers/codex/`: `CODEX_HOME` resolution, install/auth presence detection, `history.jsonl` incremental bookmarks, recursive `sessions/YYYY/MM/DD/rollout-*.jsonl` parsing, local log limit-hit detection, cooldown state, and privacy-safe derived events.
+- Step 4.4: [automated] Implement Gemini passive adapter under `electron-app/src/main/providers/gemini/`: `GEMINI_HOME`/`~/.gemini` resolution, settings/auth-mode detection, `oauth_creds.json` presence, `tmp/**/chats/session-*.json` parsing, token/model extraction, rate pressure, and local request windows.
+- Step 4.5: [automated] Implement Gemini `/stats` support under `electron-app/src/main/providers/gemini/stats.ts`, using a deliberate helper path and confidence labeling based on the reliability of command-derived summaries.
+- Step 4.6: [automated] Implement provider settings UI and IPC for Codex/Gemini enablement, plan/auth confirmation, confidence explanations, last refresh, stale/degraded diagnostics, and provider refresh actions.
+- Step 4.7: [automated] Wire provider state into tray rotation, popover provider cards, settings provider rows, overlay summaries, and diagnostics placeholders.
 
 ### Green
-- Step 4.6: [automated] Make all Gemini passive tests pass, rerun all Phase 1-3 tests (61 total), and verify that provider rotation works correctly with Claude + Codex + Gemini.
+- Step 4.8: [automated] Make all Phase 4 tests pass and add fixture coverage for malformed provider files, missing CLIs, unknown auth modes, stale refresh timestamps, degraded adapters, and confidence downgrade paths.
+- Step 4.9: [automated] Run Phase 4 verification: `npm run typecheck`, `npm test`, `npm run build`, and provider-card renderer smoke tests.
 
 ### Milestone
-- Gemini can be detected and configured as a monitored provider.
-- Gemini passive monitoring shows auth-mode-aware quota/rate guidance with explicit confidence.
-- Provider rotation and stacked cards work with Claude, Codex, and Gemini together.
-- All Phase 4 tests pass.
-- No regressions in previous phase tests.
+- Claude, Codex, and Gemini are first-class provider cards in Electron.
+- Codex and Gemini passive monitoring is useful, confidence-labeled, stale-aware, and degraded-aware.
+- Gemini can incorporate `/stats` summaries where available.
+- Codex never claims exact remaining quota without a defensible source.
+- All phase tests pass.
+- No regressions.
 
-## Phase 5: Gemini Accuracy Mode Wrapper
+## Phase 5: Accuracy Mode Wrappers
 > Test strategy: tdd
 
 ### Tests First
-- Step 5.1: [automated] Add failing tests for Gemini wrapper event capture, event-ledger persistence, confidence upgrades from wrapper data, and privacy constraints in `ClaudeUsageTests/GeminiWrapperTests.swift`. ~15 tests across GeminiWrapperEventTests (3), GeminiEventLedgerTests (5), GeminiWrapperConfidenceTests (4), GeminiPrivacyTests (3).
+- Step 5.1: [automated] Add failing tests for wrapper script generation, setup-command rendering, setup verification, wrapper event ledgers, stderr limit-hit scanning, confidence upgrades from wrapper events, and privacy constraints proving no prompts/stdout/secrets are persisted.
 
 ### Implementation
-- Step 5.2: [automated] Add wrapper event types and event ledger model to `ClaudeUsage/Models/GeminiTypes.swift`. Types: `GeminiInvocationEvent` (start/end timestamps, command mode, model, limitHitDetected), `GeminiEventLedger` class with JSONL append/read/rolling-window-trim and `~/Library/Application Support/ClaudeUsage/gemini-events.jsonl` persistence.
-- Step 5.3: [automated] Implement Gemini wrapper launcher in `ClaudeUsage/Services/GeminiWrapper.swift`. Launches `gemini` CLI via `Process`, captures start/end timestamps, parses stderr for usage-limit errors, appends `GeminiInvocationEvent` to ledger. Opt-in via `ProviderSettingsStore.geminiAccuracyMode`.
-- Step 5.4: [automated] Merge wrapper-derived events into `GeminiAdapter.refresh()` — feed ledger events alongside passive parser events into `GeminiConfidenceEngine`. Update engine so wrapper events can upgrade confidence (e.g., wrapper invocations + limit-hit patterns → `.highConfidence`). Surface Accuracy Mode toggle and status in `ClaudeUsage/Views/SettingsView.swift`.
+- Step 5.2: [automated] Implement wrapper generation under `electron-app/src/main/wrappers/`: per-provider wrapper scripts/binaries in the app user data directory, versioning, safe removal instructions, and no automatic shell/PATH mutation.
+- Step 5.3: [automated] Implement setup verification for Codex and Gemini wrappers: resolve command paths, detect whether `codex`/`gemini` points at the wrapper, run harmless version/status probes where safe, and report status through IPC.
+- Step 5.4: [automated] Implement wrapper event ledgers in SQLite for Codex and Gemini: invocation ID, start/end, duration, command mode, model, exit status, limit-hit flag, wrapper version, and source provider.
+- Step 5.5: [automated] Merge wrapper events into Codex/Gemini confidence engines and provider cards without weakening passive-only support.
+- Step 5.6: [automated] Add Accuracy Mode UI in settings/onboarding: opt-in toggles, setup commands, verification status, privacy copy, troubleshooting, and removal instructions.
 
 ### Green
-- Step 5.5: [automated] Make all Gemini wrapper tests pass, rerun all Phase 1-4 tests (78 total), and verify that Accuracy Mode improves confidence without affecting Claude or Codex.
+- Step 5.7: [automated] Make all Phase 5 tests pass and add integration coverage for wrapper setup flows, ledger trimming, confidence upgrades, and redacted diagnostics.
+- Step 5.8: [automated] Run Phase 5 verification: `npm run typecheck`, `npm test`, `npm run build`, and wrapper setup renderer smoke tests.
 
 ### Milestone
-- Gemini Accuracy Mode can be enabled independently.
-- Structured wrapper telemetry improves Gemini request counting and freshness.
-- Passive-only Gemini usage remains fully supported.
-- All Phase 5 tests pass.
-- No regressions in previous phase tests.
+- Accuracy Mode is explicit, opt-in, verifiable, and reversible.
+- Wrappers persist only derived metadata and never raw prompts, stdout, session keys, GitHub tokens, or provider auth tokens.
+- Wrapper events improve confidence where justified.
+- All phase tests pass.
+- No regressions.
 
-## Phase 6: Onboarding, Diagnostics, and Product Hardening
-> Test strategy: tdd
-
-### Tests First
-- Step 6.1: [automated] Add failing tests for degraded/stale provider handling, unsupported provider-version handling, onboarding copy/state transitions, and tray behavior edge cases.
-
-  **What:** Write red-phase tests that define the degraded-state, stale-data, and diagnostic contracts before production code exists. Tests use temp directories and inline fixtures.
-
-  **Files to create:**
-  - `ClaudeUsageTests/DiagnosticsTests.swift` — new test file with these test classes:
-
-  **AdapterDiagnosticsTests** (~5 tests):
-  - `testAdapterTrackesLastRefreshTimestamp` — after refresh, `lastRefreshTime` is non-nil and recent
-  - `testAdapterTracksConsecutiveFailureCount` — simulate parse errors, verify `consecutiveFailures` increments
-  - `testAdapterResetFailureCountOnSuccess` — after a successful refresh following failures, `consecutiveFailures` resets to 0
-  - `testAdapterReportsDegradedAfterThreeFailures` — 3+ consecutive refresh failures → adapter state becomes `.degraded(reason:)`
-  - `testAdapterRecoveryFromDegradedOnSuccessfulRefresh` — degraded adapter returns to `.installed` after a successful refresh
-
-  **StaleDetectionTests** (~4 tests):
-  - `testProviderCardShowsStaleBadgeWhenRefreshOlderThan5Minutes` — card built from snapshot with `lastRefreshTime` >5 min ago → `cardState == .stale`
-  - `testProviderCardShowsConfiguredWhenRefreshRecent` — card with fresh `lastRefreshTime` → `cardState == .configured`
-  - `testTrayTextIncludesStaleIndicatorForStaleProvider` — tray text for a stale provider includes "·" stale marker
-  - `testStaleThresholdDefaultIs300Seconds` — verify the default stale threshold constant is 300s
-
-  **ConfidenceExplanationTests** (~3 tests):
-  - `testConfidenceExplanationForObservedOnly` — `.observedOnly` confidence → explanation mentions "no plan configured"
-  - `testConfidenceExplanationForEstimated` — `.estimated` confidence → explanation mentions "wrapper events" or "plan profile"
-  - `testConfidenceExplanationForHighConfidence` — `.highConfidence` confidence → explanation mentions "limit detection"
-
-  **TrayEdgeCaseTests** (~3 tests):
-  - `testTrayTextForDegradedProvider` — degraded snapshot → tray text shows "Provider · Degraded"
-  - `testTrayTextWhenAllProvidersDisabled` — no enabled providers → tray text shows fallback
-  - `testTrayRotationSkipsDegradedProvider` — rotation prefers non-degraded provider over degraded one
-
-  **Files to modify:**
-  - `ClaudeUsage.xcodeproj/project.pbxproj` — add `DiagnosticsTests.swift` to test target
-
-  **Acceptance criteria:**
-  - `xcodebuild build` compiles (app target succeeds)
-  - Test target compiles but tests fail (red phase — references not-yet-existing properties like `lastRefreshTime`, `consecutiveFailures`, `.degraded`, `.stale`, confidence explanation APIs)
-  - All 93 existing tests still pass
+## Phase 6: Migration, Diagnostics, and Packaging
+> Test strategy: tests-after
 
 ### Implementation
-- Step 6.2: [automated] Add adapter diagnostics — stale tracking, degraded states, and failure counting.
-
-  **What:** Add `lastRefreshTime`, `consecutiveFailures`, and `.degraded` state to Codex and Gemini adapters. Add `.stale` card state to `ProviderTypes`. Wire degraded/stale into `ProviderCoordinator` card building and tray text.
-
-  **Files to modify:**
-  - `ClaudeUsage/Services/CodexAdapter.swift` — add `lastRefreshTime: Date?` and `consecutiveFailures: Int` properties; add `.degraded(reason: String)` case to `CodexAdapterState`; update `refresh()` to track success/failure counts and emit degraded after 3 failures; update `toProviderSnapshot()` for degraded state
-  - `ClaudeUsage/Services/GeminiAdapter.swift` — same pattern as Codex
-  - `ClaudeUsage/Models/ProviderTypes.swift` — add `.stale` case to `CardState`; add `lastRefreshTime: Date?` to `ProviderSnapshot` cases (or add as associated value); add stale threshold constant (300s); update `ProviderCoordinator.makeShellState()` to check freshness and set `.stale` card state; update tray text for degraded providers; add tray rotation preference for non-degraded
-  - `ClaudeUsage/Models/ProviderShellViewModel.swift` — update `formatTrayText()` for degraded/stale cases; add fallback tray text when no providers enabled
-
-  **Acceptance criteria:**
-  - `xcodebuild build` compiles
-  - `AdapterDiagnosticsTests` pass (5 tests)
-  - `StaleDetectionTests` pass (4 tests)
-  - `TrayEdgeCaseTests` pass (3 tests)
-  - All 93 existing tests still pass
-
-- Step 6.3: [automated] Add confidence explanations and refine onboarding/settings copy.
-
-  **What:** Add human-readable confidence explanations to Codex and Gemini estimate types. Surface them in provider cards and settings. Add detection troubleshooting hints when provider is "Not Detected".
-
-  **Files to modify:**
-  - `ClaudeUsage/Models/CodexTypes.swift` — add `static func explanation(for confidence: CodexConfidence) -> String` to `CodexConfidenceEngine` (or as computed property on `CodexEstimate`)
-  - `ClaudeUsage/Models/GeminiTypes.swift` — same pattern for Gemini
-  - `ClaudeUsage/Models/ProviderTypes.swift` — add `confidenceExplanation: String?` to `ProviderCard`; update `ProviderCoordinator` to populate from estimates
-  - `ClaudeUsage/Views/SettingsView.swift` — add detection help text below "Not Detected" status (e.g., "Install Codex CLI and run it once to enable monitoring"); add brief Accuracy Mode description; add privacy note for wrapper mode ("Only timestamps and metadata are stored — no prompt content")
-  - `ClaudeUsage/Views/ContentView.swift` — show `confidenceExplanation` as secondary text on provider cards (if non-nil)
-
-  **Acceptance criteria:**
-  - `xcodebuild build` compiles
-  - `ConfidenceExplanationTests` pass (3 tests)
-  - All existing tests still pass
-  - Settings shows detection help text when provider not detected
-
-- Step 6.4: [automated] Update user-facing documentation to match multi-provider product.
-
-  **What:** Update README.md with multi-provider feature descriptions, provider setup instructions, and confidence level documentation. Update CLAUDE.md if any conventions changed.
-
-  **Files to modify:**
-  - `README.md` — update feature list, add provider setup section (Claude/Codex/Gemini), document confidence levels, document Accuracy Mode, update screenshots description if applicable
-  - `CLAUDE.md` — update test count, add Phase 6 conventions if any
-
-  **Acceptance criteria:**
-  - README documents all three providers
-  - README explains confidence levels
-  - No code changes in this step
+- Step 6.1: [automated] Implement non-secret migration from Swift and Tauri sources under `electron-app/src/main/migration/`: account labels, org IDs, active account, display settings, provider settings, overlay settings, compatible history snapshots, and migration records.
+- Step 6.2: [automated] Implement migration UI in onboarding/settings that clearly reports imported metadata and prompts users to re-enter Claude session keys, GitHub tokens, and any future provider secrets.
+- Step 6.3: [automated] Implement diagnostics view/export under `electron-app/src/main/diagnostics/` and `electron-app/src/renderer/settings/`: platform, app version, storage backend, provider detection, refresh times, failure counts, parse bookmarks, wrapper status, and redacted recent logs.
+- Step 6.4: [automated] Configure Electron Builder targets for Windows NSIS, Windows portable, Linux AppImage, Linux `deb`, and optional unsigned macOS dev/parity builds in `electron-app/electron-builder.yml`.
+- Step 6.5: [automated] Add packaging scripts and documentation in `electron-app/package.json`, `electron-app/README.md`, and root docs as needed, explicitly stating Swift remains the public premium macOS app and Electron is the Windows/Linux path.
+- Step 6.6: [automated] Add final regression gates for package creation, migration fixtures, diagnostics redaction, storage backend warnings, and renderer smoke flows.
 
 ### Green
-- Step 6.5: [automated] Final green-phase verification gate for Phase 6.
-
-  **What:** All tests should pass. Run the full suite, confirm no regressions, and mark Phase 6 milestone complete.
-
-  **Verification checklist:**
-  1. `xcodebuild build` — clean compile
-  2. `xcodebuild test` — all tests pass (93 existing + ~15 new), 0 failures
-  3. Claude files untouched
-  4. Codex wrapper/confidence logic untouched (only diagnostics added)
-  5. Gemini wrapper/confidence logic untouched (only diagnostics added)
-
-  **Files to modify:**
-  - `tasks/todo.md` — check off milestone items
-  - `tasks/roadmap.md` — mark Phase 6 milestone complete
+- Step 6.7: [automated] Run full Electron verification: `npm run typecheck`, `npm test`, `npm run build`, Electron smoke tests, and available package builds for the current host.
+- Step 6.8: [automated] Update `tasks/history.md`, `README.md`, and `docs/cross-platform-parity.md` to reflect the Electron plan/status once implementation reaches this gate.
 
 ### Milestone
-- Users can understand why each provider is exact, estimated, passive-only, or degraded.
-- The app handles stale and degraded states gracefully.
-- Product copy and documentation match the multi-provider product.
-- All Phase 6 tests pass.
-- No regressions in previous phase tests.
-
-## Phase 7: Cross-Platform Follow-Through
-> Test strategy: tdd
-
-### Tests First
-- Step 7.1: [automated] Add failing Rust tests for multi-provider model types, provider snapshot serialization, confidence labels, card state mapping, and tray text generation in `tauri-app/src-tauri/src/`.
-
-  **What:** Write red-phase Rust unit tests that define the provider abstraction contract before porting implementation. Tests use `#[cfg(test)] mod tests` blocks in new and existing modules. No frontend test framework setup (deferred — Tauri frontend is vanilla TS with no test runner).
-
-  **Files to create:**
-  - `tauri-app/src-tauri/src/provider_types.rs` — new module (initially empty structs/enums that compile but fail tests) with test module containing:
-
-  **ProviderModelTests** (~5 tests):
-  - `test_provider_id_variants` — `ProviderId` enum has `.claude`, `.codex`, `.gemini` variants
-  - `test_provider_snapshot_claude_rich` — `.claudeRich` variant holds `UsageData` + `AuthStatus` + `is_enabled`
-  - `test_provider_snapshot_codex_rich` — `.codexRich` variant holds `CodexEstimate` + `is_enabled`
-  - `test_provider_snapshot_gemini_rich` — `.geminiRich` variant holds `GeminiEstimate` + `is_enabled`
-  - `test_provider_snapshot_id_extraction` — `.id()` method returns correct `ProviderId` for each variant
-
-  **CardStateTests** (~4 tests):
-  - `test_card_state_configured` — `CardState::Configured` serializes to `"configured"`
-  - `test_card_state_stale` — `CardState::Stale` serializes to `"stale"`
-  - `test_card_state_degraded` — `CardState::Degraded` serializes to `"degraded"`
-  - `test_provider_card_serialization` — `ProviderCard` struct serializes to JSON with all fields (id, card_state, headline, detail_text, session_utilization, weekly_utilization, confidence_explanation)
-
-  **ConfidenceTests** (~3 tests):
-  - `test_confidence_label_variants` — `ConfidenceLevel` enum has exact/highConfidence/estimated/observedOnly
-  - `test_confidence_explanation_observed_only` — explanation for `.observedOnly` contains "plan"
-  - `test_confidence_explanation_high_confidence` — explanation for `.highConfidence` contains "limit"
-
-  **ShellStateTests** (~3 tests):
-  - `test_shell_state_tray_provider_prefers_configured` — `tray_provider()` returns first `.configured` card
-  - `test_shell_state_skips_degraded` — `tray_provider()` skips degraded cards
-  - `test_shell_state_empty_providers` — empty providers → `tray_provider()` returns `None`
-
-  **Files to modify:**
-  - `tauri-app/src-tauri/src/lib.rs` — add `mod provider_types;` declaration
-
-  **Acceptance criteria:**
-  - `cargo build` in `tauri-app/src-tauri/` compiles
-  - `cargo test` fails with expected assertion failures (red phase)
-  - Existing 2 cookie-parsing tests in `api.rs` still pass
-
-### Implementation
-- Step 7.2: [automated] Add provider type definitions and coordinator logic to the Tauri Rust backend.
-
-  **What:** Port the macOS Swift `ProviderTypes.swift` model into Rust. Add `ProviderId`, `ProviderStatus`, `CardState`, `ProviderSnapshot`, `ProviderCard`, `ShellState`, `ConfidenceLevel`, and coordinator logic. Preserve the existing Claude-only `UsageData`/`UsageState` types — new types sit alongside them.
-
-  **Files to modify:**
-  - `tauri-app/src-tauri/src/provider_types.rs` — fill in type definitions:
-    - `ProviderId` enum (Claude, Codex, Gemini) with Serialize/Deserialize
-    - `ProviderStatus` enum (Configured, MissingConfiguration, Degraded(String))
-    - `CardState` enum (Configured, MissingConfiguration, Degraded, Stale) with serde rename
-    - `ConfidenceLevel` enum (Exact, HighConfidence, Estimated, ObservedOnly) with `explanation()` method
-    - `ProviderSnapshot` enum mirroring Swift (ClaudeRich, ClaudeSimple, CodexSimple, CodexRich, GeminiSimple, GeminiRich) with `.id()` and `.is_degraded()` methods
-    - `ProviderCard` struct (id, card_state, headline, detail_text, session_utilization, weekly_utilization, confidence_explanation)
-    - `ShellState` struct with `tray_provider()` method
-    - `ProviderCoordinator` with `make_shell_state()` — maps snapshots to cards
-    - Stub `CodexEstimate` and `GeminiEstimate` structs (confidence + placeholder fields) for snapshot variants
-  - `tauri-app/src-tauri/src/models.rs` — no changes (existing Claude types preserved)
-
-  **Acceptance criteria:**
-  - `cargo build` compiles
-  - All 15 red-phase tests from Step 7.1 pass
-  - Existing 2 `api.rs` tests still pass
-  - `ProviderCard` serializes to JSON matching frontend expectations
-
-- Step 7.3: [automated] Mirror provider types in the Tauri frontend TypeScript and update `UsageState` to carry provider cards.
-
-  **What:** Add TypeScript interfaces matching the Rust provider types. Extend `UsageState` with an optional `provider_cards` array. Update the popover UI to render provider cards when present (progressive enhancement — existing Claude-only rendering still works).
-
-  **Files to modify:**
-  - `tauri-app/src/types.ts` — add interfaces: `ProviderId`, `CardState`, `ConfidenceLevel`, `ProviderCard`, updated `UsageState` with optional `provider_cards: ProviderCard[]`
-  - `tauri-app/src/main.ts` — add provider card rendering section below existing usage bars (only shown when `provider_cards` is non-empty); preserve existing Claude display as fallback
-  - `tauri-app/src/styles.css` — add `.provider-card`, `.confidence-badge`, `.stale-badge` styles
-
-  **Acceptance criteria:**
-  - `npm run build` in `tauri-app/` compiles
-  - Frontend types match Rust serialization format
-  - Popover shows provider cards when `UsageState.provider_cards` is populated
-  - Existing Claude-only rendering still works when `provider_cards` is absent
-
-- Step 7.4: [automated] Wire provider coordinator into Tauri AppState and emit provider cards on polling.
-
-  **What:** Integrate `ProviderCoordinator` into `AppState` so that each poll cycle produces both the existing `UsageState` (for backward compat) and a `ShellState` with provider cards. Emit provider cards in the `usage-updated` event.
-
-  **Files to modify:**
-  - `tauri-app/src-tauri/src/state.rs` — add `provider_coordinator: ProviderCoordinator` to `AppState`; after each successful Claude poll, build a `ProviderSnapshot::ClaudeRich` and run `make_shell_state()` to populate `provider_cards` in `UsageState`
-  - `tauri-app/src-tauri/src/models.rs` — add `provider_cards: Option<Vec<ProviderCard>>` to `UsageState`
-  - `tauri-app/src-tauri/src/commands.rs` — ensure `get_usage_state` command returns the new field
-
-  **Acceptance criteria:**
-  - `cargo build` compiles
-  - `cargo test` — all tests pass
-  - When Claude account is configured, `UsageState` includes a single `ProviderCard` for Claude with utilization data
-  - Frontend renders the provider card
-
-- Step 7.5: [automated] Audit parity gaps between macOS and Tauri and document them.
-
-  **What:** Systematically compare the macOS Swift app and Tauri app feature sets. Document what's been ported (provider model, card rendering), what's deferred (Codex/Gemini adapters, wrapper mode, settings UI for providers), and any platform-specific gaps (e.g., Keychain vs. keyring). Create a parity document.
-
-  **Files to create:**
-  - `docs/cross-platform-parity.md` — gap analysis document covering:
-    - Ported: provider type model, card state/confidence types, coordinator logic, frontend card rendering
-    - Deferred: Codex detection/adapter, Gemini detection/adapter, Accuracy Mode wrappers, provider settings UI, stale/degraded detection polling
-    - Platform differences: macOS Keychain vs. keyring crate, MenuBarExtra vs. Tauri system tray, SwiftUI vs. vanilla TS
-    - Windows-specific: untested (no Windows CI), keyring backend differences, file path conventions
-
-  **Files to modify:**
-  - `tauri-app/README.md` — add "Multi-Provider Status" section noting provider model is ported, adapters are macOS-only for now
-
-  **Acceptance criteria:**
-  - Parity document lists every feature from macOS app with ported/deferred/gap status
-  - No undocumented gaps
-  - No code changes in this step (docs only)
-
-### Green
-- Step 7.6: [automated] Final green-phase verification gate for Phase 7.
-
-  **What:** Run all Rust tests, verify frontend builds, confirm macOS Swift tests unaffected. Mark Phase 7 complete.
-
-  **Verification checklist:**
-  1. `cargo test` in `tauri-app/src-tauri/` — all tests pass, 0 failures
-  2. `npm run build` in `tauri-app/` — frontend compiles
-  3. `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` — 108 macOS tests still pass
-  4. Parity document exists and is comprehensive
-
-  **Files to modify:**
-  - `tasks/todo.md` — check off Step 7.6 and all milestone items
-  - `tasks/roadmap.md` — mark Phase 7 milestone complete
-  - `tasks/history.md` — append Phase 7 completion record
-
-### Milestone
-- [x] Cross-platform follow-through is based on the validated multi-provider model.
-- [x] Deferred Windows validation is resolved against the new architecture.
-- [x] Any remaining parity gaps are explicit and documented.
-- [x] All Phase 7 tests pass.
-- [x] No regressions in previous phase tests.
-
-## Post-Review Remediation
-
-These items came from the 2026-04-11 expert review follow-up and were re-checked against the current code before being added. They are not Phase 7 scope regressions, but they should be remediated before the next release candidate.
-
-### Tests First
-- [ ] Step R.1: [automated] Add regression tests for Tauri tray menu commands.
-
-  **What:** Cover the `Refresh Now` and `Toggle Overlay` context menu paths so they execute the same backend behavior as the frontend buttons instead of only emitting unused events.
-
-  **Files to modify:**
-  - `tauri-app/src-tauri/src/lib.rs`
-  - `tauri-app/src-tauri/src/commands.rs` or a new testable helper module
-
-  **Acceptance criteria:**
-  - Tray menu "Refresh Now" triggers the existing refresh path.
-  - Tray menu "Toggle Overlay" toggles overlay state through the existing overlay path.
-  - No unhandled `trigger-refresh` or `trigger-toggle-overlay` events remain.
-
-- [ ] Step R.2: [automated] Add macOS provider-shell tests proving stale adapter refresh timestamps are used in the live `ProviderShellViewModel` path.
-
-  **What:** Existing stale tests validate the coordinator overload, but the production shell currently calls the overload without refresh times. Add tests at the view-model boundary so stale Codex/Gemini cards and tray text cannot regress.
-
-  **Files to modify:**
-  - `ClaudeUsageTests/DiagnosticsTests.swift` or a new provider-shell diagnostics test file
-  - `ClaudeUsage/Models/ProviderShellViewModel.swift`
-
-  **Acceptance criteria:**
-  - A Codex or Gemini adapter with `lastRefreshTime` older than `ProviderCoordinator.staleThreshold` produces a `.stale` provider card in `ProviderShellViewModel.shellState`.
-  - Stale provider tray text contains a stale indicator when that provider is selected.
-
-- [ ] Step R.3: [automated] Add Codex passive parser tests for documented sources and incremental production refresh.
-
-  **What:** Verify `CODEX_HOME`, bookmark persistence, recursive `sessions/YYYY/MM/DD/rollout-*.jsonl` parsing, and merged history/session events before changing the adapter.
-
-  **Files to modify:**
-  - `ClaudeUsageTests/CodexAdapterTests.swift`
-  - `ClaudeUsage/Services/CodexDetector.swift`
-  - `ClaudeUsage/Services/CodexActivityParser.swift`
-  - `ClaudeUsage/Services/CodexAdapter.swift`
-
-  **Acceptance criteria:**
-  - Default Codex detection respects `CODEX_HOME` when present.
-  - `CodexAdapter.refresh()` does not reparse all of `history.jsonl` on every 15-second refresh.
-  - Recursive session rollout files are included in passive activity and limit-hit detection.
-
-- [ ] Step R.4: [automated] Add Tauri settings regression coverage for preserving configured org IDs.
-
-  **What:** Opening Settings for a configured Tauri account should show the saved non-secret org ID, so saving unrelated preferences does not require the user to re-enter it.
-
-  **Files to modify:**
-  - `tauri-app/src-tauri/src/models.rs`
-  - `tauri-app/src-tauri/src/state.rs`
-  - `tauri-app/src/types.ts`
-  - `tauri-app/src/settings.ts`
-
-  **Acceptance criteria:**
-  - `UsageState` or a settings-specific command exposes the active account org ID.
-  - The Tauri Settings org ID input is populated for configured accounts.
-  - Session keys remain secret and are not serialized to the frontend state.
-
-### Implementation
-- [ ] Step R.5: [automated] Wire stale provider diagnostics into the live macOS shell.
-
-  **What:** Pass Codex/Gemini adapter `lastRefreshTime` values into `ProviderCoordinator.makeShellState(providers:now:refreshTimes:)`, and update tray formatting so stale cards are visible in the running app.
-
-  **Files to modify:**
-  - `ClaudeUsage/Models/ProviderShellViewModel.swift`
-  - `ClaudeUsage/Models/ProviderTypes.swift` if tray/card helpers need adjustment
-
-  **Acceptance criteria:**
-  - Stale cards appear in the Providers disclosure section after refresh timestamps exceed 300 seconds.
-  - Tray rotation does not silently present stale data as fresh.
-  - Existing 108 macOS tests pass plus the new stale-shell tests.
-
-- [ ] Step R.6: [automated] Complete Codex passive-source and configuration remediation.
-
-  **What:** Make the production Codex adapter match the documented passive-monitoring contract: `CODEX_HOME`, incremental history parsing, recursive session parsing, plan selection, and useful headroom text.
-
-  **Files to modify:**
-  - `ClaudeUsage/Services/CodexDetector.swift`
-  - `ClaudeUsage/Services/CodexActivityParser.swift`
-  - `ClaudeUsage/Services/CodexAdapter.swift`
-  - `ClaudeUsage/Models/CodexTypes.swift`
-  - `ClaudeUsage/Views/SettingsView.swift`
-  - `ClaudeUsage/Models/ProviderSettingsStore.swift`
-
-  **Acceptance criteria:**
-  - Codex plan picker exists in macOS Settings and updates adapter estimation without restart.
-  - Passive events from history and recursive session files are merged.
-  - The adapter stores and reuses parse bookmarks.
-  - Codex still never claims exact remaining quota without a defensible source.
-
-- [ ] Step R.7: [automated] Add Gemini auth/plan confirmation controls to macOS Settings.
-
-  **What:** Replace the read-only Gemini plan label with actual auth-mode and plan controls that match the multi-provider setup spec.
-
-  **Files to modify:**
-  - `ClaudeUsage/Views/SettingsView.swift`
-  - `ClaudeUsage/Models/ProviderSettingsStore.swift`
-  - `ClaudeUsage/Services/GeminiAdapter.swift`
-  - `ClaudeUsage/Models/GeminiTypes.swift`
-
-  **Acceptance criteria:**
-  - User can confirm Gemini auth mode and plan in Settings.
-  - Gemini adapter confidence/rate pressure uses the selected settings without app restart.
-  - User-facing copy continues to state that API key and Vertex limits may be user-specific.
-
-- [ ] Step R.8: [automated] Fix Tauri tray menu command wiring.
-
-  **What:** Replace the unused emitted events in the tray context menu with direct calls into shared refresh and overlay helpers, or register backend listeners that invoke those helpers.
-
-  **Files to modify:**
-  - `tauri-app/src-tauri/src/lib.rs`
-  - `tauri-app/src-tauri/src/commands.rs` or a shared state/action helper module
-
-  **Acceptance criteria:**
-  - Context menu refresh updates state and emits `usage-updated`.
-  - Context menu overlay toggle creates/closes the overlay and persists config.
-  - `cargo test` passes.
-
-- [ ] Step R.9: [automated] Preserve Tauri org ID in Settings.
-
-  **What:** Expose only non-secret account metadata needed by Settings and populate the org ID field from that data.
-
-  **Files to modify:**
-  - `tauri-app/src-tauri/src/models.rs`
-  - `tauri-app/src-tauri/src/state.rs`
-  - `tauri-app/src/types.ts`
-  - `tauri-app/src/settings.ts`
-
-  **Acceptance criteria:**
-  - Opening Settings for a configured account shows the current org ID.
-  - Saving credentials continues to update the selected account only.
-  - Session key remains write-only from the Settings UI perspective.
-
-- [ ] Step R.10: [automated] Escape Tauri provider-card text before inserting HTML.
-
-  **What:** Apply the existing `escapeHtml` helper to provider-card headline, confidence explanation, and any future detail text before appending to `innerHTML`.
-
-  **Files to modify:**
-  - `tauri-app/src/main.ts`
-
-  **Acceptance criteria:**
-  - Provider cards escape dynamic strings the same way usage bars already do.
-  - `npm run build` passes.
-
-### Green
-- [ ] Step R.11: [automated] Run full remediation verification.
-
-  **Verification checklist:**
-  1. `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` passes.
-  2. `cargo test` in `tauri-app/src-tauri/` passes.
-  3. `npm run build` in `tauri-app/` passes.
-  4. Update `docs/cross-platform-parity.md` if any Tauri gap status changes from deferred/gap to ported.
-  5. Append a remediation completion entry to `tasks/history.md`.
+- Non-secret migration works and secret re-entry is clear.
+- Diagnostics export is useful and redacted.
+- Windows/Linux packaging config exists and host-available package builds pass.
+- Documentation states the Swift/Electron platform split accurately.
+- All phase tests pass.
+- No regressions.
 
 ## Cross-Phase Concerns
 
-- Preserve the current Claude ingestion path throughout all phases; adapter and UI refactors must wrap it, not replace it.
-- Keep local parsing incremental and lightweight so menu bar performance remains stable.
-- Never store raw prompt bodies or auth tokens in derived telemetry stores.
-- Use fixture-based tests for local CLI artifacts before relying on live local state.
-- Re-run Claude regression coverage in every phase that touches shared provider state or UI.
-- Validate tray rotation, pinning, and degraded-state rendering whenever a new provider is introduced.
+- Security: keep Node integration disabled, context isolation enabled, IPC schemas validated, CSP strict, and renderer state secret-free in every phase.
+- Privacy: persist only derived provider telemetry; never persist raw prompts, CLI stdout, session keys, GitHub tokens, or provider auth tokens outside secret storage.
+- Accessibility: ensure tray alternatives, keyboard navigation, readable contrast, and settings/onboarding forms are usable without mouse-only flows.
+- Performance: avoid expensive recursive provider scans without bookmarks; keep polling local and incremental; index SQLite tables used for history/provider windows.
+- Cross-platform behavior: test Windows/Linux path differences for tray, notifications, launch at login, `safeStorage`, filesystem paths, and wrapper setup instructions.
+- Compatibility: Swift remains the premium macOS app; Electron macOS builds are development/parity artifacts unless a later decision changes public distribution.
