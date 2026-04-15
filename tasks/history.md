@@ -651,3 +651,14 @@ Validation:
 - `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`: 119 tests passed, 0 failures.
 - `npm install` warnings: fixed the direct Electron audit advisory by upgrading to `electron@^41.2.0`; remaining install warnings are deprecated transitive packages from the current Electron Builder/npm dependency graph, with `npm install` reporting 0 vulnerabilities after the upgrade.
 - Accepted environment warning: xcodebuild selected the first of multiple matching local macOS destinations.
+
+## 2026-04-15 — Step 1.4: Electron Preload Bridge
+
+Implemented the narrow Electron preload bridge for the Windows/Linux runtime foundation. The preload API now exposes only `version`, `getUsageState`, `getSettings`, and `getAccounts` through a frozen `window.claudeUsage` object, with each method mapped to an allowlisted `ipcRenderer.invoke` channel. Shared IPC channel names and preload request/response typings now live in `electron-app/src/shared/types/ipc.ts`, and `electron-app/src/main/ipc.ts` re-exports them for the upcoming handler registration step. Renderer TypeScript now has a `window.claudeUsage` global declaration without importing Electron or Node APIs into renderer code.
+
+Validation:
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm test -- --run` in `electron-app/`: 1 scaffold test passed.
+- `npm run build` in `electron-app/`: typecheck, tests, main build, and renderer Vite build passed.
+- Confirmed `dist-electron/preload/index.js` exists after build.
+- Confirmed renderer/shared source has no direct `electron`, `node:*`, or filesystem imports.

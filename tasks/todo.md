@@ -9,7 +9,7 @@
 - [x] Step 1.1: [automated] Scaffold `electron-app/` with Electron, React, TypeScript, Vite, Electron Builder, Vitest, and project scripts in `electron-app/package.json`, `electron-app/vite.config.ts`, `electron-app/electron-builder.yml`, `electron-app/tsconfig*.json`, and `electron-app/src/`.
 - [x] Step 1.2: [automated] Add the initial folder/module structure from the spec: `electron-app/src/main/`, `electron-app/src/preload/`, `electron-app/src/renderer/`, and `electron-app/src/shared/`, including shared type/schema placeholders for accounts, usage state, provider cards, settings, and IPC payloads.
 - [x] Step 1.3: [automated] Implement the secure Electron main-process bootstrap in `electron-app/src/main/app.ts`, `electron-app/src/main/windows.ts`, and `electron-app/src/main/tray.ts`: single-instance lock, app lifecycle, tray creation, context menu skeleton, popover/settings/overlay/onboarding windows, CSP-ready local loading, and Linux tray fallback handling.
-- [ ] Step 1.4: [automated] Add a narrow preload bridge in `electron-app/src/preload/index.ts` and `electron-app/src/preload/api.ts` using `contextBridge`, with Node integration disabled and context isolation/sandbox options set on all renderer windows.
+- [x] Step 1.4: [automated] Add a narrow preload bridge in `electron-app/src/preload/index.ts` and `electron-app/src/preload/api.ts` using `contextBridge`, with Node integration disabled and context isolation/sandbox options set on all renderer windows.
 - [ ] Step 1.5: [automated] Add IPC registration and validation skeletons in `electron-app/src/main/ipc.ts` plus shared schemas under `electron-app/src/shared/schemas/` for the commands listed in the spec.
 - [ ] Step 1.6: [automated] Add storage primitives in `electron-app/src/main/storage/`: SQLite connection/migrations for structured app data, `safeStorage` secret wrapper, redaction helpers, and a Linux `basic_text` backend warning surfaced through derived app state.
 - [ ] Step 1.7: [automated] Add minimal React renderer entries for popover, settings, onboarding, and overlay under `electron-app/src/renderer/`, with placeholder state loaded through the preload API and no direct filesystem or Node access.
@@ -57,3 +57,47 @@ Validation:
 - Run `npm run typecheck`, `npm test -- --run`, and `npm run build` from `electron-app/`.
 - Inspect compiled preload output to confirm the packaged preload entry remains `dist-electron/preload/index.js`.
 - Confirm no renderer code imports from `electron`, `node:*`, or direct filesystem APIs.
+
+## Review: Step 1.4
+
+Implemented the narrow Electron preload bridge:
+- `electron-app/src/preload/api.ts` now exposes only the current scaffold API (`version`, `getUsageState`, `getSettings`, `getAccounts`) and maps each method to an allowlisted `ipcRenderer.invoke` channel. It does not expose `ipcRenderer`, arbitrary channel access, Electron objects, Node globals, or filesystem APIs to renderer code.
+- `electron-app/src/preload/index.ts` now exposes a frozen `window.claudeUsage` object through `contextBridge.exposeInMainWorld`.
+- `electron-app/src/shared/types/ipc.ts` now owns shared IPC channel names plus a typed `PreloadInvokeMap` for preload-accessible request/response shapes. `electron-app/src/main/ipc.ts` re-exports those shared names so Step 1.5 can add handlers without duplicating channel constants.
+- `electron-app/src/renderer/global.d.ts` declares the typed `window.claudeUsage` surface for renderer TypeScript.
+- `electron-app/src/main/windows.ts` already enforces `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, `webSecurity: true`, and `allowRunningInsecureContent: false` for all renderer windows, so no window changes were needed.
+
+Validation passed from `electron-app/`:
+- `npm run typecheck`
+- `npm test -- --run`
+- `npm run build`
+- Smoke check confirmed `dist-electron/preload/index.js` still exists after build.
+- Source scan confirmed renderer/shared code has no `electron`, `node:*`, or direct filesystem imports.
+
+No warnings were emitted by validation.
+
+Known boundary for the next step:
+- The preload API now invokes typed IPC channels, but main-process handlers are intentionally not registered yet. Step 1.5 owns handler registration, schema validation, and placeholder responses.
+
+## Next Step Plan: Step 1.5
+
+Add the main-process IPC registration and validation skeletons that service the allowlisted preload bridge from Step 1.4. Keep this step focused on command registration, request/response validation, and safe placeholder state. Do not add real SQLite storage, secret storage, provider polling, or renderer UI behavior yet.
+
+Files to modify or create:
+- `electron-app/src/main/ipc.ts`: replace the current re-export-only skeleton with a `registerIpcHandlers(...)` function that registers handlers for the commands listed in the Phase 1 spec. It should use the shared `ipcChannelNames`, return safe placeholder state for read commands, validate payloads for write commands, and expose a small disposer/unregister helper if practical.
+- `electron-app/src/main/app.ts`: call `registerIpcHandlers(...)` during startup before windows can invoke the preload API. Keep dependencies explicit and do not create long-lived service objects beyond placeholder state required for this skeleton.
+- `electron-app/src/shared/schemas/ipc.ts`: add command-level validation helpers or schemas for every payload-bearing command: settings update, add/rename/remove/switch account, refresh, and provider-style command placeholders only where the roadmap requires them.
+- `electron-app/src/shared/types/ipc.ts`: add request/response mappings for the registered commands so preload and main stay typed from the same source of truth.
+- `electron-app/src/shared/schemas/accounts.ts`, `electron-app/src/shared/schemas/settings.ts`, and `electron-app/src/shared/schemas/usage.ts`: reuse existing schemas for response validation. Refine only if the IPC skeleton needs safe placeholder state to satisfy the schemas.
+- `electron-app/src/preload/api.ts`: extend the preload API only for scaffold commands that Step 1.5 registers and that the renderer will need in later steps. Keep the allowlist pattern; do not add arbitrary invoke/send methods.
+
+Implementation notes:
+- Register handlers with `ipcMain.handle` and validate all incoming payloads with Zod before mutating or returning placeholder state.
+- Return secret-free placeholder account, settings, and usage state objects. Any credential payload accepted in this step must be validated and discarded or represented only as safe metadata; never echo session keys to renderer responses.
+- Prefer small pure helpers for `parsePayload` and safe placeholder state so Step 1.8 can test validation without booting a full Electron app.
+- Ensure handler registration is idempotent or returns a disposer so tests and app shutdown can avoid duplicate-handler collisions.
+
+Validation:
+- Run `npm run typecheck`, `npm test -- --run`, and `npm run build` from `electron-app/`.
+- Confirm no renderer code imports from `electron`, `node:*`, or direct filesystem APIs.
+- Inspect the final IPC surface to confirm there is still no arbitrary channel bridge and no secret-bearing response shape.
