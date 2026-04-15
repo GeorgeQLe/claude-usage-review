@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-15 — Step 2.3: Electron Claude Usage Client
+
+Implemented the Electron main-process Claude usage API client. The client now sends Claude web-client usage requests with the `sessionKey` cookie, normalizes all known usage limit fields plus unknown `other` usage, extracts rotated session keys from `Set-Cookie`, and classifies auth expiry, network failures, and malformed responses with distinct plain-object errors. The module remains fetch-only and storage-free so later polling/IPC steps can own credential persistence and renderer updates.
+
+Validation: `npm run typecheck` passed from `electron-app/`. `npm test -- --run src/main/services/claudeUsage.test.ts` passed with 1 file and 4 tests. `npm test -- --run src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts src/foundation-storage.test.ts` passed with 3 files and 14 tests. Accepted warning: Node's experimental SQLite warning during account/storage tests.
+
 ## 2026-04-15 — Step 2.1: Electron Claude Phase 2 Red Tests
 
 Added Phase 2 red-phase Vitest coverage for the Electron app: Claude usage API request/parsing/session rotation, account metadata CRUD and active-account normalization, account-scoped credential secret persistence, polling cadence/backoff/reset/auth-expired behavior, typed IPC service wiring and sanitization, and Claude usage schema contracts. No production Phase 2 behavior was implemented in this step.

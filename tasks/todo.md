@@ -49,7 +49,18 @@
   - `npm run typecheck` passes from `electron-app/`.
   - `npm test -- --run src/main/storage/accounts.test.ts src/foundation-storage.test.ts` passes with 2 files and 10 tests.
   - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in account tests.
-- [ ] Step 2.3: [automated] Implement the Claude usage client in `electron-app/src/main/services/claudeUsage.ts`, matching the Swift/Tauri API behavior: `sessionKey` cookie, `anthropic-client-platform: web_claude_ai`, all known usage limit fields, 401/403 auth expiry, and session-key rotation.
+- [x] Step 2.3: [automated] Implement the Claude usage client in `electron-app/src/main/services/claudeUsage.ts`, matching the Swift/Tauri API behavior: `sessionKey` cookie, `anthropic-client-platform: web_claude_ai`, all known usage limit fields, 401/403 auth expiry, and session-key rotation.
+
+  **Step 2.3 Review:**
+  - Added `createClaudeUsageClient` in `electron-app/src/main/services/claudeUsage.ts`.
+  - The client requests `https://claude.ai/api/organizations/{orgId}/usage` with Claude web-client headers and a `sessionKey` cookie.
+  - Normalized known Claude limit fields into camel-case usage data, including nullable Sonnet/Opus/OAuth Apps/Cowork limits, unknown non-extra fields as `other`, and `extra_usage` without requiring `resets_at`.
+  - Added `parseRotatedSessionKey` to extract only `sessionKey` from `Set-Cookie`; no storage or renderer state wiring was added in this step.
+  - Classified 401/403 as `{ kind: "auth_expired" }`, fetch failures as `{ kind: "network_error" }`, and malformed payloads as `{ kind: "invalid_response" }`.
+  - `npm run typecheck` passes from `electron-app/`.
+  - `npm test -- --run src/main/services/claudeUsage.test.ts` passes with 1 file and 4 tests.
+  - `npm test -- --run src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts src/foundation-storage.test.ts` passes with 3 files and 14 tests.
+  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in account/storage tests.
 - [ ] Step 2.4: [automated] Implement polling and scheduling in `electron-app/src/main/services/polling.ts`: 5-minute default cadence, exponential network backoff, manual refresh, reset-time fetch, cancellation on account switch, and event emission to renderers.
 - [ ] Step 2.5: [automated] Wire account and Claude commands through `electron-app/src/main/ipc.ts` and `electron-app/src/preload/api.ts`, including add/rename/remove/switch account, save credentials, test connection, get usage state, refresh now, and subscribe to usage updates.
 - [ ] Step 2.6: [automated] Implement Claude-aware tray/popover/settings/onboarding UI in `electron-app/src/renderer/`, including write-only credential fields, account picker, auth status, exact usage bars, refresh actions, and basic error states.
@@ -67,21 +78,24 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 2.3
+## Next Step Plan: Step 2.4
 
-Implement the Claude usage API client in `electron-app/src/main/services/claudeUsage.ts`. Match the red-phase contract in `electron-app/src/main/services/claudeUsage.test.ts` and the product behavior documented in `SPEC.md` and `specs/electron-cross-platform-ai-usage-monitor.md`.
+Implement the Claude usage polling scheduler in `electron-app/src/main/services/polling.ts`. Match the red-phase contract in `electron-app/src/main/services/polling.test.ts` and the polling behavior documented in `SPEC.md` and `specs/electron-cross-platform-ai-usage-monitor.md`.
 
 Implementation outline:
-- Create `createClaudeUsageClient({ fetch })` and `parseRotatedSessionKey(headers)`.
-- Request `https://claude.ai/api/organizations/{orgId}/usage` with `method: "GET"`, `accept: "*/*"`, `content-type: "application/json"`, `anthropic-client-platform: "web_claude_ai"`, and `Cookie: "sessionKey={sessionKey}"`.
-- Parse known limit fields from Claude's snake-case payload into camel-case data: `fiveHour`, `sevenDay`, `sevenDaySonnet`, `sevenDayOpus`, `sevenDayOauthApps`, `sevenDayCowork`, `other`, and `extraUsage`.
-- Treat unknown non-extra limit fields as `other`; preserve `resets_at` as `resetsAt`; allow `extra_usage` without `resets_at`.
-- Extract only a `sessionKey` value from `Set-Cookie`; never return or log other cookies.
-- Throw distinct plain-object errors for auth expiry (`kind: "auth_expired"`, `statusCode` 401 or 403), network errors (`kind: "network_error"`), and malformed responses (`kind: "invalid_response"`).
-- Keep this module fetch-only and storage-free. Saving rotated keys belongs to polling/credential wiring in later steps.
+- Create `createUsagePollingScheduler(options)` with `start(accountId)`, `refreshNow()`, `switchAccount(accountId)`, and `stop()`.
+- Use injected services only: `accountStore.getActiveClaudeCredentials()`, `accountStore.markAuthExpired(accountId)`, `claudeClient.fetchUsage(...)`, `emitUsageUpdated(state)`, `saveRotatedSessionKey(accountId, sessionKey)`, and optional `now()`.
+- On `start`, schedule an immediate fetch for the selected account and then continue on the default 5-minute cadence after successful fetches.
+- On network errors, schedule exponential backoff from the documented 300-second base: first retry after 600 seconds, then 1200 seconds, then cap later retries at 3600 seconds. Reset the failure count after success.
+- When a fetch result includes `rotatedSessionKey`, call `saveRotatedSessionKey` for the current account.
+- When `data.fiveHour.resetsAt` is a future timestamp, schedule a reset-time fetch at that timestamp in addition to normal cadence.
+- `refreshNow()` should run a fetch immediately for the current account without waiting for the next timer.
+- `switchAccount(accountId)` should cancel pending timers/work for the previous account and begin polling for the new account.
+- On `{ kind: "auth_expired" }`, mark the current account expired, emit degraded/expired state if the implementation has a small internal shape for it, and stop polling until another start/switch/refresh occurs.
+- Keep scheduler state main-process-only. Renderer event fan-out and durable account credential lookup can be expanded in later IPC wiring if the red contract does not require it.
 
-Validation for Step 2.3:
+Validation for Step 2.4:
 - Run `npm run typecheck` from `electron-app/`.
-- Run `npm test -- --run src/main/services/claudeUsage.test.ts`.
-- Optionally run `npm test -- --run src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts src/foundation-storage.test.ts` to confirm Step 2.2 still passes.
-- The broader Phase 2 suite may remain red for polling, credential persistence, schema updates, and IPC wiring until later steps.
+- Run `npm test -- --run src/main/services/polling.test.ts`.
+- Optionally run `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts` to confirm the new scheduler does not regress the client/account work.
+- The broader Phase 2 suite may remain red for credential persistence, schema updates, IPC wiring, renderer UI, and history snapshots until later steps.
