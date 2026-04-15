@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
-import { UsageState, AccountInfo, AppConfig } from "./types";
+import { settingsAccountFormValues } from "./settings-form";
+import { UsageState, AppConfig } from "./types";
 import { escapeHtml } from "./utils/escape";
 
 const app = document.getElementById("app")!;
@@ -19,6 +20,9 @@ async function init() {
 
 function render(state: UsageState, config: AppConfig) {
   const activeAccount = state.accounts.find((a) => a.is_active);
+  const accountForm = activeAccount
+    ? settingsAccountFormValues(activeAccount, state)
+    : null;
 
   let html = '<div class="settings">';
   html += "<h2>ClaudeUsage Settings</h2>";
@@ -27,7 +31,7 @@ function render(state: UsageState, config: AppConfig) {
     // Editable account name
     html += `
       <div class="editable-name">
-        <input type="text" id="account-name" value="${escapeHtml(activeAccount.name)}" />
+        <input type="text" id="account-name" value="${escapeHtml(accountForm?.accountName ?? "")}" />
       </div>
     `;
 
@@ -49,7 +53,7 @@ function render(state: UsageState, config: AppConfig) {
         </div>
         <div class="form-group">
           <label>Organization ID</label>
-          <input type="text" id="org-id" placeholder="org-..." value="${escapeHtml(getOrgId(activeAccount, state))}" />
+          <input type="text" id="org-id" placeholder="org-..." value="${escapeHtml(accountForm?.orgId ?? "")}" />
         </div>
         <div class="settings-actions">
           <button class="btn-save" id="btn-save">Save</button>
@@ -288,12 +292,6 @@ function authStatusText(status: string): string {
     default:
       return "Not Configured";
   }
-}
-
-function getOrgId(_account: AccountInfo, _state: UsageState): string {
-  // Org ID is in the config, not exposed directly to frontend
-  // User will need to enter it
-  return "";
 }
 
 init();

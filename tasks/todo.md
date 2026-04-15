@@ -68,7 +68,7 @@
   - `CodexAdapter.refresh()` does not reparse all of `history.jsonl` on every 15-second refresh.
   - Recursive session rollout files are included in passive activity and limit-hit detection.
 
-- [ ] Step R.4: [automated] Add Tauri settings regression coverage for preserving configured org IDs.
+- [x] Step R.4: [automated] Add Tauri settings regression coverage for preserving configured org IDs.
 
   **What:** Opening Settings for a configured Tauri account should show the saved non-secret org ID, so saving unrelated preferences does not require the user to re-enter it.
 
@@ -98,6 +98,14 @@
   **Files to modify:**
   - `ClaudeUsage/Models/ProviderShellViewModel.swift`
   - `ClaudeUsage/Models/ProviderTypes.swift` if tray/card helpers need adjustment
+
+  **Implementation plan for a fresh session:**
+  1. Inspect the stale-shell tests added in Step R.2, especially the cases asserting stale Codex/Gemini cards through `ProviderShellViewModel.shellState` and stale selected-provider tray text.
+  2. Inspect `ProviderShellViewModel.rebuildShellState(...)` and confirm it still calls `ProviderCoordinator.makeShellState(providers:now:)` without refresh times.
+  3. Collect refresh timestamps from the live adapters, keyed by provider ID (`.codex` from `codexAdapter.lastRefreshTime`, `.gemini` from `geminiAdapter.lastRefreshTime`), without changing provider enablement or refresh scheduling.
+  4. Pass that map into `ProviderCoordinator.makeShellState(providers:now:refreshTimes:)` so the existing stale threshold/card-state logic is used by the production shell.
+  5. If the tray assertion still fails, adjust the narrow tray formatting path in `ProviderShellViewModel` or existing `ProviderTypes` helpers so selected stale providers include the stale indicator without changing non-stale provider copy.
+  6. Run focused macOS stale-shell tests first, then run the full `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` suite to prove no shell regressions.
 
   **Acceptance criteria:**
   - Stale cards appear in the Providers disclosure section after refresh timestamps exceed 300 seconds.

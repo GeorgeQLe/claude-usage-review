@@ -537,3 +537,65 @@ fn update_tray(app: &AppHandle, state: &AppState) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::AppConfig;
+    use serde_json::Value;
+
+    fn app_state_with_config(config: AppConfig) -> AppState {
+        AppState {
+            config,
+            http_client: reqwest::Client::new(),
+            usage_data: None,
+            last_updated: None,
+            error_state: None,
+            auth_status: AuthStatus::Connected,
+            polling_handle: None,
+        }
+    }
+
+    #[test]
+    fn usage_state_exposes_active_account_org_id_without_session_key() {
+        let account_id = Uuid::new_v4();
+        let config = AppConfig {
+            accounts: vec![AccountMetadata {
+                id: account_id,
+                name: "Work".to_string(),
+                org_id: Some("org-configured".to_string()),
+            }],
+            active_account_id: Some(account_id),
+            ..AppConfig::default()
+        };
+        let state = app_state_with_config(config).compute_usage_state();
+        let json = serde_json::to_value(&state).expect("usage state serializes");
+
+        assert_eq!(json["accounts"][0]["org_id"], "org-configured");
+        assert_no_session_key_fields(&json);
+    }
+
+    fn assert_no_session_key_fields(value: &Value) {
+        match value {
+            Value::Object(map) => {
+                assert!(
+                    !map.contains_key("session_key"),
+                    "frontend state must not serialize session_key"
+                );
+                assert!(
+                    !map.contains_key("sessionKey"),
+                    "frontend state must not serialize sessionKey"
+                );
+                for child in map.values() {
+                    assert_no_session_key_fields(child);
+                }
+            }
+            Value::Array(values) => {
+                for child in values {
+                    assert_no_session_key_fields(child);
+                }
+            }
+            _ => {}
+        }
+    }
+}

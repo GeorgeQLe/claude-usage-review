@@ -582,3 +582,12 @@ Validation: focused `xcodebuild test -scheme ClaudeUsage -destination 'platform=
 - `CodexAdapter.refresh()` calls full history parsing twice instead of reusing a bookmark on the second refresh.
 - Session rollout limit hits are not merged into adapter cooldown evaluation.
 - The default adapter ignores `CODEX_HOME` for passive activity parsing.
+
+## 2026-04-15 — Step R.4: Red-Phase Tauri Settings Org ID Tests
+
+Added Tauri regression coverage for preserving configured account org IDs in Settings without exposing session keys. Rust coverage serializes `UsageState` and expects `accounts[0].org_id` while recursively asserting no `session_key`/`sessionKey` field leaks to the frontend. Frontend coverage adds a small `settingsAccountFormValues(...)` seam and a TypeScript compile-time regression check requiring `AccountInfo` to expose safe `org_id` metadata.
+
+Validation:
+- `cargo test usage_state_exposes_active_account_org_id_without_session_key` fails as expected because serialized `accounts[0].org_id` is currently `Null`.
+- `npm run build` in `tauri-app/` fails as expected because `AccountInfo` has no `org_id` property.
+- `cargo test` emitted existing dead-code warnings in `provider_types.rs`; accepted for this red phase because they are unrelated to the new org-ID regression coverage.
