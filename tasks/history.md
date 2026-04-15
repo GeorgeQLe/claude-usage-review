@@ -553,3 +553,7 @@ Completed the full cross-platform follow-through phase across 6 TDD steps, porti
 - `docs/cross-platform-parity.md`: exists and comprehensive
 
 All 7 phases of the multi-provider CLI monitor roadmap are now complete.
+
+## 2026-04-15 — Transition to Post-Review Remediation
+
+Archived the completed cross-platform follow-through phase to `tasks/phases/phase-7-cross-platform-follow-through.md` because `tasks/phases/phase-7.md` already contains the earlier expert-review fix archive. Promoted the roadmap's post-review remediation queue into `tasks/todo.md`, with Step R.1 as the next executable TDD step.
