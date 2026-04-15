@@ -563,3 +563,12 @@ All 7 phases of the multi-provider CLI monitor roadmap are now complete.
 ## 2026-04-15 — Transition to Post-Review Remediation
 
 Archived the completed cross-platform follow-through phase to `tasks/phases/phase-7-cross-platform-follow-through.md` because `tasks/phases/phase-7.md` already contains the earlier expert-review fix archive. Promoted the roadmap's post-review remediation queue into `tasks/todo.md`, with Step R.1 as the next executable TDD step.
+
+## 2026-04-15 — Step R.2: Red-Phase Provider Shell Stale Tests
+
+Added live `ProviderShellViewModel` boundary coverage for stale Codex/Gemini adapter refresh timestamps. The tests inject controlled provider snapshots, fixed timestamps, and tray selection policy while exercising `ProviderShellViewModel.shellState` and `trayText`.
+
+Validation: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` builds successfully, then fails with the expected red-phase assertions:
+- Codex stale refresh timestamp still yields a `.configured` card instead of `.stale`.
+- Gemini stale refresh timestamp still yields a `.configured` card instead of `.stale`.
+- Selected stale Codex tray text is `Codex Observed` instead of including `Stale`.

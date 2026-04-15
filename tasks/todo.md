@@ -27,7 +27,7 @@
   - Tray menu "Toggle Overlay" toggles overlay state through the existing overlay path.
   - No unhandled `trigger-refresh` or `trigger-toggle-overlay` events remain.
 
-- [ ] Step R.2: [automated] Add macOS provider-shell tests proving stale adapter refresh timestamps are used in the live `ProviderShellViewModel` path.
+- [x] Step R.2: [automated] Add macOS provider-shell tests proving stale adapter refresh timestamps are used in the live `ProviderShellViewModel` path.
 
   **What:** Existing stale tests validate the coordinator overload, but the production shell currently calls the overload without refresh times. Add tests at the view-model boundary so stale Codex/Gemini cards and tray text cannot regress.
 
@@ -55,6 +55,13 @@
   - `ClaudeUsage/Services/CodexDetector.swift`
   - `ClaudeUsage/Services/CodexActivityParser.swift`
   - `ClaudeUsage/Services/CodexAdapter.swift`
+
+  **Implementation plan for a fresh session:**
+  1. Add detection coverage in `ClaudeUsageTests/CodexAdapterTests.swift` proving the default Codex home resolver honors `CODEX_HOME` when present and falls back to `~/.codex` when absent.
+  2. Add parser coverage for recursive session layout under `sessions/YYYY/MM/DD/rollout-*.jsonl`; include at least one nested rollout file with prompt/completion events and one limit-hit error line.
+  3. Add adapter refresh coverage proving `CodexAdapter.refresh()` stores a history bookmark and only parses appended `history.jsonl` content on a second refresh.
+  4. Add adapter coverage proving passive events from `history.jsonl` and recursive session rollout files are merged before confidence/cooldown evaluation.
+  5. Keep this step red-phase only. Production changes should be limited to tiny testability seams needed for tests to compile, not the actual parser/adapter remediation.
 
   **Acceptance criteria:**
   - Default Codex detection respects `CODEX_HOME` when present.

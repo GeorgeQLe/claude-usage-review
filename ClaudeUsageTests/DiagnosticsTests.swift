@@ -210,6 +210,81 @@ final class StaleDetectionTests: XCTestCase {
     }
 }
 
+// MARK: - Provider Shell View Model Stale Tests
+
+final class ProviderShellViewModelStaleTests: XCTestCase {
+
+    private func enabledSettingsStore() -> ProviderSettingsStore {
+        let store = ProviderSettingsStore()
+        store.setEnabled(.codex, true)
+        store.setEnabled(.gemini, true)
+        return store
+    }
+
+    func testCodexStaleRefreshTimestampMarksLiveShellCardStale() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let viewModel = ProviderShellViewModel(
+            settingsStore: enabledSettingsStore(),
+            trayPolicy: ProviderTrayPolicy(manualOverride: .codex),
+            codexSnapshot: .codexRich(
+                estimate: CodexEstimate(confidence: .observedOnly),
+                isEnabled: true
+            ),
+            codexLastRefreshTime: now.addingTimeInterval(-(ProviderCoordinator.staleThreshold + 1)),
+            geminiSnapshot: .gemini(status: .missingConfiguration, isEnabled: false),
+            geminiLastRefreshTime: nil,
+            nowProvider: { now }
+        )
+
+        let codexCard = try XCTUnwrap(viewModel.shellState.providers.first { $0.id == .codex })
+        XCTAssertEqual(codexCard.cardState, .stale)
+    }
+
+    func testGeminiStaleRefreshTimestampMarksLiveShellCardStale() throws {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let viewModel = ProviderShellViewModel(
+            settingsStore: enabledSettingsStore(),
+            trayPolicy: ProviderTrayPolicy(manualOverride: .gemini),
+            codexSnapshot: .codex(status: .missingConfiguration, isEnabled: false),
+            codexLastRefreshTime: nil,
+            geminiSnapshot: .geminiRich(
+                estimate: GeminiEstimate(
+                    confidence: .observedOnly,
+                    ratePressure: nil,
+                    authMode: nil
+                ),
+                isEnabled: true
+            ),
+            geminiLastRefreshTime: now.addingTimeInterval(-(ProviderCoordinator.staleThreshold + 1)),
+            nowProvider: { now }
+        )
+
+        let geminiCard = try XCTUnwrap(viewModel.shellState.providers.first { $0.id == .gemini })
+        XCTAssertEqual(geminiCard.cardState, .stale)
+    }
+
+    func testSelectedStaleProviderTrayTextIncludesStaleIndicator() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let viewModel = ProviderShellViewModel(
+            settingsStore: enabledSettingsStore(),
+            trayPolicy: ProviderTrayPolicy(manualOverride: .codex),
+            codexSnapshot: .codexRich(
+                estimate: CodexEstimate(confidence: .observedOnly),
+                isEnabled: true
+            ),
+            codexLastRefreshTime: now.addingTimeInterval(-(ProviderCoordinator.staleThreshold + 1)),
+            geminiSnapshot: .gemini(status: .missingConfiguration, isEnabled: false),
+            geminiLastRefreshTime: nil,
+            nowProvider: { now }
+        )
+
+        XCTAssertTrue(
+            viewModel.trayText.contains("Stale"),
+            "Expected selected stale provider tray text to include Stale, got: \(viewModel.trayText)"
+        )
+    }
+}
+
 // MARK: - Confidence Explanation Tests
 
 final class ConfidenceExplanationTests: XCTestCase {

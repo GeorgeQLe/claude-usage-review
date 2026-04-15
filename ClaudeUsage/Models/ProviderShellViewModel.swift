@@ -8,8 +8,13 @@ class ProviderShellViewModel: ObservableObject {
 
     private let coordinator: ProviderCoordinator
     private let settingsStore: ProviderSettingsStore
-    private let codexAdapter: CodexAdapter
-    private let geminiAdapter: GeminiAdapter
+    private let codexAdapter: CodexAdapter?
+    private let geminiAdapter: GeminiAdapter?
+    private let codexSnapshotProvider: (Bool) -> ProviderSnapshot
+    private let geminiSnapshotProvider: (Bool) -> ProviderSnapshot
+    private let codexLastRefreshTimeProvider: () -> Date?
+    private let geminiLastRefreshTimeProvider: () -> Date?
+    private let nowProvider: () -> Date
     private var codexTimer: Timer?
     private var geminiTimer: Timer?
     private var rotationTimer: Timer?
@@ -20,9 +25,16 @@ class ProviderShellViewModel: ObservableObject {
         self.coordinator = ProviderCoordinator(trayPolicy: policy)
         self.settingsStore = settingsStore
         let plan = settingsStore.codexPlan()
-        self.codexAdapter = CodexAdapter(planProfile: plan)
+        let codexAdapter = CodexAdapter(planProfile: plan)
+        self.codexAdapter = codexAdapter
         let geminiPlan = settingsStore.geminiPlan()
-        self.geminiAdapter = GeminiAdapter(planProfile: geminiPlan)
+        let geminiAdapter = GeminiAdapter(planProfile: geminiPlan)
+        self.geminiAdapter = geminiAdapter
+        self.codexSnapshotProvider = { codexAdapter.toProviderSnapshot(isEnabled: $0) }
+        self.geminiSnapshotProvider = { geminiAdapter.toProviderSnapshot(isEnabled: $0) }
+        self.codexLastRefreshTimeProvider = { codexAdapter.lastRefreshTime }
+        self.geminiLastRefreshTimeProvider = { geminiAdapter.lastRefreshTime }
+        self.nowProvider = Date.init
         self.shellState = ShellState(providers: [])
 
         usageViewModel.$usageData
@@ -38,7 +50,7 @@ class ProviderShellViewModel: ObservableObject {
             .store(in: &cancellables)
         codexAdapter.refresh()
         codexTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
-            self?.codexAdapter.refresh()
+            self?.codexAdapter?.refresh()
         }
 
         geminiAdapter.$state
@@ -46,11 +58,34 @@ class ProviderShellViewModel: ObservableObject {
             .store(in: &cancellables)
         geminiAdapter.refresh()
         geminiTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
-            self?.geminiAdapter.refresh()
+            self?.geminiAdapter?.refresh()
         }
         rotationTimer = Timer.scheduledTimer(withTimeInterval: 7, repeats: true) { [weak self] _ in
             self?.rebuildFromCurrent()
         }
+    }
+
+    init(
+        settingsStore: ProviderSettingsStore,
+        trayPolicy: ProviderTrayPolicy = ProviderTrayPolicy(),
+        codexSnapshot: ProviderSnapshot,
+        codexLastRefreshTime: Date?,
+        geminiSnapshot: ProviderSnapshot,
+        geminiLastRefreshTime: Date?,
+        nowProvider: @escaping () -> Date
+    ) {
+        self.coordinator = ProviderCoordinator(trayPolicy: trayPolicy)
+        self.settingsStore = settingsStore
+        self.codexAdapter = nil
+        self.geminiAdapter = nil
+        self.codexSnapshotProvider = { _ in codexSnapshot }
+        self.geminiSnapshotProvider = { _ in geminiSnapshot }
+        self.codexLastRefreshTimeProvider = { codexLastRefreshTime }
+        self.geminiLastRefreshTimeProvider = { geminiLastRefreshTime }
+        self.nowProvider = nowProvider
+        self.shellState = ShellState(providers: [])
+
+        rebuildShellState(usageData: nil, authStatus: .notConfigured)
     }
 
     deinit {
@@ -92,11 +127,13 @@ class ProviderShellViewModel: ObservableObject {
     }
 
     var codexDetected: Bool {
+        guard let codexAdapter else { return false }
         if case .installed = codexAdapter.state { return true }
         return false
     }
 
     var geminiDetected: Bool {
+        guard let geminiAdapter else { return false }
         if case .installed = geminiAdapter.state { return true }
         return false
     }
@@ -123,10 +160,10 @@ class ProviderShellViewModel: ObservableObject {
             snapshots.append(.claude(status: .missingConfiguration, isEnabled: true))
         }
 
-        snapshots.append(codexAdapter.toProviderSnapshot(isEnabled: settingsStore.isEnabled(.codex)))
-        snapshots.append(geminiAdapter.toProviderSnapshot(isEnabled: settingsStore.isEnabled(.gemini)))
+        snapshots.append(codexSnapshotProvider(settingsStore.isEnabled(.codex)))
+        snapshots.append(geminiSnapshotProvider(settingsStore.isEnabled(.gemini)))
 
-        let now = Date()
+        let now = nowProvider()
         shellState = coordinator.makeShellState(providers: snapshots, now: now)
         traySnapshot = coordinator.selectedTrayProvider(from: snapshots, now: now)
         if let snap = traySnapshot {
