@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-15 — Step R.7: Gemini Auth and Plan Controls
+
+Replaced the read-only Gemini plan row in macOS Settings with live Auth Mode and Plan pickers. Added Gemini plan presets, raw-value auth-mode persistence, selected-auth override support in `GeminiConfidenceEngine`, and `ProviderShellViewModel.updateGeminiSettings(...)` so Gemini plan/auth changes refresh the running adapter without restart. Added regression coverage for preset lookup, settings persistence, confirmed auth overriding passive detection, and adapter refresh using selected settings.
+
+Validation: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/GeminiSettingsTests` passed 4 tests; `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` passed 119 tests. Accepted Xcode environment warnings: duplicate macOS destination selection, AppIntents metadata extraction skipped because the app has no AppIntents dependency, and XCTest deployment-target linker warnings.
+
 ## 2026-04-15 — Step R.1: Red Phase — Tauri Tray Menu Command Regression Tests
 
 Added a testable tray-menu action boundary in `tauri-app/src-tauri/src/lib.rs` while preserving the current runtime behavior. Added three red-phase Rust tests proving the current `Refresh Now` and `Toggle Overlay` menu paths still emit unused `trigger-refresh` / `trigger-toggle-overlay` frontend events instead of invoking backend refresh and overlay behavior.

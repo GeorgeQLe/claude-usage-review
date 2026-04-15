@@ -146,7 +146,7 @@
   - The adapter stores and reuses parse bookmarks.
   - Codex still never claims exact remaining quota without a defensible source.
 
-- [ ] Step R.7: [automated] Add Gemini auth/plan confirmation controls to macOS Settings.
+- [x] Step R.7: [automated] Add Gemini auth/plan confirmation controls to macOS Settings.
 
   **What:** Replace the read-only Gemini plan label with actual auth-mode and plan controls that match the multi-provider setup spec.
 
@@ -176,6 +176,19 @@
   **Files to modify:**
   - `tauri-app/src-tauri/src/lib.rs`
   - `tauri-app/src-tauri/src/commands.rs` or a shared state/action helper module
+
+  **Implementation plan for a fresh session:**
+  1. Start from the red tray tests in `tauri-app/src-tauri/src/lib.rs`, especially:
+     - `tray_refresh_menu_uses_backend_refresh_action`
+     - `tray_toggle_overlay_menu_uses_backend_overlay_action`
+     - `tray_menu_does_not_emit_unused_frontend_events`
+  2. Inspect `tray_menu_action_for_id(...)` in `tauri-app/src-tauri/src/lib.rs`; it currently maps `refresh` and `toggle_overlay` to `EmitEvent("trigger-refresh")` and `EmitEvent("trigger-toggle-overlay")`, which have no backend listeners.
+  3. Inspect the frontend-backed Tauri commands in `tauri-app/src-tauri/src/commands.rs`: `refresh_now(app, state)` performs the authenticated fetch and updates tray tooltip, while `toggle_overlay(app, state)` toggles `config.overlay_enabled`, persists config, and creates/closes the overlay.
+  4. Extract the command bodies into small shared async helpers that accept `AppHandle` plus the shared `Arc<Mutex<AppState>>`, then have both the `#[tauri::command]` functions and tray menu handler call those helpers. Keep command signatures unchanged for the frontend.
+  5. Update `TrayMenuAction` so `refresh` and `toggle_overlay` represent backend actions rather than emitted frontend events. The tray handler should spawn async work with `tauri::async_runtime::spawn` to avoid blocking the menu event callback.
+  6. After refresh completes from the tray path, emit the same `usage-updated` event the frontend expects, and keep tray tooltip/state updates aligned with the existing `refresh_now` behavior.
+  7. After overlay toggles from the tray path, persist config and create/close the overlay through the same helper used by the frontend command.
+  8. Run `cargo test tray` first to prove the red tests go green, then run full `cargo test` in `tauri-app/src-tauri/`.
 
   **Acceptance criteria:**
   - Context menu refresh updates state and emits `usage-updated`.
