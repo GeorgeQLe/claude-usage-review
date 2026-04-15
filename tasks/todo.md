@@ -12,7 +12,7 @@
 - [x] Step 1.4: [automated] Add a narrow preload bridge in `electron-app/src/preload/index.ts` and `electron-app/src/preload/api.ts` using `contextBridge`, with Node integration disabled and context isolation/sandbox options set on all renderer windows.
 - [x] Step 1.5: [automated] Add IPC registration and validation skeletons in `electron-app/src/main/ipc.ts` plus shared schemas under `electron-app/src/shared/schemas/` for the commands listed in the spec.
 - [x] Step 1.6: [automated] Add storage primitives in `electron-app/src/main/storage/`: SQLite connection/migrations for structured app data, `safeStorage` secret wrapper, redaction helpers, and a Linux `basic_text` backend warning surfaced through derived app state.
-- [ ] Step 1.7: [automated] Add minimal React renderer entries for popover, settings, onboarding, and overlay under `electron-app/src/renderer/`, with placeholder state loaded through the preload API and no direct filesystem or Node access.
+- [x] Step 1.7: [automated] Add minimal React renderer entries for popover, settings, onboarding, and overlay under `electron-app/src/renderer/`, with placeholder state loaded through the preload API and no direct filesystem or Node access.
 
 ## Green
 - [ ] Step 1.8: [automated] Add regression coverage for the foundation: Vitest tests for schema validation/redaction/storage wrappers where possible, an Electron main-process smoke test for window/tray action routing, and a renderer smoke test proving placeholder windows mount without secret/Node access.
@@ -195,3 +195,46 @@ Validation:
 - Run `npm run typecheck`, `npm test -- --run`, and `npm run build` from `electron-app/`.
 - Confirm renderer/shared code has no direct imports from `electron`, `node:*`, direct filesystem APIs, crypto, child process, or `src/main/storage`.
 - Inspect the built renderer output enough to confirm all four route entries compile through Vite.
+
+## Review: Step 1.7
+
+Implemented the minimal React renderer entries:
+- `electron-app/src/renderer/app/index.tsx` now routes the single Vite entry by the Electron hash (`popover`, `settings`, `onboarding`, `overlay`) and mounts the matching React route.
+- `electron-app/src/renderer/components/index.tsx` now provides the shared renderer snapshot hook and small UI primitives for loading, error, warning, provider, account, settings, and write-only credential states. All renderer state loads through `window.claudeUsage`.
+- `electron-app/src/renderer/settings/index.tsx`, `electron-app/src/renderer/onboarding/index.tsx`, and `electron-app/src/renderer/overlay/index.tsx` now render placeholder state through the typed preload API. The Settings credential form clears the session key after save and never renders stored secrets.
+- `electron-app/src/renderer/styles/app.css` now covers stable minimal layouts for the four windows.
+
+Validation passed from `electron-app/`:
+- `npm run typecheck`
+- `npm test -- --run`
+- `npm run build`
+- Source scan confirmed renderer/shared code has no direct imports from `electron`, `node:*`, direct filesystem APIs, crypto, child process, or `src/main/storage`.
+- Build output confirmed the renderer bundle compiles through Vite with the route modules included.
+
+No warnings were emitted by validation.
+
+Known boundary for the next step:
+- Renderer route smoke coverage is not yet automated. Step 1.8 owns regression tests for renderer mounting, storage/redaction/schema helpers, and main-process window/tray action routing.
+
+## Next Step Plan: Step 1.8
+
+Add regression coverage for the Phase 1 foundation. Keep this step focused on test coverage; do not add production behavior beyond small testability seams if a seam is required to exercise existing code.
+
+Files to create or modify:
+- `electron-app/src/shared/schemas/*.test.ts` or a focused schema test file: cover IPC payload validation for settings/account/provider commands and usage/account/settings response shape validation.
+- `electron-app/src/main/storage/redaction.test.ts`: cover session keys, bearer tokens, cookie values, secret-like fields, prompts, and stdout-like diagnostic payload redaction.
+- `electron-app/src/main/storage/secrets.test.ts`: cover safeStorage wrapper behavior with mocked backend status where practical, especially Linux `basic_text` warning derivation.
+- `electron-app/src/main/storage/migrations.test.ts`: cover idempotent migration execution against an in-memory SQLite connection if the Electron-bundled `node:sqlite` API is usable under the current test runner.
+- `electron-app/src/main/windows.test.ts` or a testable helper module: cover window descriptor routing and tray/menu action intent mapping without requiring a full Electron app when possible.
+- `electron-app/src/renderer/*.test.tsx` or route-level smoke tests: mount popover/settings/onboarding/overlay routes with a mocked `window.claudeUsage` preload API and prove they render placeholder state without Node or secret exposure.
+- `electron-app/src/scaffold.test.ts`: keep or replace only if the new focused tests make the scaffold smoke test redundant.
+
+Implementation notes:
+- Prefer pure helper exports and dependency injection over starting a real Electron process in Vitest.
+- Mock `window.claudeUsage` in renderer tests; do not import `electron`, `node:*`, filesystem, crypto, child process, or main-process storage into renderer tests.
+- Validate that credential inputs are write-only from the renderer perspective: session keys can be typed and submitted, but saved secrets are not rendered back.
+- Keep tests deterministic and small; Phase 1.9 owns the full verification gate and Electron dev launch smoke command.
+
+Validation:
+- Run `npm run typecheck`, `npm test -- --run`, and `npm run build` from `electron-app/`.
+- Re-run the renderer/shared forbidden-import source scan.

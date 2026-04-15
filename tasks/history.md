@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-15 — Step 1.7: Electron React Renderer Entries
+
+Added minimal React renderer routes for the Electron foundation. The single Vite entry now routes by Electron window hash to popover, settings, onboarding, and overlay views. Shared renderer components load usage state, settings, and accounts only through the typed `window.claudeUsage` preload API. Settings includes write-only credential inputs that clear the session key after save and never render stored secrets. The renderer styling now covers stable minimal layouts for all four shell windows.
+
+Validation: `npm run typecheck`, `npm test -- --run`, and `npm run build` passed from `electron-app/`. A source scan confirmed renderer/shared code has no direct Electron, Node, filesystem, crypto, child-process, or main-storage imports. No warnings emitted.
+
 ## 2026-04-15 — Step 1.5: Electron IPC Registration and Validation Skeleton
 
 Added the main-process IPC skeleton for the Electron app. `electron-app/src/main/ipc.ts` now registers allowlisted handlers for usage, settings, accounts, Claude credential/test placeholders, provider diagnostics/detection, wrapper setup/verification, and diagnostics export. Incoming payloads are validated with shared Zod schemas, response shapes are validated before returning, placeholder state remains secret-free, and credential payloads are never echoed to renderer responses. `electron-app/src/main/app.ts` registers handlers on startup and disposes them on quit. The preload API now exposes the expanded command surface through allowlisted `ipcRenderer.invoke` calls plus validated usage-update subscription handling.
