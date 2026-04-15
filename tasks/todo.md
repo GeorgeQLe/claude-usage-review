@@ -15,7 +15,7 @@
 - [x] Step 1.7: [automated] Add minimal React renderer entries for popover, settings, onboarding, and overlay under `electron-app/src/renderer/`, with placeholder state loaded through the preload API and no direct filesystem or Node access.
 
 ## Green
-- [ ] Step 1.8: [automated] Add regression coverage for the foundation: Vitest tests for schema validation/redaction/storage wrappers where possible, an Electron main-process smoke test for window/tray action routing, and a renderer smoke test proving placeholder windows mount without secret/Node access.
+- [x] Step 1.8: [automated] Add regression coverage for the foundation: Vitest tests for schema validation/redaction/storage wrappers where possible, an Electron main-process smoke test for window/tray action routing, and a renderer smoke test proving placeholder windows mount without secret/Node access.
 - [ ] Step 1.9: [automated] Run Phase 1 verification: `npm run typecheck`, `npm test`, `npm run build`, and an Electron dev launch smoke command from `electron-app/`.
 
 ## Milestone
@@ -238,3 +238,37 @@ Implementation notes:
 Validation:
 - Run `npm run typecheck`, `npm test -- --run`, and `npm run build` from `electron-app/`.
 - Re-run the renderer/shared forbidden-import source scan.
+
+## Review: Step 1.8
+
+Added regression coverage for the Electron runtime foundation:
+- `electron-app/src/foundation-schemas.test.ts` now covers IPC payload validation, response shape validation, settings patch validation, and secret-free credential result contracts.
+- `electron-app/src/foundation-storage.test.ts` now covers redaction helpers, the injected `safeStorage` wrapper, Linux `basic_text` warning derivation, and the storage migration runner/schema contract.
+- `electron-app/src/foundation-main.test.ts` now covers window descriptor routing, secure window preferences through a mocked `BrowserWindow`, overlay toggle reuse, tray skeleton actions, and tray menu callback routing without launching a full Electron app.
+- `electron-app/src/foundation-renderer.test.tsx` now mounts popover, settings, onboarding, and overlay routes with a mocked preload API and verifies Claude credentials remain write-only after save.
+- `electron-app/src/renderer/app/index.tsx` now exports testable route/mount helpers while preserving production auto-mount behavior.
+- The coverage found and fixed the settings update contract: `updateSettings` now accepts deep partial overlay patches consistently across Zod validation, shared IPC types, preload typing, and main-process state merging.
+
+Validation passed from `electron-app/`:
+- `npm run typecheck`
+- `npm test -- --run` — 22 tests passed.
+- `npm run build` — typecheck, tests, main compile, and Vite renderer build passed.
+- Forbidden-import source scan confirmed renderer/shared code has no direct imports from `electron`, `node:*`, filesystem, crypto, child process, or `src/main/storage`.
+
+No warnings were emitted by validation.
+
+## Next Step Plan: Step 1.9
+
+Run the Phase 1 verification gate and Electron launch smoke command. Keep this step focused on verification and small fixes only; do not add Phase 2 behavior.
+
+Commands to run from `electron-app/`:
+- `npm run typecheck`
+- `npm test`
+- `npm run build`
+- An Electron dev launch smoke command based on the existing `npm run dev` script, with the shortest practical timeout/manual observation path that proves the Electron shell starts without leaving background processes running.
+
+Verification notes:
+- Inspect all command output for warnings as well as failures.
+- Confirm `dist-electron/main/app.js`, `dist-electron/preload/index.js`, and `dist/index.html` exist after build.
+- Re-run the renderer/shared forbidden-import source scan.
+- If the Electron launch smoke command requires a graphical session or blocks indefinitely, document the exact local limitation and use the safest available bounded smoke alternative.

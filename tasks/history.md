@@ -684,3 +684,15 @@ Validation:
 - `npm test -- --run` in `electron-app/`: 1 scaffold test passed.
 - `npm run build` in `electron-app/`: typecheck, tests, main build, and renderer Vite build passed.
 - Confirmed renderer/shared source has no direct imports from `electron`, `node:*`, filesystem, crypto, child-process, or storage modules.
+
+## 2026-04-15 — Step 1.8: Electron Foundation Regression Coverage
+
+Added Vitest regression coverage for the Electron runtime foundation. The suite now covers shared IPC schema validation, secret-free credential response contracts, redaction helpers, the injected `safeStorage` wrapper, Linux weak-backend warning derivation, storage migration runner/schema contracts, mocked main-process window/tray routing, and renderer smoke mounts for popover/settings/onboarding/overlay through the typed preload API. The renderer settings smoke test verifies Claude credentials are write-only after save and never rendered back.
+
+The coverage found and fixed a real contract mismatch: settings updates now accept partial overlay patches consistently across Zod validation, shared IPC types, preload typing, and main-process placeholder state merging.
+
+Validation:
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm test -- --run` in `electron-app/`: 22 tests passed.
+- `npm run build` in `electron-app/`: typecheck, tests, main build, and renderer Vite build passed.
+- Confirmed renderer/shared source has no direct imports from `electron`, `node:*`, filesystem, crypto, child-process, or storage modules.
