@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-15 — Step 1.3: Electron Main-Process Runtime Foundation
+
+Replaced the Electron placeholder main window with a secure runtime shell. Added single-instance lock handling, app lifecycle wiring, second-instance focus behavior, activation handling, and startup orchestration in `electron-app/src/main/app.ts`. Added `AppWindowManager` in `electron-app/src/main/windows.ts` for popover, settings, overlay, and onboarding windows with secure defaults (`contextIsolation`, sandboxing, no Node integration), preload path resolution, guarded navigation, hidden-until-ready loading, and Vite/dev versus packaged renderer loading. Added `TrayController` in `electron-app/src/main/tray.ts` with a generated tray icon, context menu skeleton actions, tray click behavior, and Linux tray fallback status reporting.
+
+Validation: `npm run typecheck`, `npm test -- --run`, and `npm run build` passed from `electron-app/`. A smoke check confirmed `dist-electron/main/app.js`, `dist-electron/preload/index.js`, and `dist/index.html` exist after build. No warnings emitted.
+
 ## 2026-04-15 — Step 1.2: Electron Module Layout and Shared Placeholders
 
 Moved the Electron scaffold from flat `src/main.ts`, `src/preload.ts`, `src/renderer.tsx`, and `src/styles.css` entries into the spec-aligned `src/main/`, `src/preload/`, `src/renderer/`, and `src/shared/` layout. Added placeholder main-process modules for windows, tray, and IPC channels; a typed preload API placeholder; renderer submodule placeholders; and shared type/schema placeholders for accounts, usage state, provider cards, settings, and IPC payloads. Updated package/config entry paths and fixed the Vite/Vitest config typing by importing `defineConfig` from `vitest/config`.
