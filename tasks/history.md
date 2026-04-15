@@ -627,3 +627,15 @@ Validation:
 - `cargo test` in `tauri-app/src-tauri/`: 21 tests pass, 0 failures.
 - `npm run build` in `tauri-app/`: TypeScript and Vite build pass.
 - Accepted existing Rust warnings: `provider_types.rs` has dead-code warnings for cross-provider variants/helpers that are part of the parity model but only exercised by tests in the current Tauri implementation.
+
+## 2026-04-15 — Step 1.1: Electron Runtime Scaffold
+
+Created the self-contained `electron-app/` scaffold for the new Windows/Linux Electron implementation. The scaffold includes Electron, React, TypeScript, Vite, Electron Builder, Vitest, package scripts, TypeScript configs, a builder config, a minimal main/preload/renderer entry, and a lockfile. The initial Electron dependency was upgraded to the npm-audit patched line so the scaffold has zero reported vulnerabilities.
+
+Validation:
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm test -- --run` in `electron-app/`: 1 scaffold test passed.
+- `npm run build` in `electron-app/`: typecheck, tests, main build, and renderer Vite build passed.
+- `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`: 119 tests passed, 0 failures.
+- `npm install` warnings: fixed the direct Electron audit advisory by upgrading to `electron@^41.2.0`; remaining install warnings are deprecated transitive packages from the current Electron Builder/npm dependency graph, with `npm install` reporting 0 vulnerabilities after the upgrade.
+- Accepted environment warning: xcodebuild selected the first of multiple matching local macOS destinations.
