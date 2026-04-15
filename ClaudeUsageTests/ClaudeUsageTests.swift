@@ -387,7 +387,8 @@ final class HistoryCompactionTests: XCTestCase {
 
     func testCompactDownsamplesMidRange() {
         // Two snapshots in the same hour, 2 days ago — only the one with higher sessionUtilization kept
-        let baseTime = Date().addingTimeInterval(-48 * 3600) // 2 days ago
+        let twoDaysAgo = Date().addingTimeInterval(-48 * 3600)
+        let baseTime = Calendar.current.dateInterval(of: .hour, for: twoDaysAgo)!.start.addingTimeInterval(60)
         let snap1 = UsageSnapshot(timestamp: baseTime, sessionUtilization: 40, weeklyUtilization: 20)
         let snap2 = UsageSnapshot(timestamp: baseTime.addingTimeInterval(300), sessionUtilization: 60, weeklyUtilization: 25)
 
@@ -412,7 +413,8 @@ final class HistoryCompactionTests: XCTestCase {
         // Mix of recent, mid-range (same hour pair), and old
         let recent = makeSnapshot(hoursAgo: 2, session: 30)
 
-        let midTime = Date().addingTimeInterval(-3 * 24 * 3600) // 3 days ago
+        let threeDaysAgo = Date().addingTimeInterval(-3 * 24 * 3600)
+        let midTime = Calendar.current.dateInterval(of: .hour, for: threeDaysAgo)!.start.addingTimeInterval(60)
         let mid1 = UsageSnapshot(timestamp: midTime, sessionUtilization: 20, weeklyUtilization: 10)
         let mid2 = UsageSnapshot(timestamp: midTime.addingTimeInterval(120), sessionUtilization: 50, weeklyUtilization: 15)
 
@@ -438,7 +440,7 @@ final class PaceStatusTests: XCTestCase {
     private func makeViewModel() -> UsageViewModel {
         // Use a unique suite name so tests don't interfere with each other or the real app
         let suiteName = "com.claudeusage.tests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        UserDefaults(suiteName: suiteName)!.removePersistentDomain(forName: suiteName)
         // AccountStore reads from standard UserDefaults; creating it is acceptable in tests
         let store = AccountStore()
         return UsageViewModel(accountStore: store)
@@ -713,7 +715,6 @@ final class GitHubServiceTests: XCTestCase {
         _ = try await service.fetchContributions()
 
         // Inspect the captured request body
-        let captured = MockURLProtocol.capturedRequest!
         let bodyData = MockURLProtocol.capturedBody!
         let bodyJSON = try JSONSerialization.jsonObject(with: bodyData) as! [String: Any]
 
