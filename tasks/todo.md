@@ -7,7 +7,7 @@
 > Prior roadmap status: Phases 1-7 of the multi-provider CLI monitor are complete.
 
 ## Tests First
-- [ ] Step R.1: [automated] Add regression tests for Tauri tray menu commands.
+- [x] Step R.1: [automated] Add regression tests for Tauri tray menu commands.
 
   **What:** Cover the `Refresh Now` and `Toggle Overlay` context menu paths so they execute the same backend behavior as the frontend buttons instead of only emitting unused events.
 
@@ -34,6 +34,13 @@
   **Files to modify:**
   - `ClaudeUsageTests/DiagnosticsTests.swift` or a new provider-shell diagnostics test file
   - `ClaudeUsage/Models/ProviderShellViewModel.swift`
+
+  **Implementation plan for a fresh session:**
+  1. Inspect `ProviderShellViewModel.rebuildShellState(...)` and confirm it currently calls `ProviderCoordinator.makeShellState(providers:now:)` without `refreshTimes`.
+  2. Inspect `CodexAdapter` and `GeminiAdapter` to confirm both expose `lastRefreshTime`, then decide the smallest test seam for controlling those timestamps at the shell boundary.
+  3. Add failing XCTest coverage in `ClaudeUsageTests/DiagnosticsTests.swift` or a focused new provider-shell diagnostics file proving stale Codex and/or Gemini adapter timestamps produce `.stale` cards through `ProviderShellViewModel.shellState`.
+  4. Add failing tray-text coverage proving the selected stale provider text includes the stale indicator through the live `ProviderShellViewModel` path, not only `ProviderCoordinator` helpers.
+  5. Keep this step red-phase only unless production changes are strictly limited to testability scaffolding needed for the failing tests to compile.
 
   **Acceptance criteria:**
   - A Codex or Gemini adapter with `lastRefreshTime` older than `ProviderCoordinator.staleThreshold` produces a `.stale` provider card in `ProviderShellViewModel.shellState`.

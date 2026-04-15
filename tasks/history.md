@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-15 — Step R.1: Red Phase — Tauri Tray Menu Command Regression Tests
+
+Added a testable tray-menu action boundary in `tauri-app/src-tauri/src/lib.rs` while preserving the current runtime behavior. Added three red-phase Rust tests proving the current `Refresh Now` and `Toggle Overlay` menu paths still emit unused `trigger-refresh` / `trigger-toggle-overlay` frontend events instead of invoking backend refresh and overlay behavior.
+
+Validation: `cargo test tray` in `tauri-app/src-tauri/` fails as expected with 3 red-phase failures: `tray_refresh_menu_uses_backend_refresh_action`, `tray_toggle_overlay_menu_uses_backend_overlay_action`, and `tray_menu_does_not_emit_unused_frontend_events`. The run also emits four unrelated existing dead-code warnings from `provider_types.rs`; accepted for this red-phase scope.
+
 ## 2026-04-11 — Bugfix: todayUsagePercent pre-midnight baseline
 
 Fixed `todayUsagePercent` in `UsageViewModel.swift` to prefer the last pre-midnight snapshot as baseline instead of only looking at today's snapshots. Previously, fresh app launches showed 0% because the first snapshot IS the current reading (delta=0). Now uses pre-midnight history (up to 24h stored in `historySnapshots`) to compute a meaningful delta since midnight. Falls back to earliest-today snapshot for fresh installs.

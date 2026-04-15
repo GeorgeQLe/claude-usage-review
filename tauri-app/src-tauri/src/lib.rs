@@ -128,6 +128,23 @@ fn toggle_popover(app: &tauri::AppHandle, tray_rect: tauri::Rect) {
         .build();
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum TrayMenuAction {
+    EmitEvent(&'static str),
+    OpenSettings,
+    Exit,
+}
+
+fn tray_menu_action_for_id(id: &str) -> Option<TrayMenuAction> {
+    match id {
+        "refresh" => Some(TrayMenuAction::EmitEvent("trigger-refresh")),
+        "settings" => Some(TrayMenuAction::OpenSettings),
+        "toggle_overlay" => Some(TrayMenuAction::EmitEvent("trigger-toggle-overlay")),
+        "quit" => Some(TrayMenuAction::Exit),
+        _ => None,
+    }
+}
+
 pub fn open_settings(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("settings") {
         let _ = window.set_focus();
@@ -192,20 +209,19 @@ pub fn run() {
                     });
 
                     let app_handle2 = app.handle().clone();
-                    tray.on_menu_event(move |_app, event| match event.id().as_ref() {
-                        "refresh" => {
-                            let _ = app_handle2.emit("trigger-refresh", ());
+                    tray.on_menu_event(move |_app, event| {
+                        match tray_menu_action_for_id(event.id().as_ref()) {
+                            Some(TrayMenuAction::EmitEvent(event_name)) => {
+                                let _ = app_handle2.emit(event_name, ());
+                            }
+                            Some(TrayMenuAction::OpenSettings) => {
+                                open_settings(&app_handle2);
+                            }
+                            Some(TrayMenuAction::Exit) => {
+                                app_handle2.exit(0);
+                            }
+                            None => {}
                         }
-                        "settings" => {
-                            open_settings(&app_handle2);
-                        }
-                        "toggle_overlay" => {
-                            let _ = app_handle2.emit("trigger-toggle-overlay", ());
-                        }
-                        "quit" => {
-                            app_handle2.exit(0);
-                        }
-                        _ => {}
                     });
                 }
                 None => {
@@ -266,4 +282,37 @@ pub fn run() {
             show_error_dialog(&msg);
             std::process::exit(1);
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tray_refresh_menu_uses_backend_refresh_action() {
+        assert_ne!(
+            tray_menu_action_for_id("refresh"),
+            Some(TrayMenuAction::EmitEvent("trigger-refresh"))
+        );
+    }
+
+    #[test]
+    fn tray_toggle_overlay_menu_uses_backend_overlay_action() {
+        assert_ne!(
+            tray_menu_action_for_id("toggle_overlay"),
+            Some(TrayMenuAction::EmitEvent("trigger-toggle-overlay"))
+        );
+    }
+
+    #[test]
+    fn tray_menu_does_not_emit_unused_frontend_events() {
+        let actions = ["refresh", "toggle_overlay"].map(tray_menu_action_for_id);
+
+        assert!(
+            actions
+                .iter()
+                .flatten()
+                .all(|action| !matches!(action, TrayMenuAction::EmitEvent(_)))
+        );
+    }
 }
