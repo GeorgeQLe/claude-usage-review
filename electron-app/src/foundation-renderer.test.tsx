@@ -1,0 +1,216 @@
+import React from "react";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { OnboardingRoute } from "./renderer/onboarding/index.js";
+import { OverlayRoute } from "./renderer/overlay/index.js";
+import { SettingsRoute } from "./renderer/settings/index.js";
+import type { AccountSummary } from "./shared/types/accounts.js";
+import type { AppSettings } from "./shared/types/settings.js";
+import type { UsageState } from "./shared/types/usage.js";
+
+window.__CLAUDE_USAGE_SKIP_AUTO_MOUNT__ = true;
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+describe("foundation renderer routes", () => {
+  let roots: Root[] = [];
+
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    window.claudeUsage = createMockPreloadApi();
+    roots = [];
+  });
+
+  afterEach(async () => {
+    for (const root of roots) {
+      await act(async () => {
+        root.unmount();
+      });
+    }
+    vi.clearAllMocks();
+  });
+
+  it("resolves unknown hashes to the popover route", async () => {
+    const { getRouteFromHash } = await importRendererApp();
+
+    expect(getRouteFromHash("#settings")).toBe("settings");
+    expect(getRouteFromHash("#overlay")).toBe("overlay");
+    expect(getRouteFromHash("#unexpected")).toBe("popover");
+  });
+
+  it("mounts the popover route through the preload API", async () => {
+    const { PopoverRoute } = await importRendererApp();
+
+    await renderRoute(<PopoverRoute />);
+
+    expect(document.body.textContent).toContain("Usage overview");
+    expect(document.body.textContent).toContain("Claude not configured");
+    expect(document.body.textContent).toContain("Local placeholder");
+    expect(window.claudeUsage.getUsageState).toHaveBeenCalled();
+    expect(window.claudeUsage.subscribeUsageUpdated).toHaveBeenCalled();
+  });
+
+  it("mounts settings and keeps Claude credentials write-only after save", async () => {
+    const { container } = await renderRoute(<SettingsRoute />);
+    const sessionInput = container.querySelector<HTMLInputElement>('input[name="session-key"]');
+    const orgInput = container.querySelector<HTMLInputElement>('input[name="org-id"]');
+
+    expect(document.body.textContent).toContain("Account and display");
+    expect(sessionInput).not.toBeNull();
+    expect(orgInput).not.toBeNull();
+
+    await act(async () => {
+      if (sessionInput) {
+        setInputValue(sessionInput, "synthetic-session-secret");
+      }
+      if (orgInput) {
+        setInputValue(orgInput, "org_123");
+      }
+    });
+    await act(async () => {
+      container.querySelector("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(window.claudeUsage.saveClaudeCredentials).toHaveBeenCalledWith(
+      "local-placeholder",
+      "synthetic-session-secret",
+      "org_123"
+    );
+    expect(container.querySelector<HTMLInputElement>('input[name="session-key"]')?.value).toBe("");
+    expect(document.body.textContent).not.toContain("synthetic-session-secret");
+  });
+
+  it("mounts onboarding and overlay routes with placeholder state", async () => {
+    await renderRoute(<OnboardingRoute />);
+    expect(document.body.textContent).toContain("Connect usage tracking");
+    expect(document.body.textContent).toContain("Review provider status");
+
+    await unmountRoutes();
+    document.body.innerHTML = "";
+    await renderRoute(<OverlayRoute />);
+    expect(document.body.textContent).toContain("Overlay");
+    expect(document.body.textContent).toContain("Claude not configured");
+  });
+
+  async function renderRoute(route: React.ReactNode): Promise<{ readonly container: HTMLDivElement }> {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+
+    await act(async () => {
+      root.render(route);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    return { container };
+  }
+
+  async function unmountRoutes(): Promise<void> {
+    for (const root of roots) {
+      await act(async () => {
+        root.unmount();
+      });
+    }
+    roots = [];
+  }
+});
+
+function importRendererApp(): Promise<typeof import("./renderer/app/index.js")> {
+  return import("./renderer/app/index.js");
+}
+
+function createMockPreloadApi() {
+  return {
+    addAccount: vi.fn(async () => mockAccounts),
+    exportDiagnostics: vi.fn(async () => ({
+      entries: [],
+      generatedAt: "2026-04-15T12:00:00.000Z",
+      summary: "Diagnostics export is not connected in the foundation IPC skeleton."
+    })),
+    generateWrapper: vi.fn(),
+    getAccounts: vi.fn(async () => mockAccounts),
+    getProviderDiagnostics: vi.fn(),
+    getSettings: vi.fn(async () => mockSettings),
+    getUsageState: vi.fn(async () => mockUsageState),
+    refreshNow: vi.fn(async () => ({
+      ...mockUsageState,
+      lastUpdatedAt: "2026-04-15T12:00:00.000Z"
+    })),
+    removeAccount: vi.fn(async () => mockAccounts),
+    renameAccount: vi.fn(async () => mockAccounts),
+    runProviderDetection: vi.fn(),
+    saveClaudeCredentials: vi.fn(async () => [
+      {
+        ...mockAccounts[0],
+        authStatus: "configured",
+        orgId: "org_123"
+      }
+    ]),
+    setActiveAccount: vi.fn(async () => mockAccounts),
+    subscribeUsageUpdated: vi.fn(() => () => undefined),
+    testClaudeConnection: vi.fn(),
+    updateSettings: vi.fn(async () => mockSettings),
+    verifyWrapper: vi.fn()
+  } satisfies Window["claudeUsage"];
+}
+
+function setInputValue(input: HTMLInputElement, value: string): void {
+  const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  valueSetter?.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+const mockAccounts: readonly AccountSummary[] = [
+  {
+    authStatus: "missing_credentials",
+    id: "local-placeholder",
+    isActive: true,
+    label: "Local placeholder",
+    orgId: null
+  }
+];
+
+const mockSettings: AppSettings = {
+  launchAtLogin: false,
+  overlay: {
+    enabled: false,
+    layout: "compact",
+    opacity: 0.9
+  },
+  paceTheme: "balanced",
+  timeDisplay: "countdown",
+  weeklyColorMode: "pace-aware"
+};
+
+const mockUsageState: UsageState = {
+  activeProviderId: "claude",
+  lastUpdatedAt: null,
+  providers: [
+    {
+      actions: [],
+      adapterMode: "passive",
+      confidence: "observed_only",
+      confidenceExplanation: "Foundation placeholder state only.",
+      dailyRequestCount: null,
+      detailText: "Connect storage and provider services in a later phase.",
+      displayName: "Claude",
+      enabled: true,
+      headline: "Claude not configured",
+      lastUpdatedAt: null,
+      providerId: "claude",
+      requestsPerMinute: null,
+      resetAt: null,
+      sessionUtilization: null,
+      status: "missing_configuration",
+      weeklyUtilization: null
+    }
+  ],
+  warning: null
+};

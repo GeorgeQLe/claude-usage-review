@@ -17,7 +17,13 @@ import "../styles/app.css";
 
 type RendererRoute = "popover" | "settings" | "onboarding" | "overlay";
 
-function App(): React.JSX.Element {
+declare global {
+  interface Window {
+    __CLAUDE_USAGE_SKIP_AUTO_MOUNT__?: boolean;
+  }
+}
+
+export function App(): React.JSX.Element {
   const [route, setRoute] = React.useState<RendererRoute>(() => getRouteFromHash(window.location.hash));
 
   React.useEffect(() => {
@@ -44,7 +50,7 @@ function App(): React.JSX.Element {
   }
 }
 
-function PopoverRoute(): React.JSX.Element {
+export function PopoverRoute(): React.JSX.Element {
   const resource = useRendererSnapshot({ subscribeToUsage: true });
 
   if (resource.status === "loading") {
@@ -84,7 +90,7 @@ function PopoverRoute(): React.JSX.Element {
   );
 }
 
-function getRouteFromHash(hash: string): RendererRoute {
+export function getRouteFromHash(hash: string): RendererRoute {
   const route = hash.replace(/^#/u, "");
 
   if (route === "settings" || route === "onboarding" || route === "overlay") {
@@ -94,14 +100,18 @@ function getRouteFromHash(hash: string): RendererRoute {
   return "popover";
 }
 
-const root = document.getElementById("root");
+export function mountRenderer(root: HTMLElement | null = document.getElementById("root")): void {
+  if (!root) {
+    throw new Error("Renderer root element was not found.");
+  }
 
-if (!root) {
-  throw new Error("Renderer root element was not found.");
+  createRoot(root).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
 }
 
-createRoot(root).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+if (!window.__CLAUDE_USAGE_SKIP_AUTO_MOUNT__) {
+  mountRenderer();
+}
