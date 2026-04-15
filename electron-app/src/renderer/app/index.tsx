@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import "./styles.css";
+import "../styles/app.css";
 
 function App(): React.JSX.Element {
   return (
