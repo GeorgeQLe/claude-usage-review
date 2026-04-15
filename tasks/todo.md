@@ -6,6 +6,12 @@
 > Test strategy: tdd
 > Prior roadmap status: Phases 1-7 of the multi-provider CLI monitor are complete.
 
+## Priority Task Queue
+
+- [ ] Resolve or explicitly defer orphaned manual tasks in `tasks/manual-todo.md` - clean up six unchecked Codex/Gemini validation and wrapper-adoption items because they reference already-completed Phase 2-5 work, while `tasks/roadmap.md` marks Phases 1-7 complete and archived phase files through `tasks/phases/phase-7-cross-platform-follow-through.md` exist.
+- [ ] `$plan-phases specs/electron-cross-platform-ai-usage-monitor.md` - decompose the new Electron cross-platform product spec into executable roadmap phases because `specs/electron-cross-platform-ai-usage-monitor.md` was added on 2026-04-15 11:20, while `tasks/roadmap.md` was last updated on 2026-04-11 20:21 and only covers the completed multi-provider/Tauri roadmap.
+- [ ] `$plan-interview --ideas` - triage or prune old unspecced ideas because `tasks/ideas.md` still contains multiple quick-win, medium, and larger initiatives from 2026-03-23 that have no corresponding current spec in `specs/`.
+
 ## Tests First
 - [x] Step R.1: [automated] Add regression tests for Tauri tray menu commands.
 
