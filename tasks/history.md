@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-15 — Step 1.9: Electron Runtime Foundation Verification
+
+Completed the Phase 1 verification gate for the Electron app. `npm run typecheck`, `npm test`, and `npm run build` all passed from `electron-app/`; the test suite reported 5 passing files and 22 passing tests. Confirmed `dist-electron/main/app.js`, `dist-electron/preload/index.js`, and `dist/index.html` exist after build. Re-ran the renderer/shared forbidden-import scan with no matches. Ran a bounded `npm run dev` smoke: Vite started on `127.0.0.1:5173`, the Electron main build completed, Electron stayed running without startup error output, and all smoke processes were stopped afterward.
+
+Phase 1 is archived in `tasks/phases/phase-1.md`. Phase 2 is now active in `tasks/todo.md`, starting with red-phase tests for Claude exact usage and account workflows. Future manual validation tasks were preserved in `tasks/roadmap.md` under the later phases where they apply; there is no active `tasks/manual-todo.md` for Phase 2.
+
 ## 2026-04-15 — Step 1.7: Electron React Renderer Entries
 
 Added minimal React renderer routes for the Electron foundation. The single Vite entry now routes by Electron window hash to popover, settings, onboarding, and overlay views. Shared renderer components load usage state, settings, and accounts only through the typed `window.claudeUsage` preload API. Settings includes write-only credential inputs that clear the session key after save and never render stored secrets. The renderer styling now covers stable minimal layouts for all four shell windows.

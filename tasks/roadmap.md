@@ -4,7 +4,7 @@ Build `electron-app/` as the full Windows/Linux implementation of ClaudeUsage wh
 
 | Phase | Focus | Outcome |
 | --- | --- | --- |
-| 1 | Electron runtime foundation | Secure Electron/React app shell with typed IPC, storage skeleton, tray/windows, and baseline UI |
+| 1 | Electron runtime foundation | Complete: secure Electron/React app shell with typed IPC, storage skeleton, tray/windows, and baseline UI |
 | 2 | Claude exact usage and accounts | Claude account workflows, exact API polling, backoff, reset fetch, secret storage, and live tray/popover state |
 | 3 | Product UI parity | Pace, history, GitHub heatmap, overlay, notifications, and polished settings/onboarding |
 | 4 | Provider shell and passive adapters | Shared provider model plus Codex/Gemini passive monitoring, Gemini `/stats`, confidence, stale/degraded handling |
@@ -13,28 +13,29 @@ Build `electron-app/` as the full Windows/Linux implementation of ClaudeUsage wh
 
 ## Phase 1: Electron Runtime Foundation
 > Test strategy: tests-after
+> Status: complete on 2026-04-15
 
 ### Implementation
-- Step 1.1: [automated] Scaffold `electron-app/` with Electron, React, TypeScript, Vite, Electron Builder, Vitest, and project scripts in `electron-app/package.json`, `electron-app/vite.config.ts`, `electron-app/electron-builder.yml`, `electron-app/tsconfig*.json`, and `electron-app/src/`.
-- Step 1.2: [automated] Add the initial folder/module structure from the spec: `electron-app/src/main/`, `electron-app/src/preload/`, `electron-app/src/renderer/`, and `electron-app/src/shared/`, including shared type/schema placeholders for accounts, usage state, provider cards, settings, and IPC payloads.
-- Step 1.3: [automated] Implement the secure Electron main-process bootstrap in `electron-app/src/main/app.ts`, `electron-app/src/main/windows.ts`, and `electron-app/src/main/tray.ts`: single-instance lock, app lifecycle, tray creation, context menu skeleton, popover/settings/overlay/onboarding windows, CSP-ready local loading, and Linux tray fallback handling.
-- Step 1.4: [automated] Add a narrow preload bridge in `electron-app/src/preload/index.ts` and `electron-app/src/preload/api.ts` using `contextBridge`, with Node integration disabled and context isolation/sandbox options set on all renderer windows.
-- Step 1.5: [automated] Add IPC registration and validation skeletons in `electron-app/src/main/ipc.ts` plus shared schemas under `electron-app/src/shared/schemas/` for the commands listed in the spec.
-- Step 1.6: [automated] Add storage primitives in `electron-app/src/main/storage/`: SQLite connection/migrations for structured app data, `safeStorage` secret wrapper, redaction helpers, and a Linux `basic_text` backend warning surfaced through derived app state.
-- Step 1.7: [automated] Add minimal React renderer entries for popover, settings, onboarding, and overlay under `electron-app/src/renderer/`, with placeholder state loaded through the preload API and no direct filesystem or Node access.
+- [x] Step 1.1: [automated] Scaffold `electron-app/` with Electron, React, TypeScript, Vite, Electron Builder, Vitest, and project scripts in `electron-app/package.json`, `electron-app/vite.config.ts`, `electron-app/electron-builder.yml`, `electron-app/tsconfig*.json`, and `electron-app/src/`.
+- [x] Step 1.2: [automated] Add the initial folder/module structure from the spec: `electron-app/src/main/`, `electron-app/src/preload/`, `electron-app/src/renderer/`, and `electron-app/src/shared/`, including shared type/schema placeholders for accounts, usage state, provider cards, settings, and IPC payloads.
+- [x] Step 1.3: [automated] Implement the secure Electron main-process bootstrap in `electron-app/src/main/app.ts`, `electron-app/src/main/windows.ts`, and `electron-app/src/main/tray.ts`: single-instance lock, app lifecycle, tray creation, context menu skeleton, popover/settings/overlay/onboarding windows, CSP-ready local loading, and Linux tray fallback handling.
+- [x] Step 1.4: [automated] Add a narrow preload bridge in `electron-app/src/preload/index.ts` and `electron-app/src/preload/api.ts` using `contextBridge`, with Node integration disabled and context isolation/sandbox options set on all renderer windows.
+- [x] Step 1.5: [automated] Add IPC registration and validation skeletons in `electron-app/src/main/ipc.ts` plus shared schemas under `electron-app/src/shared/schemas/` for the commands listed in the spec.
+- [x] Step 1.6: [automated] Add storage primitives in `electron-app/src/main/storage/`: SQLite connection/migrations for structured app data, `safeStorage` secret wrapper, redaction helpers, and a Linux `basic_text` backend warning surfaced through derived app state.
+- [x] Step 1.7: [automated] Add minimal React renderer entries for popover, settings, onboarding, and overlay under `electron-app/src/renderer/`, with placeholder state loaded through the preload API and no direct filesystem or Node access.
 
 ### Green
-- Step 1.8: [automated] Add regression coverage for the foundation: Vitest tests for schema validation/redaction/storage wrappers where possible, an Electron main-process smoke test for window/tray action routing, and a renderer smoke test proving placeholder windows mount without secret/Node access.
-- Step 1.9: [automated] Run Phase 1 verification: `npm run typecheck`, `npm test`, `npm run build`, and an Electron dev launch smoke command from `electron-app/`.
+- [x] Step 1.8: [automated] Add regression coverage for the foundation: Vitest tests for schema validation/redaction/storage wrappers where possible, an Electron main-process smoke test for window/tray action routing, and a renderer smoke test proving placeholder windows mount without secret/Node access.
+- [x] Step 1.9: [automated] Run Phase 1 verification: `npm run typecheck`, `npm test`, `npm run build`, and an Electron dev launch smoke command from `electron-app/`.
 
 ### Milestone
-- `electron-app/` exists and starts locally.
-- Main/preload/renderer boundaries are in place and secure by default.
-- Renderer windows mount through React and only use the typed preload API.
-- SQLite and secret-storage abstractions exist, with Linux weak-backend warning plumbing.
-- Tray, popover, settings, onboarding, and overlay window shells exist.
-- All phase tests pass.
-- No regressions.
+- [x] `electron-app/` exists and starts locally.
+- [x] Main/preload/renderer boundaries are in place and secure by default.
+- [x] Renderer windows mount through React and only use the typed preload API.
+- [x] SQLite and secret-storage abstractions exist, with Linux weak-backend warning plumbing.
+- [x] Tray, popover, settings, onboarding, and overlay window shells exist.
+- [x] All phase tests pass.
+- [x] No regressions.
 
 ## Phase 2: Claude Exact Usage and Accounts
 > Test strategy: tdd
@@ -128,6 +129,10 @@ Build `electron-app/` as the full Windows/Linux implementation of ClaudeUsage wh
 - Step 5.7: [automated] Make all Phase 5 tests pass and add integration coverage for wrapper setup flows, ledger trimming, confidence upgrades, and redacted diagnostics.
 - Step 5.8: [automated] Run Phase 5 verification: `npm run typecheck`, `npm test`, `npm run build`, and wrapper setup renderer smoke tests.
 
+**Manual Tasks:**
+- [ ] Validate generated Codex wrapper setup instructions in a real user shell without allowing the app to edit shell profiles automatically. _(after: Step 5.6)_
+- [ ] Validate generated Gemini wrapper setup instructions in a real user shell without allowing the app to edit shell profiles automatically. _(after: Step 5.6)_
+
 ### Milestone
 - Accuracy Mode is explicit, opt-in, verifiable, and reversible.
 - Wrappers persist only derived metadata and never raw prompts, stdout, session keys, GitHub tokens, or provider auth tokens.
@@ -149,6 +154,11 @@ Build `electron-app/` as the full Windows/Linux implementation of ClaudeUsage wh
 ### Green
 - Step 6.7: [automated] Run full Electron verification: `npm run typecheck`, `npm test`, `npm run build`, Electron smoke tests, and available package builds for the current host.
 - Step 6.8: [automated] Update `tasks/history.md`, `README.md`, and `docs/cross-platform-parity.md` to reflect the Electron plan/status once implementation reaches this gate.
+
+**Manual Tasks:**
+- [ ] Run a live Claude credential smoke test with a real session key and org ID, then confirm the Electron app stores secrets only through the secret store and does not render them back in Settings. _(after: Step 6.7)_
+- [ ] Validate the Windows NSIS installer and portable build on a real Windows machine, including tray behavior, launch at login, notifications, and packaged app startup. _(after: Step 6.7)_
+- [ ] Validate the Linux AppImage and `deb` package on the selected target desktop environments, including tray fallback behavior, notifications, `safeStorage` backend warning, and packaged app startup. _(after: Step 6.7)_
 
 ### Milestone
 - Non-secret migration works and secret re-entry is clear.
