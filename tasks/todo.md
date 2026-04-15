@@ -10,7 +10,7 @@
 - [x] Step 1.2: [automated] Add the initial folder/module structure from the spec: `electron-app/src/main/`, `electron-app/src/preload/`, `electron-app/src/renderer/`, and `electron-app/src/shared/`, including shared type/schema placeholders for accounts, usage state, provider cards, settings, and IPC payloads.
 - [x] Step 1.3: [automated] Implement the secure Electron main-process bootstrap in `electron-app/src/main/app.ts`, `electron-app/src/main/windows.ts`, and `electron-app/src/main/tray.ts`: single-instance lock, app lifecycle, tray creation, context menu skeleton, popover/settings/overlay/onboarding windows, CSP-ready local loading, and Linux tray fallback handling.
 - [x] Step 1.4: [automated] Add a narrow preload bridge in `electron-app/src/preload/index.ts` and `electron-app/src/preload/api.ts` using `contextBridge`, with Node integration disabled and context isolation/sandbox options set on all renderer windows.
-- [ ] Step 1.5: [automated] Add IPC registration and validation skeletons in `electron-app/src/main/ipc.ts` plus shared schemas under `electron-app/src/shared/schemas/` for the commands listed in the spec.
+- [x] Step 1.5: [automated] Add IPC registration and validation skeletons in `electron-app/src/main/ipc.ts` plus shared schemas under `electron-app/src/shared/schemas/` for the commands listed in the spec.
 - [ ] Step 1.6: [automated] Add storage primitives in `electron-app/src/main/storage/`: SQLite connection/migrations for structured app data, `safeStorage` secret wrapper, redaction helpers, and a Linux `basic_text` backend warning surfaced through derived app state.
 - [ ] Step 1.7: [automated] Add minimal React renderer entries for popover, settings, onboarding, and overlay under `electron-app/src/renderer/`, with placeholder state loaded through the preload API and no direct filesystem or Node access.
 
@@ -101,3 +101,50 @@ Validation:
 - Run `npm run typecheck`, `npm test -- --run`, and `npm run build` from `electron-app/`.
 - Confirm no renderer code imports from `electron`, `node:*`, or direct filesystem APIs.
 - Inspect the final IPC surface to confirm there is still no arbitrary channel bridge and no secret-bearing response shape.
+
+## Review: Step 1.5
+
+Implemented the Electron IPC registration and validation skeleton:
+- `electron-app/src/main/ipc.ts` now registers allowlisted `ipcMain.handle` handlers for usage, settings, account, Claude credential/test, provider diagnostics/detection, wrapper, and diagnostics-export commands. It returns safe in-memory placeholder state, validates incoming payloads with Zod, validates response shapes before returning them, broadcasts validated usage updates after `refreshNow`, and returns a disposer that removes registered handlers.
+- `electron-app/src/main/app.ts` now registers IPC handlers during startup before renderer windows can invoke the preload API, and disposes handlers on app quit.
+- `electron-app/src/shared/types/ipc.ts` now owns the expanded channel list, typed preload invoke map, and placeholder response contracts for all Step 1.5 commands.
+- `electron-app/src/shared/schemas/ipc.ts` now includes payload schemas and placeholder response schemas for every payload-bearing command in the skeleton.
+- `electron-app/src/preload/api.ts` now exposes the expanded narrow API through allowlisted `ipcRenderer.invoke` calls plus a validated `subscribeUsageUpdated` event bridge. It still does not expose arbitrary channel access, `ipcRenderer`, Electron objects, Node globals, or filesystem APIs.
+
+Validation passed from `electron-app/`:
+- `npm run typecheck`
+- `npm test -- --run`
+- `npm run build`
+- Smoke check confirmed `dist-electron/preload/index.js` exists after build.
+- Source scan confirmed renderer/shared code has no direct imports from `electron`, `node:*`, `fs`, `path`, `os`, `crypto`, or `child_process`.
+- IPC surface inspection confirmed credential payloads are validated but not returned in response shapes.
+
+No warnings were emitted by validation.
+
+Known boundary for the next step:
+- IPC state is intentionally in-memory placeholder state. Step 1.6 owns durable SQLite primitives, secret storage, redaction helpers, and Linux weak-backend warning plumbing.
+
+## Next Step Plan: Step 1.6
+
+Add the storage primitives that later IPC/provider work can depend on. Keep this step focused on reusable storage boundaries only; do not wire real provider polling, renderer UI, or full account workflows yet.
+
+Files to create or modify:
+- `electron-app/package.json` and lockfile: add the SQLite dependency chosen for the Electron main process if one is not already available. Prefer a maintained synchronous SQLite binding that works with Electron packaging, unless the existing toolchain strongly points elsewhere.
+- `electron-app/src/main/storage/database.ts`: add a small SQLite connection factory rooted under Electron `app.getPath("userData")`, plus a test-friendly override path.
+- `electron-app/src/main/storage/migrations.ts`: add an idempotent migration runner and initial schema for accounts, settings, usage snapshots, provider settings, wrapper events, parse bookmarks, diagnostics/events, and migration records at the lightweight skeleton level.
+- `electron-app/src/main/storage/secrets.ts`: wrap Electron `safeStorage` for encrypt/decrypt/delete-style operations without exposing decrypted values beyond main-process callers.
+- `electron-app/src/main/storage/redaction.ts`: add redaction helpers for session keys, bearer-like tokens, cookie values, and diagnostic payloads.
+- `electron-app/src/main/storage/index.ts`: export the storage primitives through a small main-process-only boundary.
+- `electron-app/src/shared/schemas/usage.ts` or related shared schemas: refine only if the Linux weak-backend warning needs a typed app-state warning shape.
+- `electron-app/src/main/ipc.ts`: only adjust placeholder state if needed to surface a Linux `safeStorage` `basic_text` warning through the existing usage/settings state without storing secrets.
+
+Implementation notes:
+- Detect `safeStorage.getSelectedStorageBackend()` when available and derive a warning if Linux reports `basic_text`.
+- Keep storage code out of preload and renderer modules. Renderer must not import storage primitives or receive secrets.
+- Make migrations idempotent and cheap to run at startup later, but this step does not need to wire them into startup unless the storage factory requires it.
+- Keep schema names stable and simple so later phases can extend columns without rewriting the foundation.
+
+Validation:
+- Run `npm run typecheck`, `npm test -- --run`, and `npm run build` from `electron-app/`.
+- Confirm no renderer/shared code imports storage modules, `electron`, `node:*`, or direct filesystem APIs.
+- If SQLite dependency installation or native build is required, verify the dependency can install/build locally before marking the step complete.

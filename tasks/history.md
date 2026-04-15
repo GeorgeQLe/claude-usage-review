@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-15 — Step 1.5: Electron IPC Registration and Validation Skeleton
+
+Added the main-process IPC skeleton for the Electron app. `electron-app/src/main/ipc.ts` now registers allowlisted handlers for usage, settings, accounts, Claude credential/test placeholders, provider diagnostics/detection, wrapper setup/verification, and diagnostics export. Incoming payloads are validated with shared Zod schemas, response shapes are validated before returning, placeholder state remains secret-free, and credential payloads are never echoed to renderer responses. `electron-app/src/main/app.ts` registers handlers on startup and disposes them on quit. The preload API now exposes the expanded command surface through allowlisted `ipcRenderer.invoke` calls plus validated usage-update subscription handling.
+
+Validation: `npm run typecheck`, `npm test -- --run`, and `npm run build` passed from `electron-app/`. A source scan confirmed renderer/shared code has no direct Electron, Node, or filesystem imports. `dist-electron/preload/index.js` exists after build. No warnings emitted.
+
 ## 2026-04-15 — Step 1.3: Electron Main-Process Runtime Foundation
 
 Replaced the Electron placeholder main window with a secure runtime shell. Added single-instance lock handling, app lifecycle wiring, second-instance focus behavior, activation handling, and startup orchestration in `electron-app/src/main/app.ts`. Added `AppWindowManager` in `electron-app/src/main/windows.ts` for popover, settings, overlay, and onboarding windows with secure defaults (`contextIsolation`, sandboxing, no Node integration), preload path resolution, guarded navigation, hidden-until-ready loading, and Vite/dev versus packaged renderer loading. Added `TrayController` in `electron-app/src/main/tray.ts` with a generated tray icon, context menu skeleton actions, tray click behavior, and Linux tray fallback status reporting.
