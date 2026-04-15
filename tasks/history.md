@@ -615,3 +615,15 @@ Validation:
 - `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/CodexDetectionTests -only-testing:ClaudeUsageTests/CodexActivityParsingTests -only-testing:ClaudeUsageTests/CodexAdapterRefreshTests`: 13 tests pass, 0 failures.
 - `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`: 115 tests pass, 0 failures.
 - Accepted environment warnings: duplicate macOS destination selection, Xcode AppIntents metadata skipped because the app has no AppIntents dependency, and XCTest dylib deployment-target warnings from the local Xcode toolchain.
+
+## 2026-04-15 — Steps R.8 and R.9: Tauri Tray Actions and Settings Org ID
+
+Completed the Tauri tray command wiring remediation and the org-ID preservation fix that blocked full Rust validation. The tray context menu now maps Refresh Now and Toggle Overlay to backend actions instead of unused frontend events; both the frontend commands and tray callback share the same refresh and overlay helpers. Refresh emits `usage-updated` after state changes, and overlay toggles continue to persist config and create/close the overlay through the shared path.
+
+Settings account metadata now exposes the saved non-secret `org_id` while keeping session keys write-only. The Settings form reads that metadata so opening Settings for a configured account pre-populates the Organization ID field.
+
+Validation:
+- `cargo test tray` in `tauri-app/src-tauri/`: 4 tests pass, 0 failures.
+- `cargo test` in `tauri-app/src-tauri/`: 21 tests pass, 0 failures.
+- `npm run build` in `tauri-app/`: TypeScript and Vite build pass.
+- Accepted existing Rust warnings: `provider_types.rs` has dead-code warnings for cross-provider variants/helpers that are part of the parity model but only exercised by tests in the current Tauri implementation.
