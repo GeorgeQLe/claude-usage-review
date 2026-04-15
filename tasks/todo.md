@@ -7,7 +7,7 @@
 
 ## Implementation
 - [x] Step 1.1: [automated] Scaffold `electron-app/` with Electron, React, TypeScript, Vite, Electron Builder, Vitest, and project scripts in `electron-app/package.json`, `electron-app/vite.config.ts`, `electron-app/electron-builder.yml`, `electron-app/tsconfig*.json`, and `electron-app/src/`.
-- [ ] Step 1.2: [automated] Add the initial folder/module structure from the spec: `electron-app/src/main/`, `electron-app/src/preload/`, `electron-app/src/renderer/`, and `electron-app/src/shared/`, including shared type/schema placeholders for accounts, usage state, provider cards, settings, and IPC payloads.
+- [x] Step 1.2: [automated] Add the initial folder/module structure from the spec: `electron-app/src/main/`, `electron-app/src/preload/`, `electron-app/src/renderer/`, and `electron-app/src/shared/`, including shared type/schema placeholders for accounts, usage state, provider cards, settings, and IPC payloads.
 - [ ] Step 1.3: [automated] Implement the secure Electron main-process bootstrap in `electron-app/src/main/app.ts`, `electron-app/src/main/windows.ts`, and `electron-app/src/main/tray.ts`: single-instance lock, app lifecycle, tray creation, context menu skeleton, popover/settings/overlay/onboarding windows, CSP-ready local loading, and Linux tray fallback handling.
 - [ ] Step 1.4: [automated] Add a narrow preload bridge in `electron-app/src/preload/index.ts` and `electron-app/src/preload/api.ts` using `contextBridge`, with Node integration disabled and context isolation/sandbox options set on all renderer windows.
 - [ ] Step 1.5: [automated] Add IPC registration and validation skeletons in `electron-app/src/main/ipc.ts` plus shared schemas under `electron-app/src/shared/schemas/` for the commands listed in the spec.
@@ -27,16 +27,17 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 1.2
+## Next Step Plan: Step 1.3
 
-Move the Step 1.1 flat scaffold entries into the spec-aligned module layout while preserving the working package scripts.
+Implement the secure Electron main-process bootstrap on top of the Step 1.2 module layout. Keep this step focused on process/window/tray shell behavior only; do not implement real provider polling, storage, or credential handling yet.
 
 Files to modify or create:
-- `electron-app/src/main/`: move the minimal Electron entry into `app.ts` and add placeholder module exports for `windows.ts`, `tray.ts`, and `ipc.ts` only as needed to keep imports typed.
-- `electron-app/src/preload/`: move the preload entry into `index.ts` and add `api.ts` with the initial typed preload surface placeholder.
-- `electron-app/src/renderer/`: move the React renderer into a spec-aligned entry and create placeholder directories for `app/`, `settings/`, `overlay/`, `onboarding/`, `components/`, and `styles/`.
-- `electron-app/src/shared/`: add type/schema placeholder files for accounts, usage state, provider cards, settings, and IPC payloads under `types/` and `schemas/`.
-- `electron-app/package.json`, `electron-app/tsconfig*.json`, and `electron-app/vite.config.ts`: update entry paths after the file moves.
+- `electron-app/src/main/app.ts`: add single-instance lock handling, safe app lifecycle wiring, activation behavior, development/production URL resolution, and startup orchestration.
+- `electron-app/src/main/windows.ts`: replace the descriptor placeholder with typed window creation helpers for popover, settings, overlay, and onboarding. Apply secure defaults on every `BrowserWindow`: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, preload path, hidden-until-ready behavior, and CSP-ready local loading.
+- `electron-app/src/main/tray.ts`: replace the menu descriptor placeholder with tray creation/update helpers, context menu skeleton actions, and Linux fallback detection/reporting that can be surfaced through app state in later steps.
+- `electron-app/src/main/ipc.ts`: keep the channel-name placeholder intact unless a minimal lifecycle hook is needed for main-process startup.
+- `electron-app/src/shared/types/usage.ts` or adjacent shared placeholders: add a minimal warning/status field only if needed to carry the Linux tray fallback state without introducing provider logic.
 
 Validation:
 - Run `npm run typecheck`, `npm test -- --run`, and `npm run build` from `electron-app/`.
+- Smoke-check that the packaged main entry remains `dist-electron/main/app.js` and that the preload path resolves to `dist-electron/preload/index.js`.

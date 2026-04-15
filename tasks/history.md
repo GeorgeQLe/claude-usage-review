@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-15 — Step 1.2: Electron Module Layout and Shared Placeholders
+
+Moved the Electron scaffold from flat `src/main.ts`, `src/preload.ts`, `src/renderer.tsx`, and `src/styles.css` entries into the spec-aligned `src/main/`, `src/preload/`, `src/renderer/`, and `src/shared/` layout. Added placeholder main-process modules for windows, tray, and IPC channels; a typed preload API placeholder; renderer submodule placeholders; and shared type/schema placeholders for accounts, usage state, provider cards, settings, and IPC payloads. Updated package/config entry paths and fixed the Vite/Vitest config typing by importing `defineConfig` from `vitest/config`.
+
+Validation: `npm run typecheck`, `npm test -- --run`, and `npm run build` passed from `electron-app/`. No warnings emitted.
+
 ## 2026-04-15 — Step R.7: Gemini Auth and Plan Controls
 
 Replaced the read-only Gemini plan row in macOS Settings with live Auth Mode and Plan pickers. Added Gemini plan presets, raw-value auth-mode persistence, selected-auth override support in `GeminiConfidenceEngine`, and `ProviderShellViewModel.updateGeminiSettings(...)` so Gemini plan/auth changes refresh the running adapter without restart. Added regression coverage for preset lookup, settings persistence, confirmed auth overriding passive detection, and adapter refresh using selected settings.
