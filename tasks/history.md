@@ -591,3 +591,12 @@ Validation:
 - `cargo test usage_state_exposes_active_account_org_id_without_session_key` fails as expected because serialized `accounts[0].org_id` is currently `Null`.
 - `npm run build` in `tauri-app/` fails as expected because `AccountInfo` has no `org_id` property.
 - `cargo test` emitted existing dead-code warnings in `provider_types.rs`; accepted for this red phase because they are unrelated to the new org-ID regression coverage.
+
+## 2026-04-15 — Step R.5: Live macOS Stale Provider Diagnostics
+
+Wired live Codex/Gemini adapter refresh timestamps into `ProviderShellViewModel` so the production shell uses `ProviderCoordinator.makeShellState(providers:now:refreshTimes:)`. Selected tray text now derives from the selected provider's computed card state, so stale Codex/Gemini providers display `Stale` instead of presenting stale estimates as fresh. Also fixed a flaky history compaction fixture that could cross an hour boundary depending on the current minute, and removed two unused-local Swift test warnings.
+
+Validation:
+- `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/ProviderShellViewModelStaleTests`: 3 tests pass, 0 failures.
+- `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/ProviderShellViewModelStaleTests -only-testing:ClaudeUsageTests/HistoryCompactionTests`: 7 tests pass, 0 failures.
+- Full `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` builds and executes 115 tests; 108 pass and 7 fail with the expected Step R.3 red-phase Codex passive-source assertions queued for Step R.6.

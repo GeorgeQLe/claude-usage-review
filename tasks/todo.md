@@ -91,7 +91,7 @@
   - Session keys remain secret and are not serialized to the frontend state.
 
 ## Implementation
-- [ ] Step R.5: [automated] Wire stale provider diagnostics into the live macOS shell.
+- [x] Step R.5: [automated] Wire stale provider diagnostics into the live macOS shell.
 
   **What:** Pass Codex/Gemini adapter `lastRefreshTime` values into `ProviderCoordinator.makeShellState(providers:now:refreshTimes:)`, and update tray formatting so stale cards are visible in the running app.
 
@@ -123,6 +123,22 @@
   - `ClaudeUsage/Models/CodexTypes.swift`
   - `ClaudeUsage/Views/SettingsView.swift`
   - `ClaudeUsage/Models/ProviderSettingsStore.swift`
+
+  **Implementation plan for a fresh session:**
+  1. Start from the Step R.3 red tests in `ClaudeUsageTests/CodexAdapterTests.swift`, especially:
+     - `CodexDetectionTests.testDefaultAdapterRespectsCodexHomeEnvironmentVariable`
+     - `CodexActivityParsingTests.testParsesRecursiveDatedSessionRolloutFiles`
+     - `CodexAdapterRefreshTests.testRefreshReusesHistoryBookmarkForAppendedContent`
+     - `CodexAdapterRefreshTests.testRefreshMergesHistoryAndRecursiveSessionEventsBeforeCooldownEvaluation`
+  2. Update `CodexDetector` and the default `CodexAdapter` initializer to resolve the Codex home from `CODEX_HOME` when present, falling back to `~/.codex` only when the environment variable is absent or empty. Keep the detector/parser pointed at the same resolved home.
+  3. Extend `CodexActivityParser` so passive parsing includes recursive `sessions/YYYY/MM/DD/rollout-*.jsonl` files. Reuse existing line parsing where possible, skip malformed lines, and preserve the current privacy boundary: timestamps, event type, duration/model metadata only; no prompt bodies.
+  4. Add an adapter-level history bookmark so repeated `CodexAdapter.refresh()` calls parse only appended `history.jsonl` content after the first read. Preserve the test seam added in Step R.3 so bookmark values remain observable.
+  5. Merge passive events from incremental `history.jsonl`, recursive session rollout files, and wrapper ledger events before confidence and cooldown evaluation. Limit-hit events from rollout files must contribute to cooldown state.
+  6. Inspect `CodexPlanProfile`, `ProviderSettingsStore`, and `SettingsView` for the existing Codex plan-picker path. If it is missing or disconnected, add a Settings picker that persists the selected plan and updates the live adapter without app restart.
+  7. Improve Codex headroom/confidence copy only where the current model has a defensible source. Do not introduce exact remaining quota claims for passive or wrapper-only data.
+  8. Run the focused R.3 validation first:
+     `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/CodexDetectionTests -only-testing:ClaudeUsageTests/CodexActivityParsingTests -only-testing:ClaudeUsageTests/CodexAdapterRefreshTests`
+  9. Then run `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`. Any remaining failures should be new regressions unless they are documented red-phase tests from later Tauri steps.
 
   **Acceptance criteria:**
   - Codex plan picker exists in macOS Settings and updates adapter estimation without restart.
