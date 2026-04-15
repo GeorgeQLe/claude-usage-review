@@ -6,7 +6,7 @@
 > Test strategy: tdd
 
 ## Tests First
-- [ ] Step 2.1: [automated] Add failing tests for Claude API parsing, `Set-Cookie` session-key rotation, account metadata CRUD, secret write/read/delete, polling backoff, reset-time fetch scheduling, auth-expired handling, and typed IPC command validation under `electron-app/src/main/**/__tests__/` and `electron-app/src/shared/**/__tests__/`.
+- [x] Step 2.1: [automated] Add failing tests for Claude API parsing, `Set-Cookie` session-key rotation, account metadata CRUD, secret write/read/delete, polling backoff, reset-time fetch scheduling, auth-expired handling, and typed IPC command validation under `electron-app/src/main/**/__tests__/` and `electron-app/src/shared/**/__tests__/`.
 
   **What:** Define the Phase 2 behavior contract before implementation. These tests should fail because the real account store, Claude client, polling scheduler, and durable IPC wiring do not exist yet.
 
@@ -30,6 +30,13 @@
   - Existing Phase 1 tests should still pass unless they are intentionally updated to the new Phase 2 contract.
   - Do not implement production behavior in this step beyond tiny testability seams required to express the failing tests.
 
+  **Step 2.1 Review:**
+  - Added red-phase Vitest coverage for Claude usage fetching/parsing/session rotation, account metadata CRUD, credential secret persistence, polling cadence/backoff/reset/auth-expired behavior, IPC command validation/service wiring, and Phase 2 Claude usage schemas.
+  - `npm run typecheck` passes from `electron-app/`.
+  - `npm test -- --run src/foundation-main.test.ts src/foundation-storage.test.ts src/foundation-schemas.test.ts src/foundation-renderer.test.tsx src/scaffold.test.ts` passes with 5 files and 22 tests.
+  - `npm test -- --run` fails as expected with 17 red-phase failures: missing `claudeUsage.js`, `accounts.js`, `polling.js`, missing `createClaudeCredentialStore`, placeholder IPC not calling injected durable services, and the connection-result schema not yet accepting `connected`.
+  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in the new account tests.
+
 ## Implementation
 - [ ] Step 2.2: [automated] Implement account metadata and active-account persistence in `electron-app/src/main/storage/accounts.ts`, with session keys stored only through the secret store and never serialized to renderer state.
 - [ ] Step 2.3: [automated] Implement the Claude usage client in `electron-app/src/main/services/claudeUsage.ts`, matching the Swift/Tauri API behavior: `sessionKey` cookie, `anthropic-client-platform: web_claude_ai`, all known usage limit fields, 401/403 auth expiry, and session-key rotation.
@@ -50,11 +57,20 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 2.1
+## Next Step Plan: Step 2.2
 
-Write the red-phase tests for Phase 2. Keep this step test-only except for tiny exported seams needed by the tests. Do not implement account persistence, network fetching, polling, or real IPC state yet.
+Implement account metadata and active-account persistence in `electron-app/src/main/storage/accounts.ts`. Keep session keys out of account rows and renderer-facing summaries; credential values should remain the responsibility of `electron-app/src/main/storage/secrets.ts`.
 
-Validation for the red phase:
-- Run `npm test -- --run` from `electron-app/` and confirm the new Phase 2 tests fail for expected missing modules or not-yet-implemented behavior.
-- Run a targeted existing foundation test if needed to confirm no accidental Phase 1 regression.
-- Record the expected failures in the Step 2.1 review before marking the step complete.
+Implementation outline:
+- Create `createAccountStore({ database, idFactory, now })` in `electron-app/src/main/storage/accounts.ts`.
+- Use the existing `accounts` table created by `storageMigrations`; do not introduce a new table unless the migration proves insufficient.
+- Implement `addAccount`, `renameAccount`, `removeAccount`, `setActiveAccount`, `saveOrgId`, `listAccounts`, and `getActiveAccount`.
+- Normalize active-account state so exactly one account is active when any accounts exist, and the first remaining account becomes active after deleting the active account.
+- Return `AccountSummary`-compatible objects only: `id`, `label`, `orgId`, `isActive`, and `authStatus`.
+- Preserve `authStatus` values from the database; adding a new account should start as `missing_credentials`.
+- Keep all SQL parameterized and avoid serializing or accepting `sessionKey` in account metadata APIs.
+
+Validation for Step 2.2:
+- Run `npm run typecheck` from `electron-app/`.
+- Run `npm test -- --run src/main/storage/accounts.test.ts src/foundation-storage.test.ts`.
+- The account tests should pass after Step 2.2; the broader Phase 2 suite may remain red for `claudeUsage.ts`, `polling.ts`, credential persistence, schema updates, and IPC wiring until later steps.

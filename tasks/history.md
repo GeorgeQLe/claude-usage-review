@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-15 — Step 2.1: Electron Claude Phase 2 Red Tests
+
+Added Phase 2 red-phase Vitest coverage for the Electron app: Claude usage API request/parsing/session rotation, account metadata CRUD and active-account normalization, account-scoped credential secret persistence, polling cadence/backoff/reset/auth-expired behavior, typed IPC service wiring and sanitization, and Claude usage schema contracts. No production Phase 2 behavior was implemented in this step.
+
+Validation: `npm run typecheck` passed from `electron-app/`. Existing foundation tests passed with `npm test -- --run src/foundation-main.test.ts src/foundation-storage.test.ts src/foundation-schemas.test.ts src/foundation-renderer.test.tsx src/scaffold.test.ts` (5 files, 22 tests). Full `npm test -- --run` fails as expected with 17 red-phase failures for missing `claudeUsage.js`, `accounts.js`, `polling.js`, missing `createClaudeCredentialStore`, placeholder IPC not calling durable services, and the connection-result schema not yet accepting `connected`. Accepted warning: Node's experimental SQLite warning during account tests.
+
 ## 2026-04-15 — Step 1.9: Electron Runtime Foundation Verification
 
 Completed the Phase 1 verification gate for the Electron app. `npm run typecheck`, `npm test`, and `npm run build` all passed from `electron-app/`; the test suite reported 5 passing files and 22 passing tests. Confirmed `dist-electron/main/app.js`, `dist-electron/preload/index.js`, and `dist/index.html` exist after build. Re-ran the renderer/shared forbidden-import scan with no matches. Ran a bounded `npm run dev` smoke: Vite started on `127.0.0.1:5173`, the Electron main build completed, Electron stayed running without startup error output, and all smoke processes were stopped afterward.
