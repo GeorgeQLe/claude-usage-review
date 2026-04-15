@@ -4,8 +4,17 @@ enum GeminiInstallStatus: Equatable {
     case installed, notInstalled
 }
 
-enum GeminiAuthMode: Equatable {
+enum GeminiAuthMode: String, CaseIterable, Equatable {
     case oauthPersonal, apiKey, vertexAI, codeAssist
+
+    var displayName: String {
+        switch self {
+        case .oauthPersonal: return "OAuth Personal"
+        case .apiKey: return "API Key"
+        case .vertexAI: return "Vertex AI"
+        case .codeAssist: return "Code Assist"
+        }
+    }
 }
 
 enum GeminiAuthStatus: Equatable {

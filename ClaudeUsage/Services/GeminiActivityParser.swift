@@ -8,10 +8,20 @@ struct GeminiRequestEvent {
     let model: String
 }
 
-struct GeminiPlanProfile {
+struct GeminiPlanProfile: Equatable {
     let name: String
     let dailyRequestLimit: Int
     let requestsPerMinuteLimit: Int
+
+    static let presets: [GeminiPlanProfile] = [
+        GeminiPlanProfile(name: "Personal", dailyRequestLimit: 1000, requestsPerMinuteLimit: 60),
+        GeminiPlanProfile(name: "API Key", dailyRequestLimit: 1500, requestsPerMinuteLimit: 120),
+        GeminiPlanProfile(name: "Vertex AI", dailyRequestLimit: 3000, requestsPerMinuteLimit: 300),
+    ]
+
+    static func preset(named name: String) -> GeminiPlanProfile? {
+        presets.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+    }
 }
 
 struct GeminiRatePressure: Equatable {

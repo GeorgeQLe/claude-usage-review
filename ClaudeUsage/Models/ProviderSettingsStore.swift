@@ -69,6 +69,7 @@ class ProviderSettingsStore: ObservableObject {
     }
 
     func setGeminiAccuracyMode(_ enabled: Bool) {
+        objectWillChange.send()
         UserDefaults.standard.set(enabled, forKey: "provider_gemini_accuracy_mode")
     }
 
@@ -82,6 +83,7 @@ class ProviderSettingsStore: ObservableObject {
     }
 
     func setGeminiPlan(_ plan: GeminiPlanProfile?) {
+        objectWillChange.send()
         if let plan = plan {
             UserDefaults.standard.set(plan.name, forKey: "provider_gemini_plan")
             UserDefaults.standard.set(plan.dailyRequestLimit, forKey: "provider_gemini_plan_daily_limit")
@@ -97,25 +99,13 @@ class ProviderSettingsStore: ObservableObject {
         guard let raw = UserDefaults.standard.string(forKey: "provider_gemini_auth_mode") else {
             return nil
         }
-        switch raw {
-        case "oauthPersonal": return .oauthPersonal
-        case "apiKey": return .apiKey
-        case "vertexAI": return .vertexAI
-        case "codeAssist": return .codeAssist
-        default: return nil
-        }
+        return GeminiAuthMode(rawValue: raw)
     }
 
     func setGeminiAuthMode(_ mode: GeminiAuthMode?) {
+        objectWillChange.send()
         if let mode = mode {
-            let raw: String
-            switch mode {
-            case .oauthPersonal: raw = "oauthPersonal"
-            case .apiKey: raw = "apiKey"
-            case .vertexAI: raw = "vertexAI"
-            case .codeAssist: raw = "codeAssist"
-            }
-            UserDefaults.standard.set(raw, forKey: "provider_gemini_auth_mode")
+            UserDefaults.standard.set(mode.rawValue, forKey: "provider_gemini_auth_mode")
         } else {
             UserDefaults.standard.removeObject(forKey: "provider_gemini_auth_mode")
         }

@@ -28,7 +28,10 @@ class ProviderShellViewModel: ObservableObject {
         let codexAdapter = CodexAdapter(planProfile: plan)
         self.codexAdapter = codexAdapter
         let geminiPlan = settingsStore.geminiPlan()
-        let geminiAdapter = GeminiAdapter(planProfile: geminiPlan)
+        let geminiAdapter = GeminiAdapter(
+            planProfile: geminiPlan,
+            confirmedAuthMode: settingsStore.geminiAuthMode()
+        )
         self.geminiAdapter = geminiAdapter
         self.codexSnapshotProvider = { codexAdapter.toProviderSnapshot(isEnabled: $0) }
         self.geminiSnapshotProvider = { geminiAdapter.toProviderSnapshot(isEnabled: $0) }
@@ -129,6 +132,13 @@ class ProviderShellViewModel: ObservableObject {
     func updateCodexPlan(_ plan: CodexPlanProfile?) {
         codexAdapter?.planProfile = plan
         codexAdapter?.refresh()
+        rebuildFromCurrent()
+    }
+
+    func updateGeminiSettings(plan: GeminiPlanProfile?, authMode: GeminiAuthMode?) {
+        geminiAdapter?.planProfile = plan
+        geminiAdapter?.confirmedAuthMode = authMode
+        geminiAdapter?.refresh()
         rebuildFromCurrent()
     }
 

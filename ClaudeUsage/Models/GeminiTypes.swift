@@ -15,20 +15,13 @@ class GeminiConfidenceEngine {
         detection: GeminiDetectionResult,
         events: [GeminiRequestEvent],
         plan: GeminiPlanProfile?,
+        confirmedAuthMode: GeminiAuthMode? = nil,
         wrapperEvents: [GeminiInvocationEvent] = []
     ) -> GeminiEstimate {
-        // Wrapper events with enough limit hits + plan → highConfidence
-        let wrapperLimitHits = wrapperEvents.filter { $0.limitHitDetected }.count
-        if wrapperLimitHits >= 3 && plan != nil {
-            return GeminiEstimate(confidence: .highConfidence, ratePressure: nil, authMode: nil)
-        }
-        // Any wrapper events → at least estimated
-        if !wrapperEvents.isEmpty {
-            return GeminiEstimate(confidence: .estimated, ratePressure: nil, authMode: nil)
-        }
-
         let authMode: GeminiAuthMode?
-        if case .authenticated(let mode) = detection.authStatus {
+        if let confirmedAuthMode {
+            authMode = confirmedAuthMode
+        } else if case .authenticated(let mode) = detection.authStatus {
             authMode = mode
         } else {
             authMode = nil
@@ -42,6 +35,16 @@ class GeminiConfidenceEngine {
                 : GeminiRatePressure(events: events, now: now)
         } else {
             ratePressure = nil
+        }
+
+        // Wrapper events with enough limit hits + plan → highConfidence
+        let wrapperLimitHits = wrapperEvents.filter { $0.limitHitDetected }.count
+        if wrapperLimitHits >= 3 && plan != nil {
+            return GeminiEstimate(confidence: .highConfidence, ratePressure: ratePressure, authMode: authMode)
+        }
+        // Any wrapper events → at least estimated
+        if !wrapperEvents.isEmpty {
+            return GeminiEstimate(confidence: .estimated, ratePressure: ratePressure, authMode: authMode)
         }
 
         let confidence: GeminiConfidence

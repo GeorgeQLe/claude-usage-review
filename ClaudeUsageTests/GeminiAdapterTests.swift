@@ -365,3 +365,119 @@ final class GeminiConfidenceTests: XCTestCase {
                           "Passive adapter should never claim .exact confidence")
     }
 }
+
+// MARK: - GeminiSettingsTests
+
+final class GeminiSettingsTests: XCTestCase {
+    private let settingsKeys = [
+        "provider_gemini_plan",
+        "provider_gemini_plan_daily_limit",
+        "provider_gemini_plan_rpm_limit",
+        "provider_gemini_auth_mode",
+    ]
+
+    override func setUp() {
+        super.setUp()
+        clearSettings()
+    }
+
+    override func tearDown() {
+        clearSettings()
+        super.tearDown()
+    }
+
+    func testGeminiPlanPresetsCanBeLookedUpBySettingsName() {
+        let personal = GeminiPlanProfile.preset(named: "Personal")
+        let apiKey = GeminiPlanProfile.preset(named: "API Key")
+
+        XCTAssertEqual(personal?.dailyRequestLimit, 1000)
+        XCTAssertEqual(personal?.requestsPerMinuteLimit, 60)
+        XCTAssertEqual(apiKey?.name, "API Key")
+    }
+
+    func testProviderSettingsStorePersistsGeminiPlanAndAuthMode() {
+        let store = ProviderSettingsStore()
+
+        store.setGeminiPlan(GeminiPlanProfile.preset(named: "Personal"))
+        store.setGeminiAuthMode(.vertexAI)
+
+        let reloadedStore = ProviderSettingsStore()
+        XCTAssertEqual(reloadedStore.geminiPlan(), GeminiPlanProfile.preset(named: "Personal"))
+        XCTAssertEqual(reloadedStore.geminiAuthMode(), .vertexAI)
+    }
+
+    func testConfirmedAuthModeOverridesPassiveDetectionForEstimate() {
+        let detection = GeminiDetectionResult(
+            installStatus: .installed,
+            authStatus: .authAbsent
+        )
+        let events = [
+            GeminiRequestEvent(timestamp: Date(), inputTokens: 50, outputTokens: 25,
+                               totalTokens: 75, model: "gemini-2.5-flash"),
+        ]
+
+        let estimate = GeminiConfidenceEngine().evaluate(
+            detection: detection,
+            events: events,
+            plan: GeminiPlanProfile.preset(named: "Personal"),
+            confirmedAuthMode: .apiKey
+        )
+
+        XCTAssertEqual(estimate.authMode, .apiKey)
+        XCTAssertEqual(estimate.confidence, .highConfidence)
+        XCTAssertNotNil(estimate.ratePressure?.remainingDailyHeadroom)
+    }
+
+    func testAdapterRefreshUsesConfirmedAuthModeAndPlan() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gemini-settings-adapter-\(UUID().uuidString)")
+        let ledgerDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("gemini-settings-ledger-\(UUID().uuidString)")
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+            try? FileManager.default.removeItem(at: ledgerDir)
+        }
+
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: tempDir.appendingPathComponent("tmp/project/chats"),
+            withIntermediateDirectories: true
+        )
+        try """
+        {"security":{"auth":{"selectedType":"api-key"}}}
+        """.write(to: tempDir.appendingPathComponent("settings.json"), atomically: true, encoding: .utf8)
+        try """
+        {
+          "sessionId": "settings",
+          "messages": [
+            {"id":"m1","timestamp":"2026-04-09T10:00:15Z","type":"gemini","content":"resp",
+             "tokens":{"input":50,"output":25,"total":75},"model":"gemini-2.5-flash"}
+          ]
+        }
+        """.write(
+            to: tempDir.appendingPathComponent("tmp/project/chats/session-001.json"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let adapter = GeminiAdapter(
+            geminiHome: tempDir,
+            planProfile: GeminiPlanProfile.preset(named: "Personal"),
+            confirmedAuthMode: .apiKey,
+            ledgerDirectory: ledgerDir
+        )
+        adapter.refresh()
+
+        guard case let .installed(estimate) = adapter.state else {
+            return XCTFail("Expected installed Gemini adapter state")
+        }
+        XCTAssertEqual(estimate.authMode, .apiKey)
+        XCTAssertEqual(estimate.confidence, .highConfidence)
+    }
+
+    private func clearSettings() {
+        for key in settingsKeys {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+}

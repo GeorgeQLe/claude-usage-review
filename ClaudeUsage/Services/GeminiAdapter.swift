@@ -15,17 +15,20 @@ class GeminiAdapter: ObservableObject {
     let confidenceEngine: GeminiConfidenceEngine
     let ledger: GeminiEventLedger
     var planProfile: GeminiPlanProfile?
+    var confirmedAuthMode: GeminiAuthMode?
     private(set) var lastRefreshTime: Date?
     private(set) var consecutiveFailures: Int = 0
 
     init(geminiHome: URL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".gemini"),
          planProfile: GeminiPlanProfile? = nil,
+         confirmedAuthMode: GeminiAuthMode? = nil,
          ledgerDirectory: URL = GeminiEventLedger.defaultDirectory) {
         self.detector = GeminiDetector(geminiHome: geminiHome)
         self.parser = GeminiActivityParser(geminiHome: geminiHome)
         self.confidenceEngine = GeminiConfidenceEngine()
         self.ledger = GeminiEventLedger(directory: ledgerDirectory)
         self.planProfile = planProfile
+        self.confirmedAuthMode = confirmedAuthMode
     }
 
     func refresh() {
@@ -40,6 +43,7 @@ class GeminiAdapter: ObservableObject {
         let wrapperEvents = (try? ledger.readEvents()) ?? []
         let estimate = confidenceEngine.evaluate(
             detection: detection, events: events, plan: planProfile,
+            confirmedAuthMode: confirmedAuthMode,
             wrapperEvents: wrapperEvents
         )
         state = .installed(estimate: estimate)

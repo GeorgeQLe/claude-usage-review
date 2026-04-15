@@ -310,13 +310,62 @@ struct SettingsView: View {
 
                     if providerSettingsStore.isEnabled(.gemini) && providerShellViewModel.geminiDetected {
                         HStack {
+                            Text("  Auth Mode")
+                                .font(.system(size: 11))
+                            Spacer()
+                            Picker("", selection: Binding(
+                                get: { selectedGeminiAuthModeName },
+                                set: { selectedName in
+                                    let mode = selectedName == "None" ? nil : GeminiAuthMode(rawValue: selectedName)
+                                    providerSettingsStore.setGeminiAuthMode(mode)
+                                    providerShellViewModel.updateGeminiSettings(
+                                        plan: providerSettingsStore.geminiPlan(),
+                                        authMode: mode
+                                    )
+                                }
+                            )) {
+                                Text("None").tag("None")
+                                ForEach(GeminiAuthMode.allCases, id: \.rawValue) { mode in
+                                    Text(mode.displayName).tag(mode.rawValue)
+                                }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .controlSize(.mini)
+                            .frame(width: 120)
+                        }
+
+                        HStack {
                             Text("  Plan")
                                 .font(.system(size: 11))
                             Spacer()
-                            Text(providerSettingsStore.geminiPlan()?.name ?? "None")
-                                .font(.system(size: 10))
-                                .foregroundColor(.secondary)
+                            Picker("", selection: Binding(
+                                get: { selectedGeminiPlanName },
+                                set: { selectedName in
+                                    let plan = selectedName == "None" ? nil : GeminiPlanProfile.preset(named: selectedName)
+                                    providerSettingsStore.setGeminiPlan(plan)
+                                    providerShellViewModel.updateGeminiSettings(
+                                        plan: plan,
+                                        authMode: providerSettingsStore.geminiAuthMode()
+                                    )
+                                }
+                            )) {
+                                Text("None").tag("None")
+                                ForEach(GeminiPlanProfile.presets, id: \.name) { plan in
+                                    Text(plan.name).tag(plan.name)
+                                }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .controlSize(.mini)
+                            .frame(width: 120)
                         }
+
+                        Text("API key and Vertex limits may be user-specific.")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                            .padding(.leading, 12)
+
                         HStack {
                             Text("  Accuracy Mode")
                                 .font(.system(size: 11))
@@ -446,6 +495,17 @@ struct SettingsView: View {
             return "None"
         }
         return CodexPlanProfile.preset(named: plan.name)?.name ?? "None"
+    }
+
+    private var selectedGeminiPlanName: String {
+        guard let plan = providerSettingsStore.geminiPlan() else {
+            return "None"
+        }
+        return GeminiPlanProfile.preset(named: plan.name)?.name ?? "None"
+    }
+
+    private var selectedGeminiAuthModeName: String {
+        providerSettingsStore.geminiAuthMode()?.rawValue ?? "None"
     }
 
     private var authStatusColor: Color {
