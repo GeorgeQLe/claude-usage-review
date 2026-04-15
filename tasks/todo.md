@@ -46,7 +46,7 @@
   - A Codex or Gemini adapter with `lastRefreshTime` older than `ProviderCoordinator.staleThreshold` produces a `.stale` provider card in `ProviderShellViewModel.shellState`.
   - Stale provider tray text contains a stale indicator when that provider is selected.
 
-- [ ] Step R.3: [automated] Add Codex passive parser tests for documented sources and incremental production refresh.
+- [x] Step R.3: [automated] Add Codex passive parser tests for documented sources and incremental production refresh.
 
   **What:** Verify `CODEX_HOME`, bookmark persistence, recursive `sessions/YYYY/MM/DD/rollout-*.jsonl` parsing, and merged history/session events before changing the adapter.
 
@@ -77,6 +77,13 @@
   - `tauri-app/src-tauri/src/state.rs`
   - `tauri-app/src/types.ts`
   - `tauri-app/src/settings.ts`
+
+  **Implementation plan for a fresh session:**
+  1. Inspect the Tauri settings load/save flow in `tauri-app/src/settings.ts`, the frontend state types in `tauri-app/src/types.ts`, and the Rust state/config model in `tauri-app/src-tauri/src/models.rs` and `tauri-app/src-tauri/src/state.rs`.
+  2. Add failing Rust coverage proving configured account metadata exposes the active account org ID while omitting the session key from serialized frontend state.
+  3. Add failing TypeScript/front-end coverage if the project has a lightweight test seam for `settings.ts`; otherwise add a small testable helper that maps loaded settings/account state to form values and assert the org ID input is populated from saved metadata.
+  4. Keep this step red-phase only. Production changes should be limited to tiny testability seams needed for tests to compile, not the actual org-ID preservation fix.
+  5. Run the narrow Rust/frontend validation needed to prove the new tests fail for the expected missing org-ID exposure and population behavior.
 
   **Acceptance criteria:**
   - `UsageState` or a settings-specific command exposes the active account org ID.

@@ -572,3 +572,13 @@ Validation: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` 
 - Codex stale refresh timestamp still yields a `.configured` card instead of `.stale`.
 - Gemini stale refresh timestamp still yields a `.configured` card instead of `.stale`.
 - Selected stale Codex tray text is `Codex Observed` instead of including `Stale`.
+
+## 2026-04-15 — Step R.3: Red-Phase Codex Passive Parser Tests
+
+Added Codex passive-source regression coverage for `CODEX_HOME`, recursive `sessions/YYYY/MM/DD/rollout-*.jsonl` parsing, production refresh bookmark reuse, and merging history/session rollout events before cooldown evaluation. Added a narrow `CodexAdapter` dependency-injection initializer so adapter-bound tests can observe parser bookmark behavior without implementing the remediation.
+
+Validation: focused `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/CodexDetectionTests -only-testing:ClaudeUsageTests/CodexActivityParsingTests -only-testing:ClaudeUsageTests/CodexAdapterRefreshTests` builds successfully, then fails with the expected red-phase assertions:
+- Recursive dated session rollout parsing returns 0 events instead of prompt/completion/limit-hit events.
+- `CodexAdapter.refresh()` calls full history parsing twice instead of reusing a bookmark on the second refresh.
+- Session rollout limit hits are not merged into adapter cooldown evaluation.
+- The default adapter ignores `CODEX_HOME` for passive activity parsing.

@@ -29,6 +29,18 @@ class CodexAdapter: ObservableObject {
         self.planProfile = planProfile
     }
 
+    init(detector: CodexDetector,
+         parser: CodexActivityParser,
+         confidenceEngine: CodexConfidenceEngine = CodexConfidenceEngine(),
+         ledger: CodexEventLedger,
+         planProfile: CodexPlanProfile? = nil) {
+        self.detector = detector
+        self.parser = parser
+        self.confidenceEngine = confidenceEngine
+        self.ledger = ledger
+        self.planProfile = planProfile
+    }
+
     func refresh() {
         let detection = detector.detect()
         guard detection.installStatus == .installed else {

@@ -62,6 +62,41 @@ final class CodexDetectionTests: XCTestCase {
 
         XCTAssertEqual(result.authStatus, .authAbsent)
     }
+
+    func testDefaultAdapterRespectsCodexHomeEnvironmentVariable() throws {
+        let codexHome = tempDir.appendingPathComponent("custom-codex-home")
+        let ledgerDir = tempDir.appendingPathComponent("ledger")
+        try fileManager.createDirectory(at: codexHome, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: ledgerDir, withIntermediateDirectories: true)
+
+        fileManager.createFile(
+            atPath: codexHome.appendingPathComponent("config.toml").path,
+            contents: Data("[codex]\n".utf8)
+        )
+        fileManager.createFile(
+            atPath: codexHome.appendingPathComponent("auth.json").path,
+            contents: Data("{\"api_key\":\"test\"}\n".utf8)
+        )
+
+        let recentLimitHit = """
+        {"type":"error","timestamp":"\(codexISO(Date().addingTimeInterval(-60)))","message":"rate limit exceeded"}
+        """
+        try recentLimitHit.write(
+            to: codexHome.appendingPathComponent("history.jsonl"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        try withEnvironmentVariable("CODEX_HOME", value: codexHome.path) {
+            let adapter = CodexAdapter(planProfile: nil, ledgerDirectory: ledgerDir)
+            adapter.refresh()
+
+            guard case let .installed(_, cooldown) = adapter.state else {
+                return XCTFail("Expected default adapter to detect CODEX_HOME as installed")
+            }
+            XCTAssertTrue(cooldown.cooldownActive, "Expected default adapter to parse activity from CODEX_HOME")
+        }
+    }
 }
 
 // MARK: - Codex Activity Parsing Tests
@@ -123,6 +158,31 @@ final class CodexActivityParsingTests: XCTestCase {
         let sessionEnd = events.first { $0.eventType == .sessionEnd }
         XCTAssertNotNil(sessionEnd, "Should find a session_end event")
         XCTAssertNotNil(sessionEnd?.duration, "Session end event should have duration")
+    }
+
+    func testParsesRecursiveDatedSessionRolloutFiles() throws {
+        let sessionDir = tempDir
+            .appendingPathComponent("sessions")
+            .appendingPathComponent("2026")
+            .appendingPathComponent("04")
+            .appendingPathComponent("15")
+        try fileManager.createDirectory(at: sessionDir, withIntermediateDirectories: true)
+
+        let rolloutFile = sessionDir.appendingPathComponent("rollout-abc123.jsonl")
+        let jsonl = """
+        {"type":"prompt","timestamp":"2026-04-15T09:01:00Z","tokens":100}
+        {"type":"completion","timestamp":"2026-04-15T09:01:05Z","tokens":250}
+        {"type":"error","timestamp":"2026-04-15T09:02:00Z","message":"usage limit reached"}
+        """
+        try jsonl.write(to: rolloutFile, atomically: true, encoding: .utf8)
+
+        let parser = CodexActivityParser(codexHome: tempDir)
+        let events = try parser.parseSessions()
+
+        XCTAssertEqual(events.count, 3)
+        XCTAssertTrue(events.contains { $0.eventType == .prompt })
+        XCTAssertTrue(events.contains { $0.eventType == .completion })
+        XCTAssertTrue(events.contains { $0.eventType == .limitHit })
     }
 
     func testIncrementalParseResumeFromBookmark() throws {
@@ -189,6 +249,107 @@ final class CodexActivityParsingTests: XCTestCase {
         XCTAssertFalse(windows.isEmpty, "Should produce at least one activity window")
         // All 5 events fall within a single 5-hour window (06:00–11:00)
         XCTAssertEqual(windows.first?.eventCount, 5, "All events should fall in the same 5-hour window")
+    }
+}
+
+// MARK: - Codex Adapter Refresh Tests
+
+final class CodexAdapterRefreshTests: XCTestCase {
+
+    private var tempDir: URL!
+    private let fileManager = FileManager.default
+
+    override func setUp() {
+        super.setUp()
+        tempDir = fileManager.temporaryDirectory
+            .appendingPathComponent("codex-adapter-\(UUID().uuidString)")
+        try? fileManager.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    }
+
+    override func tearDown() {
+        try? fileManager.removeItem(at: tempDir)
+        tempDir = nil
+        super.tearDown()
+    }
+
+    func testRefreshReusesHistoryBookmarkForAppendedContent() throws {
+        let codexHome = tempDir.appendingPathComponent("codex")
+        let ledgerDir = tempDir.appendingPathComponent("ledger")
+        try fileManager.createDirectory(at: codexHome, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: ledgerDir, withIntermediateDirectories: true)
+        fileManager.createFile(
+            atPath: codexHome.appendingPathComponent("history.jsonl").path,
+            contents: Data("{\"type\":\"prompt\",\"timestamp\":\"2026-04-15T09:01:00Z\"}\n".utf8)
+        )
+
+        let detector = StubCodexDetector(
+            codexHome: codexHome,
+            result: CodexDetectionResult(installStatus: .installed, authStatus: .authPresent)
+        )
+        let parser = BookmarkRecordingCodexActivityParser(codexHome: codexHome)
+        let adapter = CodexAdapter(
+            detector: detector,
+            parser: parser,
+            ledger: CodexEventLedger(directory: ledgerDir),
+            planProfile: CodexPlanProfile(name: "pro", dailyTokenLimit: 100_000)
+        )
+
+        adapter.refresh()
+        adapter.refresh()
+
+        XCTAssertEqual(parser.requestedBookmarkDescriptions, ["nil", "1"])
+    }
+
+    func testRefreshMergesHistoryAndRecursiveSessionEventsBeforeCooldownEvaluation() throws {
+        let codexHome = tempDir.appendingPathComponent("codex")
+        let ledgerDir = tempDir.appendingPathComponent("ledger")
+        try fileManager.createDirectory(at: codexHome, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: ledgerDir, withIntermediateDirectories: true)
+
+        fileManager.createFile(
+            atPath: codexHome.appendingPathComponent("config.toml").path,
+            contents: Data("[codex]\n".utf8)
+        )
+        fileManager.createFile(
+            atPath: codexHome.appendingPathComponent("auth.json").path,
+            contents: Data("{\"api_key\":\"test\"}\n".utf8)
+        )
+        let history = """
+        {"type":"prompt","timestamp":"\(codexISO(Date().addingTimeInterval(-120)))","tokens":100}
+        """
+        try history.write(
+            to: codexHome.appendingPathComponent("history.jsonl"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let sessionDir = codexHome
+            .appendingPathComponent("sessions")
+            .appendingPathComponent("2026")
+            .appendingPathComponent("04")
+            .appendingPathComponent("15")
+        try fileManager.createDirectory(at: sessionDir, withIntermediateDirectories: true)
+        let rollout = """
+        {"type":"error","timestamp":"\(codexISO(Date().addingTimeInterval(-60)))","message":"rate limit exceeded"}
+        """
+        try rollout.write(
+            to: sessionDir.appendingPathComponent("rollout-limit.jsonl"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let adapter = CodexAdapter(
+            codexHome: codexHome,
+            planProfile: CodexPlanProfile(name: "pro", dailyTokenLimit: 100_000),
+            ledgerDirectory: ledgerDir
+        )
+        adapter.refresh()
+
+        guard case let .installed(estimate, cooldown) = adapter.state else {
+            return XCTFail("Expected configured Codex adapter")
+        }
+        XCTAssertEqual(estimate.confidence, .estimated)
+        XCTAssertTrue(cooldown.cooldownActive, "Expected session rollout limit hit to contribute to cooldown")
     }
 }
 
@@ -317,4 +478,71 @@ final class CodexConfidenceTests: XCTestCase {
 
         XCTAssertEqual(estimate.confidence, .highConfidence)
     }
+}
+
+// MARK: - Test Helpers
+
+private final class StubCodexDetector: CodexDetector {
+    private let stubbedResult: CodexDetectionResult
+
+    init(codexHome: URL, result: CodexDetectionResult) {
+        self.stubbedResult = result
+        super.init(codexHome: codexHome)
+    }
+
+    override func detect() -> CodexDetectionResult {
+        stubbedResult
+    }
+}
+
+private final class BookmarkRecordingCodexActivityParser: CodexActivityParser {
+    private var nextOffset: UInt64 = 1
+    private(set) var requestedBookmarkDescriptions: [String] = []
+
+    override func parseHistory() throws -> [CodexActivityEvent] {
+        requestedBookmarkDescriptions.append("nil")
+        return [
+            CodexActivityEvent(
+                eventType: .prompt,
+                timestamp: Date().addingTimeInterval(-120),
+                tokens: 100,
+                duration: nil
+            )
+        ]
+    }
+
+    override func parseHistory(from bookmark: ParseBookmark?) throws -> ([CodexActivityEvent], ParseBookmark?) {
+        requestedBookmarkDescriptions.append(bookmark.map { "\($0.byteOffset)" } ?? "nil")
+        defer { nextOffset += 1 }
+        return (
+            [
+                CodexActivityEvent(
+                    eventType: .prompt,
+                    timestamp: Date().addingTimeInterval(-120),
+                    tokens: 100,
+                    duration: nil
+                )
+            ],
+            ParseBookmark(byteOffset: nextOffset)
+        )
+    }
+}
+
+private func codexISO(_ date: Date) -> String {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime]
+    return formatter.string(from: date)
+}
+
+private func withEnvironmentVariable(_ name: String, value: String, body: () throws -> Void) throws {
+    let previous = getenv(name).map { String(cString: $0) }
+    setenv(name, value, 1)
+    defer {
+        if let previous {
+            setenv(name, previous, 1)
+        } else {
+            unsetenv(name)
+        }
+    }
+    try body()
 }
