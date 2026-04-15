@@ -15,7 +15,7 @@ use std::sync::Arc;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
     tray::TrayIconEvent,
-    Emitter, Listener, Manager, WebviewUrl, WebviewWindowBuilder,
+    Listener, Manager, WebviewUrl, WebviewWindowBuilder,
 };
 use tokio::sync::Mutex;
 
@@ -130,16 +130,17 @@ fn toggle_popover(app: &tauri::AppHandle, tray_rect: tauri::Rect) {
 
 #[derive(Debug, PartialEq, Eq)]
 enum TrayMenuAction {
-    EmitEvent(&'static str),
+    RefreshNow,
+    ToggleOverlay,
     OpenSettings,
     Exit,
 }
 
 fn tray_menu_action_for_id(id: &str) -> Option<TrayMenuAction> {
     match id {
-        "refresh" => Some(TrayMenuAction::EmitEvent("trigger-refresh")),
+        "refresh" => Some(TrayMenuAction::RefreshNow),
         "settings" => Some(TrayMenuAction::OpenSettings),
-        "toggle_overlay" => Some(TrayMenuAction::EmitEvent("trigger-toggle-overlay")),
+        "toggle_overlay" => Some(TrayMenuAction::ToggleOverlay),
         "quit" => Some(TrayMenuAction::Exit),
         _ => None,
     }
@@ -209,10 +210,26 @@ pub fn run() {
                     });
 
                     let app_handle2 = app.handle().clone();
+                    let state_for_menu = state.clone();
                     tray.on_menu_event(move |_app, event| {
                         match tray_menu_action_for_id(event.id().as_ref()) {
-                            Some(TrayMenuAction::EmitEvent(event_name)) => {
-                                let _ = app_handle2.emit(event_name, ());
+                            Some(TrayMenuAction::RefreshNow) => {
+                                let app_handle = app_handle2.clone();
+                                let state = state_for_menu.clone();
+                                tauri::async_runtime::spawn(async move {
+                                    if let Err(err) = commands::refresh_now_action(app_handle, state).await {
+                                        warn!("Tray refresh failed: {err}");
+                                    }
+                                });
+                            }
+                            Some(TrayMenuAction::ToggleOverlay) => {
+                                let app_handle = app_handle2.clone();
+                                let state = state_for_menu.clone();
+                                tauri::async_runtime::spawn(async move {
+                                    if let Err(err) = commands::toggle_overlay_action(app_handle, state).await {
+                                        warn!("Tray overlay toggle failed: {err}");
+                                    }
+                                });
                             }
                             Some(TrayMenuAction::OpenSettings) => {
                                 open_settings(&app_handle2);
@@ -290,17 +307,17 @@ mod tests {
 
     #[test]
     fn tray_refresh_menu_uses_backend_refresh_action() {
-        assert_ne!(
+        assert_eq!(
             tray_menu_action_for_id("refresh"),
-            Some(TrayMenuAction::EmitEvent("trigger-refresh"))
+            Some(TrayMenuAction::RefreshNow)
         );
     }
 
     #[test]
     fn tray_toggle_overlay_menu_uses_backend_overlay_action() {
-        assert_ne!(
+        assert_eq!(
             tray_menu_action_for_id("toggle_overlay"),
-            Some(TrayMenuAction::EmitEvent("trigger-toggle-overlay"))
+            Some(TrayMenuAction::ToggleOverlay)
         );
     }
 
@@ -312,7 +329,10 @@ mod tests {
             actions
                 .iter()
                 .flatten()
-                .all(|action| !matches!(action, TrayMenuAction::EmitEvent(_)))
+                .all(|action| matches!(
+                    action,
+                    TrayMenuAction::RefreshNow | TrayMenuAction::ToggleOverlay
+                ))
         );
     }
 }

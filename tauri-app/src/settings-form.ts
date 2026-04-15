@@ -11,6 +11,6 @@ export function settingsAccountFormValues(
 ): SettingsAccountFormValues {
   return {
     accountName: account.name,
-    orgId: "",
+    orgId: account.org_id ?? "",
   };
 }

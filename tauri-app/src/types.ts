@@ -14,6 +14,7 @@ export interface DisplayLimit {
 export interface AccountInfo {
   id: string;
   name: string;
+  org_id: string | null;
   is_configured: boolean;
   is_active: boolean;
 }

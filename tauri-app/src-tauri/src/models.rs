@@ -39,6 +39,7 @@ pub struct AccountMetadata {
 pub struct AccountInfo {
     pub id: String,
     pub name: String,
+    pub org_id: Option<String>,
     pub is_configured: bool,
     pub is_active: bool,
 }

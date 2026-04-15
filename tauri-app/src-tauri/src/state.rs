@@ -77,6 +77,7 @@ impl AppState {
             .map(|a| AccountInfo {
                 id: a.id.to_string(),
                 name: a.name.clone(),
+                org_id: a.org_id.clone(),
                 is_configured: a.org_id.is_some()
                     && credentials::read_session_key(&a.id).is_some(),
                 is_active: self.config.active_account_id == Some(a.id),

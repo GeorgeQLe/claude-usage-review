@@ -26,6 +26,13 @@ pub async fn refresh_now(
     app: AppHandle,
     state: State<'_, SharedState>,
 ) -> Result<UsageState, String> {
+    refresh_now_action(app, state.inner().clone()).await
+}
+
+pub async fn refresh_now_action(
+    app: AppHandle,
+    state: SharedState,
+) -> Result<UsageState, String> {
     let (session_key, org_id, account_id, http_client) = {
         let s = state.lock().await;
         let id = s
@@ -56,23 +63,29 @@ pub async fn refresh_now(
             s.error_state = None;
             s.auth_status = AuthStatus::Connected;
 
-            // Update tray
+            let usage_state = s.compute_usage_state();
+
             if let Some(tray) = app.tray_by_id("main-tray") {
-                let usage_state = s.compute_usage_state();
                 let _ = tray.set_tooltip(Some(&usage_state.menu_bar_text));
             }
 
-            Ok(s.compute_usage_state())
+            let _ = app.emit("usage-updated", &usage_state);
+
+            Ok(usage_state)
         }
         Err(api::ApiError::AuthError { .. }) => {
             let mut s = state.lock().await;
             s.error_state = Some(ErrorState::AuthExpired);
             s.auth_status = AuthStatus::Expired;
-            Ok(s.compute_usage_state())
+            let usage_state = s.compute_usage_state();
+            let _ = app.emit("usage-updated", &usage_state);
+            Ok(usage_state)
         }
         Err(e) => {
             let mut s = state.lock().await;
             s.error_state = Some(ErrorState::NetworkError);
+            let usage_state = s.compute_usage_state();
+            let _ = app.emit("usage-updated", &usage_state);
             Err(e.to_string())
         }
     }
@@ -105,6 +118,7 @@ pub async fn add_account(
     Ok(AccountInfo {
         id: id.to_string(),
         name,
+        org_id: None,
         is_configured: false,
         is_active: s.config.active_account_id == Some(id),
     })
@@ -248,6 +262,13 @@ pub async fn update_config(
 pub async fn toggle_overlay(
     app: AppHandle,
     state: State<'_, SharedState>,
+) -> Result<bool, String> {
+    toggle_overlay_action(app, state.inner().clone()).await
+}
+
+pub async fn toggle_overlay_action(
+    app: AppHandle,
+    state: SharedState,
 ) -> Result<bool, String> {
     let mut s = state.lock().await;
     s.config.overlay_enabled = !s.config.overlay_enabled;
