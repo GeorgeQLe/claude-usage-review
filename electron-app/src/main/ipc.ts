@@ -31,6 +31,7 @@ import { ipcChannelNames, type IpcChannelName } from "../shared/types/ipc.js";
 import type { ProviderId } from "../shared/types/provider.js";
 import type { AppSettings } from "../shared/types/settings.js";
 import type { UsageState } from "../shared/types/usage.js";
+import { getSecretStorageStatus } from "./storage/secrets.js";
 
 export { ipcChannelNames };
 export type { IpcChannelName };
@@ -154,7 +155,7 @@ function createPlaceholderIpcState() {
       createPlaceholderProviderCard("gemini", "Gemini")
     ],
     lastUpdatedAt: null,
-    warning: null
+    warning: deriveStorageWarning()
   });
 
   return {
@@ -269,6 +270,10 @@ function createPlaceholderIpcState() {
         entries: []
       })
   };
+}
+
+function deriveStorageWarning(): string | null {
+  return getSecretStorageStatus().warning;
 }
 
 function createPlaceholderProviderCard(providerId: ProviderId, displayName: string): UsageState["providers"][number] {

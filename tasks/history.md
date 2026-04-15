@@ -668,3 +668,13 @@ Validation:
 - `npm run build` in `electron-app/`: typecheck, tests, main build, and renderer Vite build passed.
 - Confirmed `dist-electron/preload/index.js` exists after build.
 - Confirmed renderer/shared source has no direct `electron`, `node:*`, or filesystem imports.
+
+## 2026-04-15 — Step 1.6: Electron Storage Primitives
+
+Added the main-process storage foundation for the Electron Windows/Linux app. The new `electron-app/src/main/storage/` boundary includes a SQLite connection factory using Electron's bundled Node 24 `node:sqlite`, an idempotent migration runner with the initial structured-data schema, a `safeStorage` secret wrapper, diagnostic redaction helpers, and a barrel export for later main-process services. Placeholder IPC state now surfaces the Linux `safeStorage` `basic_text` warning through the existing usage-state warning field.
+
+Validation:
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm test -- --run` in `electron-app/`: 1 scaffold test passed.
+- `npm run build` in `electron-app/`: typecheck, tests, main build, and renderer Vite build passed.
+- Confirmed renderer/shared source has no direct imports from `electron`, `node:*`, filesystem, crypto, child-process, or storage modules.

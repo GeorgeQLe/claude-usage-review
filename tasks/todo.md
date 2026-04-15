@@ -11,7 +11,7 @@
 - [x] Step 1.3: [automated] Implement the secure Electron main-process bootstrap in `electron-app/src/main/app.ts`, `electron-app/src/main/windows.ts`, and `electron-app/src/main/tray.ts`: single-instance lock, app lifecycle, tray creation, context menu skeleton, popover/settings/overlay/onboarding windows, CSP-ready local loading, and Linux tray fallback handling.
 - [x] Step 1.4: [automated] Add a narrow preload bridge in `electron-app/src/preload/index.ts` and `electron-app/src/preload/api.ts` using `contextBridge`, with Node integration disabled and context isolation/sandbox options set on all renderer windows.
 - [x] Step 1.5: [automated] Add IPC registration and validation skeletons in `electron-app/src/main/ipc.ts` plus shared schemas under `electron-app/src/shared/schemas/` for the commands listed in the spec.
-- [ ] Step 1.6: [automated] Add storage primitives in `electron-app/src/main/storage/`: SQLite connection/migrations for structured app data, `safeStorage` secret wrapper, redaction helpers, and a Linux `basic_text` backend warning surfaced through derived app state.
+- [x] Step 1.6: [automated] Add storage primitives in `electron-app/src/main/storage/`: SQLite connection/migrations for structured app data, `safeStorage` secret wrapper, redaction helpers, and a Linux `basic_text` backend warning surfaced through derived app state.
 - [ ] Step 1.7: [automated] Add minimal React renderer entries for popover, settings, onboarding, and overlay under `electron-app/src/renderer/`, with placeholder state loaded through the preload API and no direct filesystem or Node access.
 
 ## Green
@@ -148,3 +148,50 @@ Validation:
 - Run `npm run typecheck`, `npm test -- --run`, and `npm run build` from `electron-app/`.
 - Confirm no renderer/shared code imports storage modules, `electron`, `node:*`, or direct filesystem APIs.
 - If SQLite dependency installation or native build is required, verify the dependency can install/build locally before marking the step complete.
+
+## Review: Step 1.6
+
+Implemented the Electron main-process storage primitives:
+- `electron-app/src/main/storage/database.ts` now provides a SQLite connection factory rooted under Electron `app.getPath("userData")`, with explicit path/base-dir/in-memory overrides for later tests and callers.
+- `electron-app/src/main/storage/migrations.ts` now owns an idempotent migration runner plus the initial lightweight schema for account metadata, app settings, provider settings, usage snapshots, wrapper events, parse bookmarks, diagnostics events, migration records, and schema migration records.
+- `electron-app/src/main/storage/secrets.ts` now wraps Electron `safeStorage` for encrypt/decrypt/clear-style secret handling and reports storage backend status without exposing decrypted values to renderer-facing code.
+- `electron-app/src/main/storage/redaction.ts` now redacts session keys, bearer tokens, GitHub-style tokens, cookie values, secret-like object fields, raw prompts, and raw stdout-like diagnostic payload fields.
+- `electron-app/src/main/storage/index.ts` exports the main-process-only storage boundary.
+- `electron-app/src/main/ipc.ts` now derives the placeholder usage warning from `safeStorage` status, surfacing a Linux `basic_text` backend warning through existing app state.
+
+Implementation note:
+- No SQLite npm dependency was added. The foundation uses Electron's bundled Node 24 `node:sqlite` API, which avoids native Electron ABI rebuild work for this phase while still providing a real SQLite connection and migration boundary.
+
+Validation passed from `electron-app/`:
+- `npm run typecheck`
+- `npm test -- --run`
+- `npm run build`
+- Source scan confirmed renderer/shared code has no direct imports from `electron`, `node:*`, filesystem, crypto, child-process, or storage modules.
+
+No warnings were emitted by validation.
+
+Known boundary for the next step:
+- Storage primitives exist but are intentionally not wired into real account/provider workflows yet. Later phases own durable account persistence, credential CRUD, history storage, and diagnostics export integration.
+
+## Next Step Plan: Step 1.7
+
+Add minimal React renderer entries for popover, settings, onboarding, and overlay that load placeholder state through the typed preload API. Keep this step focused on renderer mounting and the preload boundary; do not add real provider polling, durable storage workflows, or polished product UI.
+
+Files to create or modify:
+- `electron-app/src/renderer/app/index.tsx`: load usage state, settings, and accounts through `window.claudeUsage`; render placeholder provider cards, account status, refresh action, and safe warning text.
+- `electron-app/src/renderer/settings/index.ts`: mount a minimal settings React entry that reads placeholder settings/accounts through the preload API and uses write-only credential placeholders without rendering secrets.
+- `electron-app/src/renderer/onboarding/index.ts`: mount a minimal onboarding React entry that reads accounts/settings and presents placeholder setup flow state.
+- `electron-app/src/renderer/overlay/index.ts`: mount a minimal overlay React entry that reads usage state and displays compact placeholder provider status.
+- `electron-app/src/renderer/components/`: add only small shared components if they remove real duplication across the four entries.
+- `electron-app/src/renderer/global.d.ts`: refine only if the renderer needs additional type coverage for `window.claudeUsage`.
+- `electron-app/src/renderer/styles/app.css`: add minimal layout styles while keeping the primary UI stable and not dependent on Node or filesystem APIs.
+
+Implementation notes:
+- All renderer data must come through the typed preload API. Do not import Electron, `node:*`, filesystem, crypto, or main-process modules in renderer/shared files.
+- Treat credentials as write-only placeholders. Never render stored session keys or tokens.
+- Prefer small pure React components that can be smoke-tested in Step 1.8.
+
+Validation:
+- Run `npm run typecheck`, `npm test -- --run`, and `npm run build` from `electron-app/`.
+- Confirm renderer/shared code has no direct imports from `electron`, `node:*`, direct filesystem APIs, crypto, child process, or `src/main/storage`.
+- Inspect the built renderer output enough to confirm all four route entries compile through Vite.
