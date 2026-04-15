@@ -29,7 +29,7 @@ import type {
 } from "../shared/types/ipc.js";
 import { ipcChannelNames, type IpcChannelName } from "../shared/types/ipc.js";
 import type { ProviderId } from "../shared/types/provider.js";
-import type { AppSettings } from "../shared/types/settings.js";
+import type { AppSettings, AppSettingsPatch } from "../shared/types/settings.js";
 import type { UsageState } from "../shared/types/usage.js";
 import { getSecretStorageStatus } from "./storage/secrets.js";
 
@@ -173,7 +173,7 @@ function createPlaceholderIpcState() {
       return usageState;
     },
     getSettings: (): AppSettings => settings,
-    updateSettings: (payload: { readonly patch: Partial<AppSettings> }): AppSettings => {
+    updateSettings: (payload: { readonly patch: AppSettingsPatch }): AppSettings => {
       settings = validateSettings({
         ...settings,
         ...payload.patch,

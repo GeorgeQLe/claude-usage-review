@@ -19,3 +19,7 @@ export interface AppSettings {
   readonly weeklyColorMode: WeeklyColorMode;
   readonly overlay: OverlaySettings;
 }
+
+export interface AppSettingsPatch extends Partial<Omit<AppSettings, "overlay">> {
+  readonly overlay?: Partial<OverlaySettings>;
+}

@@ -2,7 +2,7 @@ import type { AccountId } from "./accounts.js";
 import type { AccountSummary } from "./accounts.js";
 import type { ProviderConfidence } from "./provider.js";
 import type { ProviderId } from "./provider.js";
-import type { AppSettings } from "./settings.js";
+import type { AppSettings, AppSettingsPatch } from "./settings.js";
 import type { UsageState } from "./usage.js";
 
 export const ipcChannelNames = {
@@ -139,7 +139,7 @@ export interface TestClaudeConnectionPayload {
 }
 
 export interface UpdateSettingsPayload {
-  readonly patch: Partial<AppSettings>;
+  readonly patch: AppSettingsPatch;
 }
 
 export interface ProviderCommandPayload {

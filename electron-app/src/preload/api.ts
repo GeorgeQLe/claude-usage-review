@@ -12,7 +12,7 @@ import type {
 } from "../shared/types/ipc.js";
 import { ipcChannelNames, type PreloadInvokeKey, type PreloadInvokeMap } from "../shared/types/ipc.js";
 import type { ProviderId } from "../shared/types/provider.js";
-import type { AppSettings } from "../shared/types/settings.js";
+import type { AppSettings, AppSettingsPatch } from "../shared/types/settings.js";
 import type { UsageState } from "../shared/types/usage.js";
 
 export interface ClaudeUsageApi {
@@ -21,7 +21,7 @@ export interface ClaudeUsageApi {
   refreshNow: () => Promise<UsageState>;
   subscribeUsageUpdated: (callback: (state: UsageState) => void) => () => void;
   getSettings: () => Promise<AppSettings>;
-  updateSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>;
+  updateSettings: (patch: AppSettingsPatch) => Promise<AppSettings>;
   getAccounts: () => Promise<readonly AccountSummary[]>;
   addAccount: (label: string) => Promise<readonly AccountSummary[]>;
   renameAccount: (accountId: AccountId, label: string) => Promise<readonly AccountSummary[]>;
