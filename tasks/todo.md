@@ -112,7 +112,7 @@
   - Tray rotation does not silently present stale data as fresh.
   - Existing 108 macOS tests pass plus the new stale-shell tests.
 
-- [ ] Step R.6: [automated] Complete Codex passive-source and configuration remediation.
+- [x] Step R.6: [automated] Complete Codex passive-source and configuration remediation.
 
   **What:** Make the production Codex adapter match the documented passive-monitoring contract: `CODEX_HOME`, incremental history parsing, recursive session parsing, plan selection, and useful headroom text.
 
@@ -155,6 +155,14 @@
   - `ClaudeUsage/Models/ProviderSettingsStore.swift`
   - `ClaudeUsage/Services/GeminiAdapter.swift`
   - `ClaudeUsage/Models/GeminiTypes.swift`
+
+  **Implementation plan for a fresh session:**
+  1. Inspect the existing Gemini settings row in `ClaudeUsage/Views/SettingsView.swift` and the Gemini persistence helpers in `ClaudeUsage/Models/ProviderSettingsStore.swift`.
+  2. Inspect `GeminiPlanProfile`, `GeminiAuthMode`, and `GeminiConfidenceEngine.evaluate(...)` to confirm which persisted user selections the adapter can consume today.
+  3. Replace the read-only Gemini plan display with Settings controls for auth mode and plan. Use small preset menus and keep user-facing copy explicit that API key and Vertex limits may be user-specific.
+  4. Add a `ProviderShellViewModel` update path, mirroring the Codex plan update path from Step R.6, so Gemini plan/auth changes update the live adapter without app restart.
+  5. If the adapter does not currently accept an explicit user-confirmed auth mode, add a narrow property or parameter on `GeminiAdapter` and pass it into the estimate path without changing passive detection.
+  6. Run focused Gemini settings/adapter validation if tests exist or add narrow model/store tests if there is no UI test seam, then run `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`.
 
   **Acceptance criteria:**
   - User can confirm Gemini auth mode and plan in Settings.

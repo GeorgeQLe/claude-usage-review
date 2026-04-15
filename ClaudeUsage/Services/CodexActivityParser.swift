@@ -56,12 +56,12 @@ class CodexActivityParser {
 
     func parseSessions() throws -> [CodexActivityEvent] {
         let sessionsDir = codexHome.appendingPathComponent("sessions")
-        let contents = try FileManager.default.contentsOfDirectory(
-            at: sessionsDir, includingPropertiesForKeys: nil)
-        let jsonlFiles = contents.filter { $0.pathExtension == "jsonl" }
+        guard FileManager.default.fileExists(atPath: sessionsDir.path) else {
+            return []
+        }
 
         var allEvents: [CodexActivityEvent] = []
-        for file in jsonlFiles {
+        for file in sessionJsonlFiles(in: sessionsDir) {
             let data = try Data(contentsOf: file)
             let fileEvents = parseJsonlData(data)
 
@@ -108,6 +108,26 @@ class CodexActivityParser {
     }
 
     // MARK: - Private
+
+    private func sessionJsonlFiles(in sessionsDir: URL) -> [URL] {
+        guard let enumerator = FileManager.default.enumerator(
+            at: sessionsDir,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+
+        let files = enumerator.compactMap { item -> URL? in
+            guard let file = item as? URL, file.pathExtension == "jsonl" else { return nil }
+            if file.deletingLastPathComponent().standardizedFileURL.path
+                == sessionsDir.standardizedFileURL.path {
+                return file
+            }
+            return file.lastPathComponent.hasPrefix("rollout-") ? file : nil
+        }
+        return files.sorted { $0.path < $1.path }
+    }
 
     private func parseJsonlData(_ data: Data) -> [CodexActivityEvent] {
         guard let text = String(data: data, encoding: .utf8) else { return [] }

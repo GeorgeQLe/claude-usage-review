@@ -600,3 +600,12 @@ Validation:
 - `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/ProviderShellViewModelStaleTests`: 3 tests pass, 0 failures.
 - `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/ProviderShellViewModelStaleTests -only-testing:ClaudeUsageTests/HistoryCompactionTests`: 7 tests pass, 0 failures.
 - Full `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` builds and executes 115 tests; 108 pass and 7 fail with the expected Step R.3 red-phase Codex passive-source assertions queued for Step R.6.
+
+## 2026-04-15 — Step R.6: Codex Passive Source and Configuration Remediation
+
+Completed the Codex passive-monitoring remediation. The default Codex adapter now resolves `CODEX_HOME` before falling back to `~/.codex`, the parser includes recursive dated `sessions/**/rollout-*.jsonl` files while preserving top-level session JSONL parsing, and the adapter reuses a history bookmark while retaining previously parsed history events for later refresh evaluations. Codex cooldown/confidence now evaluates merged history, session rollout, and wrapper ledger data. Settings now includes a Codex plan picker that persists the selected profile and refreshes the live adapter without app restart.
+
+Validation:
+- `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/CodexDetectionTests -only-testing:ClaudeUsageTests/CodexActivityParsingTests -only-testing:ClaudeUsageTests/CodexAdapterRefreshTests`: 13 tests pass, 0 failures.
+- `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`: 115 tests pass, 0 failures.
+- Accepted environment warnings: duplicate macOS destination selection, Xcode AppIntents metadata skipped because the app has no AppIntents dependency, and XCTest dylib deployment-target warnings from the local Xcode toolchain.

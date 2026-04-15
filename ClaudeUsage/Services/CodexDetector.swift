@@ -17,6 +17,14 @@ class CodexDetector {
     let codexHome: URL
     let fileManager: FileManager
 
+    static func defaultCodexHome(environment: [String: String] = ProcessInfo.processInfo.environment) -> URL {
+        if let configuredHome = environment["CODEX_HOME"]?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !configuredHome.isEmpty {
+            return URL(fileURLWithPath: configuredHome)
+        }
+        return URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".codex")
+    }
+
     init(codexHome: URL, fileManager: FileManager = .default) {
         self.codexHome = codexHome
         self.fileManager = fileManager

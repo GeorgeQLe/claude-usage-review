@@ -248,6 +248,29 @@ struct SettingsView: View {
 
                     if providerSettingsStore.isEnabled(.codex) && providerShellViewModel.codexDetected {
                         HStack {
+                            Text("  Plan")
+                                .font(.system(size: 11))
+                            Spacer()
+                            Picker("", selection: Binding(
+                                get: { selectedCodexPlanName },
+                                set: { selectedName in
+                                    let plan = selectedName == "None" ? nil : CodexPlanProfile.preset(named: selectedName)
+                                    providerSettingsStore.setCodexPlan(plan)
+                                    providerShellViewModel.updateCodexPlan(plan)
+                                }
+                            )) {
+                                Text("None").tag("None")
+                                ForEach(CodexPlanProfile.presets, id: \.name) { plan in
+                                    Text(plan.name).tag(plan.name)
+                                }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.menu)
+                            .controlSize(.mini)
+                            .frame(width: 120)
+                        }
+
+                        HStack {
                             Text("  Accuracy Mode")
                                 .font(.system(size: 11))
                             Spacer()
@@ -416,6 +439,13 @@ struct SettingsView: View {
         sessionKeyInput = accountStore.sessionKey(for: accountId) ?? ""
         orgIdInput = accountStore.orgId(for: accountId) ?? ""
         testResult = nil
+    }
+
+    private var selectedCodexPlanName: String {
+        guard let plan = providerSettingsStore.codexPlan() else {
+            return "None"
+        }
+        return CodexPlanProfile.preset(named: plan.name)?.name ?? "None"
     }
 
     private var authStatusColor: Color {

@@ -30,7 +30,7 @@ class CodexEventLedger {
 
     func append(_ event: CodexInvocationEvent) throws {
         let data = try encoder.encode(event)
-        var line = String(data: data, encoding: .utf8)! + "\n"
+        let line = String(data: data, encoding: .utf8)! + "\n"
 
         if FileManager.default.fileExists(atPath: fileURL.path) {
             let handle = try FileHandle(forWritingTo: fileURL)

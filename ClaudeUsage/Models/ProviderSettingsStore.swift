@@ -46,6 +46,7 @@ class ProviderSettingsStore: ObservableObject {
     }
 
     func setCodexPlan(_ plan: CodexPlanProfile?) {
+        objectWillChange.send()
         if let plan = plan {
             UserDefaults.standard.set(plan.name, forKey: "provider_codex_plan")
             UserDefaults.standard.set(plan.dailyTokenLimit, forKey: "provider_codex_plan_limit")

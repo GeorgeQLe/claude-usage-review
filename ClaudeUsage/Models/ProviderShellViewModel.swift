@@ -126,6 +126,12 @@ class ProviderShellViewModel: ObservableObject {
         rebuildFromCurrent()
     }
 
+    func updateCodexPlan(_ plan: CodexPlanProfile?) {
+        codexAdapter?.planProfile = plan
+        codexAdapter?.refresh()
+        rebuildFromCurrent()
+    }
+
     var codexDetected: Bool {
         guard let codexAdapter else { return false }
         if case .installed = codexAdapter.state { return true }

@@ -1,8 +1,18 @@
 import Foundation
 
-struct CodexPlanProfile {
+struct CodexPlanProfile: Equatable {
     let name: String
     let dailyTokenLimit: Int
+
+    static let presets: [CodexPlanProfile] = [
+        CodexPlanProfile(name: "Plus", dailyTokenLimit: 50_000),
+        CodexPlanProfile(name: "Pro", dailyTokenLimit: 100_000),
+        CodexPlanProfile(name: "Business", dailyTokenLimit: 200_000),
+    ]
+
+    static func preset(named name: String) -> CodexPlanProfile? {
+        presets.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+    }
 }
 
 enum CodexConfidence: Equatable {

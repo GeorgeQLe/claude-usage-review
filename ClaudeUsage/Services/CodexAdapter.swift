@@ -18,8 +18,10 @@ class CodexAdapter: ObservableObject {
     private(set) var wrapperEventCount: Int = 0
     private(set) var lastRefreshTime: Date?
     private(set) var consecutiveFailures: Int = 0
+    private(set) var historyBookmark: ParseBookmark?
+    private var historyEvents: [CodexActivityEvent] = []
 
-    init(codexHome: URL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".codex"),
+    init(codexHome: URL = CodexDetector.defaultCodexHome(),
          planProfile: CodexPlanProfile? = nil,
          ledgerDirectory: URL = CodexEventLedger.defaultDirectory) {
         self.detector = CodexDetector(codexHome: codexHome)
@@ -48,20 +50,15 @@ class CodexAdapter: ObservableObject {
             return
         }
 
-        let historyFile = parser.codexHome.appendingPathComponent("history.jsonl")
         let events: [CodexActivityEvent]
-        if FileManager.default.fileExists(atPath: historyFile.path) {
-            do {
-                events = try parser.parseHistory()
-            } catch {
-                consecutiveFailures += 1
-                if consecutiveFailures >= 3 {
-                    state = .degraded(reason: "Parse error: \(error.localizedDescription)")
-                }
-                return
+        do {
+            events = try loadPassiveEvents()
+        } catch {
+            consecutiveFailures += 1
+            if consecutiveFailures >= 3 {
+                state = .degraded(reason: "Parse error: \(error.localizedDescription)")
             }
-        } else {
-            events = []
+            return
         }
 
         consecutiveFailures = 0
@@ -80,6 +77,28 @@ class CodexAdapter: ObservableObject {
         let cooldown = confidenceEngine.cooldownStatus(from: events)
         state = .installed(estimate: estimate, cooldown: cooldown)
         try? ledger.trim(retaining: 48 * 3600)
+    }
+
+    private func loadPassiveEvents() throws -> [CodexActivityEvent] {
+        var events: [CodexActivityEvent] = []
+
+        let historyFile = parser.codexHome.appendingPathComponent("history.jsonl")
+        if FileManager.default.fileExists(atPath: historyFile.path) {
+            do {
+                let (historyEvents, bookmark) = try parser.parseHistory(from: historyBookmark)
+                historyBookmark = bookmark
+                self.historyEvents.append(contentsOf: historyEvents)
+            } catch {
+                throw error
+            }
+        } else {
+            historyBookmark = nil
+            historyEvents = []
+        }
+
+        events.append(contentsOf: historyEvents)
+        events.append(contentsOf: try parser.parseSessions())
+        return events
     }
 
     func toProviderSnapshot(isEnabled: Bool) -> ProviderSnapshot {
