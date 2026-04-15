@@ -708,3 +708,12 @@ Validation:
 - `npm test -- --run` in `electron-app/`: 22 tests passed.
 - `npm run build` in `electron-app/`: typecheck, tests, main build, and renderer Vite build passed.
 - Confirmed renderer/shared source has no direct imports from `electron`, `node:*`, filesystem, crypto, child-process, or storage modules.
+
+## 2026-04-15 — Step 2.2: Electron Account Metadata Store
+
+Implemented durable account metadata persistence for the Electron Phase 2 Claude account work. The new `createAccountStore` uses the existing SQLite `accounts` table, supports add/rename/remove/switch active/save org ID/list/get active operations, normalizes active-account state after mutations, and returns only renderer-safe `AccountSummary` fields. Session keys remain outside account metadata and are still reserved for the secret-storage layer.
+
+Validation:
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm test -- --run src/main/storage/accounts.test.ts src/foundation-storage.test.ts` in `electron-app/`: 10 tests passed.
+- Accepted environment warning: Node emitted `ExperimentalWarning: SQLite is an experimental feature` during in-memory SQLite account tests.

@@ -38,7 +38,17 @@
   - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in the new account tests.
 
 ## Implementation
-- [ ] Step 2.2: [automated] Implement account metadata and active-account persistence in `electron-app/src/main/storage/accounts.ts`, with session keys stored only through the secret store and never serialized to renderer state.
+- [x] Step 2.2: [automated] Implement account metadata and active-account persistence in `electron-app/src/main/storage/accounts.ts`, with session keys stored only through the secret store and never serialized to renderer state.
+
+  **Step 2.2 Review:**
+  - Added `createAccountStore` in `electron-app/src/main/storage/accounts.ts` over the existing SQLite `accounts` table.
+  - Implemented add, rename, remove, switch active account, org-ID save, account listing, and active-account lookup.
+  - Account store results use renderer-safe `AccountSummary` fields only: `id`, `label`, `orgId`, `isActive`, and `authStatus`.
+  - Active-account state is normalized after create/delete/switch so one account is active when accounts exist.
+  - Exported the account store through `electron-app/src/main/storage/index.ts`.
+  - `npm run typecheck` passes from `electron-app/`.
+  - `npm test -- --run src/main/storage/accounts.test.ts src/foundation-storage.test.ts` passes with 2 files and 10 tests.
+  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in account tests.
 - [ ] Step 2.3: [automated] Implement the Claude usage client in `electron-app/src/main/services/claudeUsage.ts`, matching the Swift/Tauri API behavior: `sessionKey` cookie, `anthropic-client-platform: web_claude_ai`, all known usage limit fields, 401/403 auth expiry, and session-key rotation.
 - [ ] Step 2.4: [automated] Implement polling and scheduling in `electron-app/src/main/services/polling.ts`: 5-minute default cadence, exponential network backoff, manual refresh, reset-time fetch, cancellation on account switch, and event emission to renderers.
 - [ ] Step 2.5: [automated] Wire account and Claude commands through `electron-app/src/main/ipc.ts` and `electron-app/src/preload/api.ts`, including add/rename/remove/switch account, save credentials, test connection, get usage state, refresh now, and subscribe to usage updates.
@@ -57,20 +67,21 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 2.2
+## Next Step Plan: Step 2.3
 
-Implement account metadata and active-account persistence in `electron-app/src/main/storage/accounts.ts`. Keep session keys out of account rows and renderer-facing summaries; credential values should remain the responsibility of `electron-app/src/main/storage/secrets.ts`.
+Implement the Claude usage API client in `electron-app/src/main/services/claudeUsage.ts`. Match the red-phase contract in `electron-app/src/main/services/claudeUsage.test.ts` and the product behavior documented in `SPEC.md` and `specs/electron-cross-platform-ai-usage-monitor.md`.
 
 Implementation outline:
-- Create `createAccountStore({ database, idFactory, now })` in `electron-app/src/main/storage/accounts.ts`.
-- Use the existing `accounts` table created by `storageMigrations`; do not introduce a new table unless the migration proves insufficient.
-- Implement `addAccount`, `renameAccount`, `removeAccount`, `setActiveAccount`, `saveOrgId`, `listAccounts`, and `getActiveAccount`.
-- Normalize active-account state so exactly one account is active when any accounts exist, and the first remaining account becomes active after deleting the active account.
-- Return `AccountSummary`-compatible objects only: `id`, `label`, `orgId`, `isActive`, and `authStatus`.
-- Preserve `authStatus` values from the database; adding a new account should start as `missing_credentials`.
-- Keep all SQL parameterized and avoid serializing or accepting `sessionKey` in account metadata APIs.
+- Create `createClaudeUsageClient({ fetch })` and `parseRotatedSessionKey(headers)`.
+- Request `https://claude.ai/api/organizations/{orgId}/usage` with `method: "GET"`, `accept: "*/*"`, `content-type: "application/json"`, `anthropic-client-platform: "web_claude_ai"`, and `Cookie: "sessionKey={sessionKey}"`.
+- Parse known limit fields from Claude's snake-case payload into camel-case data: `fiveHour`, `sevenDay`, `sevenDaySonnet`, `sevenDayOpus`, `sevenDayOauthApps`, `sevenDayCowork`, `other`, and `extraUsage`.
+- Treat unknown non-extra limit fields as `other`; preserve `resets_at` as `resetsAt`; allow `extra_usage` without `resets_at`.
+- Extract only a `sessionKey` value from `Set-Cookie`; never return or log other cookies.
+- Throw distinct plain-object errors for auth expiry (`kind: "auth_expired"`, `statusCode` 401 or 403), network errors (`kind: "network_error"`), and malformed responses (`kind: "invalid_response"`).
+- Keep this module fetch-only and storage-free. Saving rotated keys belongs to polling/credential wiring in later steps.
 
-Validation for Step 2.2:
+Validation for Step 2.3:
 - Run `npm run typecheck` from `electron-app/`.
-- Run `npm test -- --run src/main/storage/accounts.test.ts src/foundation-storage.test.ts`.
-- The account tests should pass after Step 2.2; the broader Phase 2 suite may remain red for `claudeUsage.ts`, `polling.ts`, credential persistence, schema updates, and IPC wiring until later steps.
+- Run `npm test -- --run src/main/services/claudeUsage.test.ts`.
+- Optionally run `npm test -- --run src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts src/foundation-storage.test.ts` to confirm Step 2.2 still passes.
+- The broader Phase 2 suite may remain red for polling, credential persistence, schema updates, and IPC wiring until later steps.
