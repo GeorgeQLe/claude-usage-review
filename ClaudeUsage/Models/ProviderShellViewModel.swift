@@ -164,10 +164,14 @@ class ProviderShellViewModel: ObservableObject {
         snapshots.append(geminiSnapshotProvider(settingsStore.isEnabled(.gemini)))
 
         let now = nowProvider()
-        shellState = coordinator.makeShellState(providers: snapshots, now: now)
+        let refreshTimes = providerRefreshTimes()
+        shellState = coordinator.makeShellState(providers: snapshots, now: now, refreshTimes: refreshTimes)
         traySnapshot = coordinator.selectedTrayProvider(from: snapshots, now: now)
         if let snap = traySnapshot {
-            trayText = formatTrayText(from: snap)
+            let selectedCard = shellState.providers.first { $0.id == snap.id }
+            trayText = formatTrayText(from: snap, cardState: selectedCard?.cardState)
+        } else {
+            trayText = ""
         }
     }
 
@@ -192,6 +196,14 @@ class ProviderShellViewModel: ObservableObject {
     }
 
     func formatTrayText(from snapshot: ProviderSnapshot) -> String {
+        formatTrayText(from: snapshot, cardState: nil)
+    }
+
+    private func formatTrayText(from snapshot: ProviderSnapshot, cardState: CardState?) -> String {
+        if cardState == .stale {
+            return Self.formatStaleText(from: snapshot)
+        }
+
         switch snapshot {
         case let .claudeRich(usage, _, _):
             let pct = Int(usage.fiveHour.utilization)
@@ -240,6 +252,17 @@ class ProviderShellViewModel: ObservableObject {
                 return "Gemini Observed"
             }
         }
+    }
+
+    private func providerRefreshTimes() -> [ProviderId: Date] {
+        var refreshTimes: [ProviderId: Date] = [:]
+        if let codexLastRefreshTime = codexLastRefreshTimeProvider() {
+            refreshTimes[.codex] = codexLastRefreshTime
+        }
+        if let geminiLastRefreshTime = geminiLastRefreshTimeProvider() {
+            refreshTimes[.gemini] = geminiLastRefreshTime
+        }
+        return refreshTimes
     }
 
     private func rebuildFromCurrent() {
