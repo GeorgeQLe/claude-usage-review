@@ -23,3 +23,10 @@ Pods/
 # Misc
 *.swp
 *~
+
+# Node / Electron
+node_modules/
+electron-app/dist/
+electron-app/dist-electron/
+electron-app/release/
+*.tsbuildinfo

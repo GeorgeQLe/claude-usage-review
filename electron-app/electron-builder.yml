@@ -1,0 +1,22 @@
+appId: com.claudeusage.electron
+productName: ClaudeUsage
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+asar: true
+mac:
+  target:
+    - dir
+win:
+  target:
+    - nsis
+    - portable
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Utility
