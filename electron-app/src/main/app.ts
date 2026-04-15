@@ -1,12 +1,14 @@
 import { app } from "electron";
 import { AppWindowManager } from "./windows.js";
 import { TrayController, type TrayFallbackStatus } from "./tray.js";
+import { registerIpcHandlers, type IpcRegistration } from "./ipc.js";
 
 const isDevelopment = !app.isPackaged;
 const rendererDevServerUrl = process.env.ELECTRON_RENDERER_URL ?? "http://127.0.0.1:5173";
 
 let windowManager: AppWindowManager | null = null;
 let trayController: TrayController | null = null;
+let ipcRegistration: IpcRegistration | null = null;
 let isQuitting = false;
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
@@ -24,6 +26,7 @@ if (!hasSingleInstanceLock) {
   app.on("will-quit", () => {
     trayController?.dispose();
     windowManager?.dispose();
+    ipcRegistration?.dispose();
   });
   app.on("window-all-closed", () => {
     if (isQuitting || !trayController?.getFallbackStatus().available) {
@@ -41,6 +44,8 @@ if (!hasSingleInstanceLock) {
 }
 
 async function startApp(): Promise<void> {
+  ipcRegistration = registerIpcHandlers();
+
   windowManager = new AppWindowManager({
     isDevelopment,
     devServerUrl: rendererDevServerUrl
