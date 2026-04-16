@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-16 — Step 2.9: Electron Phase 2 Verification
+
+Completed the Phase 2 verification gate for the Electron Claude account and exact-usage work. Added a bounded `npm run smoke:electron` command that launches the built Electron app with mocked local usage state, waits for a main-process success marker, and fails on preload loading errors, Electron security warnings, or startup failures. The smoke path uses an env-gated production-load mode so it does not require a Vite dev server. Also added a bundled CommonJS preload build for Electron's sandboxed preload runtime and a renderer Content Security Policy.
+
+Validation: `npm run typecheck` passed from `electron-app/`. `npm test -- --run` passed with 21 files and 68 tests. `npm run build` passed from `electron-app/`. `npm run smoke:electron` passed after launching the local Electron app with mocked local usage state. Accepted warning: Node's experimental SQLite warning during storage/integration tests.
+
 ## 2026-04-16 — Step 2.8: Electron Claude Main-Process Integration
 
 Closed the Phase 2 green coverage gap for Electron Claude usage. Added an integration test that composes the real account metadata store, account-scoped encrypted credential store, Claude usage client, polling scheduler, and usage history store with mocked safeStorage and mocked Claude responses. The test proves the main process can fetch usage from secret-backed credentials, save a rotated session key through the credential store, persist a sanitized usage snapshot, emit renderer-visible updated state, and keep submitted/rotated session keys out of emitted state and history payloads. Added an injected `recordUsageSnapshot` callback to the polling scheduler so successful Claude fetches can persist sanitized snapshots at the service boundary.

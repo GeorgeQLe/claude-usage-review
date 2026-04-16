@@ -126,29 +126,28 @@
   - `npm test -- --run` passes with 20 files and 67 tests.
   - `npm run build` passes from `electron-app/`.
   - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening in-memory SQLite databases in storage/integration tests.
-- [ ] Step 2.9: [automated] Run Phase 2 verification: `npm run typecheck`, `npm test`, `npm run build`, and an Electron smoke launch using mocked Claude responses.
+- [x] Step 2.9: [automated] Run Phase 2 verification: `npm run typecheck`, `npm test`, `npm run build`, and an Electron smoke launch using mocked Claude responses.
+
+  **Step 2.9 Review:**
+  - Added `npm run smoke:electron` in `electron-app/package.json` backed by `electron-app/scripts/smoke-electron.mjs`.
+  - Added an env-gated Electron smoke mode in `electron-app/src/main/app.ts` that loads the built renderer instead of requiring the Vite dev server, emits a success marker after the popover loads, and quits cleanly.
+  - Added `electron-app/vite.preload.config.ts` and wired `npm run build` to bundle the sandboxed preload bridge as CommonJS-compatible output so Electron can load it at runtime.
+  - Added a renderer Content Security Policy in `electron-app/index.html`.
+  - The smoke command runs with mocked local usage state and fails if the preload-load warning, Electron security warning, or startup failure output reappears.
+  - `npm run typecheck` passes from `electron-app/`.
+  - `npm test -- --run` passes with 21 files and 68 tests.
+  - `npm run build` passes from `electron-app/`.
+  - `npm run smoke:electron` passes after launching the local Electron app with mocked local usage state.
+  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening in-memory SQLite databases in storage/integration tests.
 
 ## Milestone
-- [ ] Claude exact usage works end-to-end in Electron with account management and secure secrets.
-- [ ] Auth expiry, network errors, manual refresh, backoff, reset fetch, and session-key rotation are covered.
-- [ ] Renderer never receives session keys.
-- [ ] Tray and popover show live Claude state.
-- [ ] All phase tests pass.
-- [ ] No regressions.
+- [x] Claude exact usage works end-to-end in Electron with account management and secure secrets.
+- [x] Auth expiry, network errors, manual refresh, backoff, reset fetch, and session-key rotation are covered.
+- [x] Renderer never receives session keys.
+- [x] Tray and popover show live Claude state.
+- [x] All phase tests pass.
+- [x] No regressions.
 
-## Next Step Plan: Step 2.9
+## Next Step Plan
 
-Run the final Phase 2 verification gate and add the mocked Electron smoke launch. Step 2.8 already proved the main-process Claude/account/secret/history path with integration coverage, so Step 2.9 should focus on repeatable release-gate validation and a bounded app startup smoke without live Claude credentials.
-
-Implementation outline:
-- Reuse the already-green Step 2.8 validation results where still current: `npm run typecheck`, `npm test -- --run`, and `npm run build` all pass from `electron-app/`.
-- Add or run a bounded Electron smoke launch using mocked Claude responses. Prefer an existing script/test seam if present; otherwise add the smallest testable launch seam needed to start Electron without a real Claude API call or real credentials.
-- Confirm the smoke does not require GitHub Actions, production deploys, or live Claude credentials.
-- Inspect smoke output for startup errors, renderer/preload failures, and Electron security regressions.
-- If the smoke requires a new script or test fixture, keep it under `electron-app/` and avoid changing Phase 3 product UI behavior.
-
-Validation for Step 2.9:
-- `npm run typecheck` from `electron-app/`.
-- `npm test -- --run` from `electron-app/`.
-- `npm run build` from `electron-app/`.
-- Bounded Electron smoke launch with mocked Claude responses; record the exact command and result.
+Phase 2 is complete. Advance `tasks/todo.md` to Phase 3 from `tasks/roadmap.md` and add a self-contained implementation plan for Step 3.1 before the next run.
