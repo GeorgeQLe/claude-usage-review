@@ -1,9 +1,9 @@
 import {
-  AccountList,
+  AccountManager,
+  ClaudeCredentialForm,
   ErrorState,
   LoadingState,
   ProviderList,
-  SettingsSummary,
   WarningBanner,
   WindowFrame,
   useRendererSnapshot
@@ -21,6 +21,7 @@ export function OnboardingRoute(): React.JSX.Element {
   }
 
   const { accounts, settings, usageState } = resource.snapshot;
+  const activeAccount = accounts.find((account) => account.isActive) ?? null;
 
   return (
     <WindowFrame eyebrow="Setup" title="Connect usage tracking">
@@ -30,27 +31,39 @@ export function OnboardingRoute(): React.JSX.Element {
           <span className="step-number">1</span>
           <div>
             <h2>Choose a local account</h2>
-            <AccountList accounts={accounts} />
+            <AccountManager
+              accounts={accounts}
+              onAdd={resource.addAccount}
+              onRemove={resource.removeAccount}
+              onRename={resource.renameAccount}
+              onSwitch={resource.setActiveAccount}
+            />
           </div>
         </article>
         <article className="setup-step">
           <span className="step-number">2</span>
           <div>
-            <h2>Add Claude credentials in Settings</h2>
-            <p className="muted">Credentials stay write-only after saving.</p>
+            <h2>Add Claude credentials</h2>
+            <ClaudeCredentialForm
+              activeAccount={activeAccount}
+              onSaveCredentials={resource.saveClaudeCredentials}
+              onTestConnection={resource.testClaudeConnection}
+            />
           </div>
         </article>
         <article className="setup-step">
           <span className="step-number">3</span>
           <div>
             <h2>Review provider status</h2>
-            <ProviderList providers={usageState.providers} />
+            <ProviderList activeAccount={activeAccount} providers={usageState.providers} />
           </div>
         </article>
       </section>
       <section className="panel">
         <h2>Display defaults</h2>
-        <SettingsSummary settings={settings} />
+        <p className="muted">
+          {settings.timeDisplay === "countdown" ? "Countdown reset times are enabled." : "Reset times use clock labels."}
+        </p>
       </section>
     </WindowFrame>
   );

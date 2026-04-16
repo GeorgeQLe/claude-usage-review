@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import {
   AccountList,
   ErrorState,
+  getClaudeProvider,
   LoadingState,
   ProviderList,
   SettingsSummary,
@@ -63,6 +64,7 @@ export function PopoverRoute(): React.JSX.Element {
 
   const { accounts, settings, usageState } = resource.snapshot;
   const activeAccount = accounts.find((account) => account.isActive) ?? null;
+  const claudeProvider = getClaudeProvider(usageState);
 
   return (
     <WindowFrame
@@ -75,15 +77,16 @@ export function PopoverRoute(): React.JSX.Element {
       title="Usage overview"
     >
       <WarningBanner warning={usageState.warning} />
-      <ProviderList providers={usageState.providers} />
+      <ProviderList activeAccount={activeAccount} providers={usageState.providers} />
       <section className="content-grid content-grid-two">
         <div className="panel">
           <h2>Active account</h2>
           {activeAccount ? <AccountList accounts={[activeAccount]} /> : <p className="muted">No active account.</p>}
         </div>
         <div className="panel">
-          <h2>Display</h2>
+          <h2>Claude timing</h2>
           <SettingsSummary settings={settings} />
+          {claudeProvider?.resetAt ? <p className="muted">Next reset is tracked from Claude usage data.</p> : null}
         </div>
       </section>
     </WindowFrame>

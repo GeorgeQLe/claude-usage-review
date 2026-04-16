@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import type { AccountSummary } from "../../shared/types/accounts.js";
+import type { AccountId, AccountSummary } from "../../shared/types/accounts.js";
+import type { ClaudeConnectionTestResult } from "../../shared/types/ipc.js";
 import type { ProviderCard } from "../../shared/types/provider.js";
 import type { AppSettings } from "../../shared/types/settings.js";
 import type { UsageState } from "../../shared/types/usage.js";
@@ -18,6 +19,12 @@ type SnapshotState =
 export type RendererSnapshotResource = SnapshotState & {
   readonly reload: () => Promise<void>;
   readonly refreshNow: () => Promise<void>;
+  readonly addAccount: (label: string) => Promise<void>;
+  readonly renameAccount: (accountId: AccountId, label: string) => Promise<void>;
+  readonly removeAccount: (accountId: AccountId) => Promise<void>;
+  readonly setActiveAccount: (accountId: AccountId) => Promise<void>;
+  readonly saveClaudeCredentials: (accountId: AccountId, sessionKey: string, orgId: string) => Promise<void>;
+  readonly testClaudeConnection: (sessionKey: string, orgId: string) => Promise<ClaudeConnectionTestResult>;
   readonly isRefreshing: boolean;
 };
 
@@ -37,6 +44,21 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
     ]);
 
     return { usageState, settings, accounts };
+  }, []);
+
+  const updateAccounts = useCallback((accounts: readonly AccountSummary[]) => {
+    setState((current) =>
+      current.status === "ready"
+        ? {
+            status: "ready",
+            snapshot: {
+              ...current.snapshot,
+              accounts
+            },
+            error: null
+          }
+        : current
+    );
   }, []);
 
   const reload = useCallback(async () => {
@@ -71,6 +93,46 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
     }
   }, []);
 
+  const addAccount = useCallback(
+    async (label: string) => {
+      updateAccounts(await window.claudeUsage.addAccount(label));
+    },
+    [updateAccounts]
+  );
+
+  const renameAccount = useCallback(
+    async (accountId: AccountId, label: string) => {
+      updateAccounts(await window.claudeUsage.renameAccount(accountId, label));
+    },
+    [updateAccounts]
+  );
+
+  const removeAccount = useCallback(
+    async (accountId: AccountId) => {
+      updateAccounts(await window.claudeUsage.removeAccount(accountId));
+    },
+    [updateAccounts]
+  );
+
+  const setActiveAccount = useCallback(
+    async (accountId: AccountId) => {
+      updateAccounts(await window.claudeUsage.setActiveAccount(accountId));
+    },
+    [updateAccounts]
+  );
+
+  const saveClaudeCredentials = useCallback(
+    async (accountId: AccountId, sessionKey: string, orgId: string) => {
+      updateAccounts(await window.claudeUsage.saveClaudeCredentials(accountId, sessionKey, orgId));
+    },
+    [updateAccounts]
+  );
+
+  const testClaudeConnection = useCallback(
+    (sessionKey: string, orgId: string) => window.claudeUsage.testClaudeConnection(sessionKey, orgId),
+    []
+  );
+
   useEffect(() => {
     void reload();
   }, [reload]);
@@ -101,9 +163,26 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
       ...state,
       reload,
       refreshNow,
+      addAccount,
+      renameAccount,
+      removeAccount,
+      setActiveAccount,
+      saveClaudeCredentials,
+      testClaudeConnection,
       isRefreshing
     }),
-    [isRefreshing, refreshNow, reload, state]
+    [
+      addAccount,
+      isRefreshing,
+      refreshNow,
+      reload,
+      removeAccount,
+      renameAccount,
+      saveClaudeCredentials,
+      setActiveAccount,
+      state,
+      testClaudeConnection
+    ]
   );
 }
 
@@ -168,27 +247,74 @@ export function WarningBanner({ warning }: { readonly warning: string | null }):
   return <p className="warning-banner">{warning}</p>;
 }
 
-export function ProviderList({ providers }: { readonly providers: readonly ProviderCard[] }): React.JSX.Element {
+export function ProviderList({
+  providers,
+  activeAccount
+}: {
+  readonly providers: readonly ProviderCard[];
+  readonly activeAccount?: AccountSummary | null;
+}): React.JSX.Element {
   return (
     <section className="provider-list" aria-label="Providers">
-      {providers.map((provider) => (
-        <article className="provider-card" key={provider.providerId}>
-          <div className="provider-title-row">
-            <div>
-              <h2>{provider.displayName}</h2>
-              <p className="muted">{formatProviderStatus(provider)}</p>
-            </div>
-            <StatusPill tone={provider.enabled ? "active" : "muted"}>{provider.enabled ? "On" : "Off"}</StatusPill>
-          </div>
-          <p className="provider-headline">{provider.headline}</p>
-          <div className="meter-grid">
-            <Metric label="Session" value={formatPercent(provider.sessionUtilization)} />
-            <Metric label="Weekly" value={formatPercent(provider.weeklyUtilization)} />
-            <Metric label="Today" value={formatNumber(provider.dailyRequestCount)} />
-          </div>
-        </article>
-      ))}
+      {providers.map((provider) =>
+        provider.providerId === "claude" ? (
+          <ClaudeUsageCard activeAccount={activeAccount ?? null} key={provider.providerId} provider={provider} />
+        ) : (
+          <ProviderPlaceholderCard key={provider.providerId} provider={provider} />
+        )
+      )}
     </section>
+  );
+}
+
+export function ClaudeUsageCard({
+  provider,
+  activeAccount,
+  compact = false
+}: {
+  readonly provider: ProviderCard;
+  readonly activeAccount?: AccountSummary | null;
+  readonly compact?: boolean;
+}): React.JSX.Element {
+  return (
+    <article className={`provider-card claude-usage-card${compact ? " claude-usage-card-compact" : ""}`}>
+      <div className="provider-title-row">
+        <div>
+          <h2>{provider.displayName}</h2>
+          <p className="muted">{formatProviderStatus(provider)}</p>
+        </div>
+        <StatusPill tone={getProviderTone(provider)}>{formatProviderPill(provider)}</StatusPill>
+      </div>
+      <div className="provider-copy">
+        <p className="provider-headline">{provider.headline}</p>
+        {provider.detailText ? <p className="muted">{provider.detailText}</p> : null}
+      </div>
+      <div className="usage-meter-stack">
+        <UsageMeter label="Five-hour usage" value={provider.sessionUtilization} />
+        <UsageMeter label="Weekly usage" value={provider.weeklyUtilization} />
+      </div>
+      <div className="summary-grid">
+        <Metric label="Reset" value={formatDateTime(provider.resetAt)} />
+        <Metric label="Updated" value={formatDateTime(provider.lastUpdatedAt)} />
+        <Metric label="Account" value={activeAccount ? activeAccount.label : "No account"} />
+        <Metric label="Auth" value={activeAccount ? formatToken(activeAccount.authStatus) : "Missing Credentials"} />
+      </div>
+    </article>
+  );
+}
+
+export function ProviderPlaceholderCard({ provider }: { readonly provider: ProviderCard }): React.JSX.Element {
+  return (
+    <article className="provider-card provider-card-compact">
+      <div className="provider-title-row">
+        <div>
+          <h2>{provider.displayName}</h2>
+          <p className="muted">{formatProviderStatus(provider)}</p>
+        </div>
+        <StatusPill tone={provider.enabled ? "active" : "muted"}>{provider.enabled ? "On" : "Later"}</StatusPill>
+      </div>
+      <p className="provider-headline">{provider.headline}</p>
+    </article>
   );
 }
 
@@ -205,9 +331,144 @@ export function AccountList({ accounts }: { readonly accounts: readonly AccountS
             <h2>{account.label}</h2>
             <p className="muted">{formatAccountStatus(account)}</p>
           </div>
-          <StatusPill tone={account.isActive ? "active" : "muted"}>{account.isActive ? "Active" : "Saved"}</StatusPill>
+          <StatusPill tone={account.isActive ? "active" : account.authStatus === "expired" ? "warning" : "muted"}>
+            {account.isActive ? "Active" : "Saved"}
+          </StatusPill>
         </article>
       ))}
+    </section>
+  );
+}
+
+export function AccountManager({
+  accounts,
+  onAdd,
+  onRename,
+  onRemove,
+  onSwitch
+}: {
+  readonly accounts: readonly AccountSummary[];
+  readonly onAdd: (label: string) => Promise<void>;
+  readonly onRename: (accountId: AccountId, label: string) => Promise<void>;
+  readonly onRemove: (accountId: AccountId) => Promise<void>;
+  readonly onSwitch: (accountId: AccountId) => Promise<void>;
+}): React.JSX.Element {
+  const [newLabel, setNewLabel] = useState("");
+  const [renameValues, setRenameValues] = useState<Record<string, string>>({});
+  const [status, setStatus] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+
+  const addAccount = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const label = newLabel.trim();
+    if (!label) {
+      setStatus("Enter an account name.");
+      return;
+    }
+
+    await runAccountAction(`add:${label}`, async () => {
+      await onAdd(label);
+      setNewLabel("");
+      setStatus("Account added.");
+    });
+  };
+
+  const runAccountAction = async (key: string, action: () => Promise<void>) => {
+    try {
+      setBusyAction(key);
+      await action();
+    } catch (error) {
+      setStatus(getErrorMessage(error));
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  return (
+    <section className="account-manager" aria-label="Claude accounts">
+      <form className="inline-form" onSubmit={addAccount}>
+        <label>
+          Account name
+          <input
+            autoComplete="off"
+            name="account-label"
+            onChange={(event) => setNewLabel(event.target.value)}
+            placeholder="Work"
+            type="text"
+            value={newLabel}
+          />
+        </label>
+        <button disabled={busyAction !== null || !newLabel.trim()} type="submit">
+          Add account
+        </button>
+      </form>
+      {accounts.length === 0 ? <p className="muted">No local accounts yet.</p> : null}
+      <div className="account-actions-list">
+        {accounts.map((account) => {
+          const renameValue = renameValues[account.id] ?? account.label;
+          return (
+            <article className="account-action-row" key={account.id}>
+              <div className="account-action-main">
+                <label>
+                  {account.label}
+                  <input
+                    autoComplete="off"
+                    name={`rename-${account.id}`}
+                    onChange={(event) =>
+                      setRenameValues((current) => ({
+                        ...current,
+                        [account.id]: event.target.value
+                      }))
+                    }
+                    type="text"
+                    value={renameValue}
+                  />
+                </label>
+                <p className="muted">{formatAccountStatus(account)}</p>
+              </div>
+              <div className="account-row-actions">
+                <button
+                  disabled={busyAction !== null || renameValue.trim() === "" || renameValue.trim() === account.label}
+                  onClick={() =>
+                    void runAccountAction(`rename:${account.id}`, async () => {
+                      await onRename(account.id, renameValue.trim());
+                      setStatus("Account renamed.");
+                    })
+                  }
+                  type="button"
+                >
+                  Rename
+                </button>
+                <button
+                  disabled={busyAction !== null || account.isActive}
+                  onClick={() =>
+                    void runAccountAction(`switch:${account.id}`, async () => {
+                      await onSwitch(account.id);
+                      setStatus("Active account changed.");
+                    })
+                  }
+                  type="button"
+                >
+                  Use
+                </button>
+                <button
+                  disabled={busyAction !== null || accounts.length <= 1}
+                  onClick={() =>
+                    void runAccountAction(`remove:${account.id}`, async () => {
+                      await onRemove(account.id);
+                      setStatus("Account removed.");
+                    })
+                  }
+                  type="button"
+                >
+                  Remove
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      {status ? <p className="form-status">{status}</p> : null}
     </section>
   );
 }
@@ -223,17 +484,28 @@ export function SettingsSummary({ settings }: { readonly settings: AppSettings }
   );
 }
 
-export function CredentialPlaceholder({
+export function ClaudeCredentialForm({
   activeAccount,
-  onSaved
+  onSaved,
+  onSaveCredentials,
+  onTestConnection
 }: {
   readonly activeAccount: AccountSummary | null;
-  readonly onSaved: () => Promise<void>;
+  readonly onSaved?: () => Promise<void>;
+  readonly onSaveCredentials?: (accountId: AccountId, sessionKey: string, orgId: string) => Promise<void>;
+  readonly onTestConnection?: (sessionKey: string, orgId: string) => Promise<ClaudeConnectionTestResult>;
 }): React.JSX.Element {
   const [sessionKey, setSessionKey] = useState("");
-  const [orgId, setOrgId] = useState("");
+  const [orgId, setOrgId] = useState(activeAccount?.orgId ?? "");
   const [status, setStatus] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+
+  useEffect(() => {
+    setSessionKey("");
+    setOrgId(activeAccount?.orgId ?? "");
+    setStatus(null);
+  }, [activeAccount?.id]);
 
   const saveCredentials = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -245,14 +517,28 @@ export function CredentialPlaceholder({
 
     try {
       setIsSaving(true);
-      await window.claudeUsage.saveClaudeCredentials(activeAccount.id, sessionKey, orgId);
+      await (onSaveCredentials ?? window.claudeUsage.saveClaudeCredentials)(activeAccount.id, sessionKey, orgId);
       setSessionKey("");
       setStatus("Credentials saved for this local account.");
-      await onSaved();
+      await onSaved?.();
     } catch (error) {
       setStatus(getErrorMessage(error));
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const testConnection = async () => {
+    try {
+      setIsTesting(true);
+      const result = await (onTestConnection ?? window.claudeUsage.testClaudeConnection)(sessionKey, orgId);
+      setSessionKey("");
+      setStatus(result.message);
+    } catch (error) {
+      setSessionKey("");
+      setStatus(getErrorMessage(error));
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -280,13 +566,32 @@ export function CredentialPlaceholder({
           value={orgId}
         />
       </label>
-      <p className="muted">Session keys are never displayed after saving.</p>
-      <button disabled={isSaving || !sessionKey || !orgId} type="submit">
-        {isSaving ? "Saving" : "Save credentials"}
-      </button>
+      <p className="muted">Session keys are never displayed after saving or testing.</p>
+      <div className="button-row">
+        <button disabled={isSaving || isTesting || !activeAccount || !sessionKey || !orgId} type="submit">
+          {isSaving ? "Saving" : "Save credentials"}
+        </button>
+        <button
+          disabled={isSaving || isTesting || !sessionKey || !orgId}
+          onClick={() => void testConnection()}
+          type="button"
+        >
+          {isTesting ? "Testing" : "Test connection"}
+        </button>
+      </div>
       {status ? <p className="form-status">{status}</p> : null}
     </form>
   );
+}
+
+export function CredentialPlaceholder({
+  activeAccount,
+  onSaved
+}: {
+  readonly activeAccount: AccountSummary | null;
+  readonly onSaved: () => Promise<void>;
+}): React.JSX.Element {
+  return <ClaudeCredentialForm activeAccount={activeAccount} onSaved={onSaved} />;
 }
 
 export function StatusPill({
@@ -299,6 +604,26 @@ export function StatusPill({
   return <span className={`status-pill status-pill-${tone}`}>{children}</span>;
 }
 
+export function getClaudeProvider(usageState: UsageState): ProviderCard | null {
+  return usageState.providers.find((provider) => provider.providerId === "claude") ?? null;
+}
+
+function UsageMeter({ label, value }: { readonly label: string; readonly value: number | null }): React.JSX.Element {
+  const width = formatMeterWidth(value);
+
+  return (
+    <div className="usage-meter">
+      <div className="usage-meter-label">
+        <span>{label}</span>
+        <strong>{formatPercent(value)}</strong>
+      </div>
+      <div className="usage-meter-track" aria-hidden="true">
+        <div className="usage-meter-fill" style={{ width }} />
+      </div>
+    </div>
+  );
+}
+
 function Metric({ label, value }: { readonly label: string; readonly value: string }): React.JSX.Element {
   return (
     <div className="metric">
@@ -306,6 +631,30 @@ function Metric({ label, value }: { readonly label: string; readonly value: stri
       <strong>{value}</strong>
     </div>
   );
+}
+
+function getProviderTone(provider: ProviderCard): "active" | "muted" | "warning" {
+  if (provider.status === "expired" || provider.status === "degraded" || provider.status === "missing_configuration") {
+    return "warning";
+  }
+
+  return provider.enabled ? "active" : "muted";
+}
+
+function formatProviderPill(provider: ProviderCard): string {
+  if (provider.status === "expired") {
+    return "Expired";
+  }
+
+  if (provider.status === "degraded") {
+    return "Degraded";
+  }
+
+  if (provider.status === "missing_configuration") {
+    return "Setup";
+  }
+
+  return provider.enabled ? "Tracking" : "Off";
 }
 
 function formatProviderStatus(provider: ProviderCard): string {
@@ -321,8 +670,30 @@ function formatPercent(value: number | null): string {
   return typeof value === "number" ? `${Math.round(value * 100)}%` : "Pending";
 }
 
-function formatNumber(value: number | null): string {
-  return typeof value === "number" ? value.toLocaleString() : "Pending";
+function formatMeterWidth(value: number | null): string {
+  if (typeof value !== "number") {
+    return "0%";
+  }
+
+  return `${Math.max(0, Math.min(100, Math.round(value * 100)))}%`;
+}
+
+function formatDateTime(value: string | null): string {
+  if (!value) {
+    return "Pending";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "Pending";
+  }
+
+  return parsed.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
 }
 
 function formatToken(value: string): string {

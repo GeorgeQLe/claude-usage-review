@@ -48,6 +48,10 @@ input {
   background: #ffffff;
 }
 
+label {
+  min-width: 0;
+}
+
 h1,
 h2,
 p {
@@ -132,6 +136,18 @@ h2 {
   padding: 13px;
 }
 
+.provider-card-compact {
+  gap: 8px;
+}
+
+.claude-usage-card {
+  border-color: #bdd7c9;
+}
+
+.claude-usage-card-compact {
+  width: 100%;
+}
+
 .provider-title-row,
 .list-row,
 .overlay-status {
@@ -145,6 +161,11 @@ h2 {
   color: #15191f;
   font-size: 14px;
   line-height: 1.35;
+}
+
+.provider-copy {
+  display: grid;
+  gap: 5px;
 }
 
 .meter-grid,
@@ -174,6 +195,45 @@ h2 {
   color: #15191f;
   font-size: 13px;
   overflow-wrap: anywhere;
+}
+
+.usage-meter-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.usage-meter {
+  display: grid;
+  gap: 6px;
+}
+
+.usage-meter-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.usage-meter-label span {
+  color: #515a61;
+}
+
+.usage-meter-label strong {
+  color: #15191f;
+}
+
+.usage-meter-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #dfe7df;
+}
+
+.usage-meter-fill {
+  height: 100%;
+  border-radius: 8px;
+  background: #1c6b5d;
 }
 
 .status-pill {
@@ -225,12 +285,55 @@ h2 {
   gap: 11px;
 }
 
-.credential-form label {
+.credential-form label,
+.inline-form label,
+.account-action-main label {
   display: grid;
   gap: 6px;
   color: #15191f;
   font-size: 13px;
   font-weight: 700;
+}
+
+.account-manager {
+  display: grid;
+  gap: 12px;
+}
+
+.inline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.account-actions-list {
+  display: grid;
+  gap: 10px;
+}
+
+.account-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  border: 1px solid #d6ddd6;
+  border-radius: 8px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.account-action-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.account-row-actions,
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .form-status {
@@ -259,12 +362,12 @@ h2 {
 }
 
 .overlay-status {
-  align-items: center;
+  display: block;
+  align-items: stretch;
   min-height: 64px;
-  border: 1px solid #d6ddd6;
-  border-radius: 8px;
-  padding: 12px;
-  background: #ffffff;
+  border: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .overlay-headline {
@@ -281,14 +384,17 @@ h2 {
 
   .window-header,
   .provider-title-row,
-  .list-row {
+  .list-row,
+  .account-action-row {
     align-items: stretch;
     flex-direction: column;
   }
 
   .content-grid-two,
   .meter-grid,
-  .summary-grid {
+  .summary-grid,
+  .inline-form,
+  .account-action-row {
     grid-template-columns: 1fr;
   }
 }

@@ -44,20 +44,50 @@ describe("foundation renderer routes", () => {
     await renderRoute(<PopoverRoute />);
 
     expect(document.body.textContent).toContain("Usage overview");
-    expect(document.body.textContent).toContain("Claude not configured");
+    expect(document.body.textContent).toContain("Five-hour usage");
+    expect(document.body.textContent).toContain("42%");
     expect(document.body.textContent).toContain("Local placeholder");
     expect(window.claudeUsage.getUsageState).toHaveBeenCalled();
     expect(window.claudeUsage.subscribeUsageUpdated).toHaveBeenCalled();
   });
 
-  it("mounts settings and keeps Claude credentials write-only after save", async () => {
+  it("mounts settings with account controls and write-only Claude credentials", async () => {
     const { container } = await renderRoute(<SettingsRoute />);
+    const accountInput = container.querySelector<HTMLInputElement>('input[name="account-label"]');
+    const renameInput = container.querySelector<HTMLInputElement>('input[name="rename-local-placeholder"]');
     const sessionInput = container.querySelector<HTMLInputElement>('input[name="session-key"]');
     const orgInput = container.querySelector<HTMLInputElement>('input[name="org-id"]');
 
     expect(document.body.textContent).toContain("Account and display");
+    expect(accountInput).not.toBeNull();
+    expect(renameInput).not.toBeNull();
     expect(sessionInput).not.toBeNull();
     expect(orgInput).not.toBeNull();
+
+    await act(async () => {
+      if (accountInput) {
+        setInputValue(accountInput, "Personal");
+      }
+    });
+    await act(async () => {
+      accountInput?.closest("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(window.claudeUsage.addAccount).toHaveBeenCalledWith("Personal");
+
+    await act(async () => {
+      if (renameInput) {
+        setInputValue(renameInput, "Work");
+      }
+    });
+    await act(async () => {
+      findButton(container, "Rename")?.click();
+    });
+    expect(window.claudeUsage.renameAccount).toHaveBeenCalledWith("local-placeholder", "Work");
+
+    await act(async () => {
+      findEnabledButton(container, "Use")?.click();
+    });
+    expect(window.claudeUsage.setActiveAccount).toHaveBeenCalledWith("secondary-account");
 
     await act(async () => {
       if (sessionInput) {
@@ -68,7 +98,7 @@ describe("foundation renderer routes", () => {
       }
     });
     await act(async () => {
-      container.querySelector("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      sessionInput?.closest("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
     });
     await act(async () => {
       await Promise.resolve();
@@ -82,6 +112,23 @@ describe("foundation renderer routes", () => {
     );
     expect(container.querySelector<HTMLInputElement>('input[name="session-key"]')?.value).toBe("");
     expect(document.body.textContent).not.toContain("synthetic-session-secret");
+
+    await act(async () => {
+      if (sessionInput) {
+        setInputValue(sessionInput, "synthetic-session-secret-2");
+      }
+    });
+    await act(async () => {
+      findButton(container, "Test connection")?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(window.claudeUsage.testClaudeConnection).toHaveBeenCalledWith("synthetic-session-secret-2", "org_123");
+    expect(container.querySelector<HTMLInputElement>('input[name="session-key"]')?.value).toBe("");
+    expect(document.body.textContent).toContain("Claude connection succeeded.");
+    expect(document.body.textContent).not.toContain("synthetic-session-secret-2");
   });
 
   it("mounts onboarding and overlay routes with placeholder state", async () => {
@@ -93,7 +140,7 @@ describe("foundation renderer routes", () => {
     document.body.innerHTML = "";
     await renderRoute(<OverlayRoute />);
     expect(document.body.textContent).toContain("Overlay");
-    expect(document.body.textContent).toContain("Claude not configured");
+    expect(document.body.textContent).toContain("Five-hour usage");
   });
 
   async function renderRoute(route: React.ReactNode): Promise<{ readonly container: HTMLDivElement }> {
@@ -126,6 +173,20 @@ function importRendererApp(): Promise<typeof import("./renderer/app/index.js")> 
   return import("./renderer/app/index.js");
 }
 
+function findButton(container: HTMLElement, label: string): HTMLButtonElement | null {
+  return (
+    Array.from(container.querySelectorAll("button")).find((button) => button.textContent?.trim() === label) ?? null
+  );
+}
+
+function findEnabledButton(container: HTMLElement, label: string): HTMLButtonElement | null {
+  return (
+    Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === label && !button.disabled
+    ) ?? null
+  );
+}
+
 function createMockPreloadApi() {
   return {
     addAccount: vi.fn(async () => mockAccounts),
@@ -151,11 +212,16 @@ function createMockPreloadApi() {
         ...mockAccounts[0],
         authStatus: "configured",
         orgId: "org_123"
-      }
+      },
+      mockAccounts[1]
     ]),
     setActiveAccount: vi.fn(async () => mockAccounts),
     subscribeUsageUpdated: vi.fn(() => () => undefined),
-    testClaudeConnection: vi.fn(),
+    testClaudeConnection: vi.fn(async () => ({
+      ok: true,
+      status: "connected",
+      message: "Claude connection succeeded."
+    })),
     updateSettings: vi.fn(async () => mockSettings),
     verifyWrapper: vi.fn()
   } satisfies Window["claudeUsage"];
@@ -174,6 +240,13 @@ const mockAccounts: readonly AccountSummary[] = [
     isActive: true,
     label: "Local placeholder",
     orgId: null
+  },
+  {
+    authStatus: "configured",
+    id: "secondary-account",
+    isActive: false,
+    label: "Secondary",
+    orgId: "org_456"
   }
 ];
 
@@ -197,19 +270,19 @@ const mockUsageState: UsageState = {
       actions: [],
       adapterMode: "passive",
       confidence: "observed_only",
-      confidenceExplanation: "Foundation placeholder state only.",
+      confidenceExplanation: "Claude usage is fetched from the active account.",
       dailyRequestCount: null,
-      detailText: "Connect storage and provider services in a later phase.",
+      detailText: "Resets at 2:00 PM.",
       displayName: "Claude",
       enabled: true,
-      headline: "Claude not configured",
-      lastUpdatedAt: null,
+      headline: "Claude usage is below the five-hour limit",
+      lastUpdatedAt: "2026-04-15T12:00:00.000Z",
       providerId: "claude",
       requestsPerMinute: null,
-      resetAt: null,
-      sessionUtilization: null,
-      status: "missing_configuration",
-      weeklyUtilization: null
+      resetAt: "2026-04-15T14:00:00.000Z",
+      sessionUtilization: 0.42,
+      status: "configured",
+      weeklyUtilization: 0.19
     }
   ],
   warning: null

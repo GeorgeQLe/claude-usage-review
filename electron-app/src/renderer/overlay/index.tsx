@@ -1,4 +1,12 @@
-import { ErrorState, LoadingState, StatusPill, WarningBanner, WindowFrame, useRendererSnapshot } from "../components/index.js";
+import {
+  ClaudeUsageCard,
+  ErrorState,
+  getClaudeProvider,
+  LoadingState,
+  WarningBanner,
+  WindowFrame,
+  useRendererSnapshot
+} from "../components/index.js";
 
 export function OverlayRoute(): React.JSX.Element {
   const resource = useRendererSnapshot({ subscribeToUsage: true });
@@ -11,26 +19,16 @@ export function OverlayRoute(): React.JSX.Element {
     return <ErrorState message={resource.error} onRetry={() => void resource.reload()} />;
   }
 
-  const { usageState } = resource.snapshot;
-  const activeProvider =
-    usageState.providers.find((provider) => provider.providerId === usageState.activeProviderId) ??
-    usageState.providers[0] ??
-    null;
+  const { accounts, usageState } = resource.snapshot;
+  const activeAccount = accounts.find((account) => account.isActive) ?? null;
+  const claudeProvider = getClaudeProvider(usageState);
 
   return (
-    <WindowFrame eyebrow="Overlay" title={activeProvider ? activeProvider.displayName : "Usage"}>
+    <WindowFrame eyebrow="Overlay" title={claudeProvider ? claudeProvider.displayName : "Usage"}>
       <WarningBanner warning={usageState.warning} />
       <section className="overlay-status" aria-label="Overlay status">
-        {activeProvider ? (
-          <>
-            <div>
-              <p className="overlay-headline">{activeProvider.headline}</p>
-              <p className="muted">{activeProvider.confidenceExplanation}</p>
-            </div>
-            <StatusPill tone={activeProvider.enabled ? "active" : "warning"}>
-              {activeProvider.enabled ? "Tracking" : "Setup"}
-            </StatusPill>
-          </>
+        {claudeProvider ? (
+          <ClaudeUsageCard activeAccount={activeAccount} compact provider={claudeProvider} />
         ) : (
           <p className="muted">No providers available.</p>
         )}

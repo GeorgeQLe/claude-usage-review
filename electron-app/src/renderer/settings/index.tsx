@@ -1,6 +1,6 @@
 import {
-  AccountList,
-  CredentialPlaceholder,
+  AccountManager,
+  ClaudeCredentialForm,
   ErrorState,
   LoadingState,
   SettingsSummary,
@@ -33,12 +33,22 @@ export function SettingsRoute(): React.JSX.Element {
         </div>
         <div className="panel">
           <h2>Claude credentials</h2>
-          <CredentialPlaceholder activeAccount={activeAccount} onSaved={resource.reload} />
+          <ClaudeCredentialForm
+            activeAccount={activeAccount}
+            onSaveCredentials={resource.saveClaudeCredentials}
+            onTestConnection={resource.testClaudeConnection}
+          />
         </div>
       </section>
       <section className="panel">
         <h2>Accounts</h2>
-        <AccountList accounts={accounts} />
+        <AccountManager
+          accounts={accounts}
+          onAdd={resource.addAccount}
+          onRemove={resource.removeAccount}
+          onRename={resource.renameAccount}
+          onSwitch={resource.setActiveAccount}
+        />
       </section>
     </WindowFrame>
   );
