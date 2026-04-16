@@ -795,3 +795,14 @@ Validation:
 - `npm run typecheck` in `electron-app/`: passed.
 - `npm test -- --run src/main/storage/accounts.test.ts src/foundation-storage.test.ts` in `electron-app/`: 10 tests passed.
 - Accepted environment warning: Node emitted `ExperimentalWarning: SQLite is an experimental feature` during in-memory SQLite account tests.
+
+## 2026-04-16 — Step 3.7: Electron Tray/Menu Polish
+
+Polished the Electron tray/menu behavior for Phase 3 product UI parity. The tray controller now derives a deterministic presentation from sanitized usage and settings state, updates tooltip/title/icon/menu state dynamically, formats Claude reset countdown/reset-time text through the shared pace formatting helpers, exposes a guarded Refresh Now action, reflects overlay visibility as a checkbox, and keeps provider rotation/selection placeholders disabled until real provider rotation exists. The main app now owns the placeholder sanitized usage state used by IPC and tray refreshes, and applies `settings.launchAtLogin` through Electron login-item APIs when settings change.
+
+Validation:
+- `npm test -- --run src/foundation-main.test.ts` in `electron-app/`: 9 tests passed.
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm test -- --run` in `electron-app/`: 85 tests passed.
+- `npm run build` in `electron-app/`: typecheck, full tests, main build, preload build, and renderer build passed.
+- Accepted existing environment warning: Node emitted `ExperimentalWarning: SQLite is an experimental feature` during SQLite-backed storage tests.

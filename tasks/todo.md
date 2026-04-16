@@ -64,7 +64,7 @@
 - [x] Step 3.4: [automated] Implement the complete settings/onboarding experience in `electron-app/src/renderer/settings/` and `electron-app/src/renderer/onboarding/`: time display, pace theme, weekly color mode, launch at login, provider enablement placeholders, migration prompt placeholders, and notification preferences.
 - [x] Step 3.5: [automated] Implement overlay behavior in `electron-app/src/main/windows.ts` and `electron-app/src/renderer/overlay/`: compact/minimal/sidebar layouts, always-on-top behavior, opacity, drag-to-move, position persistence, double-click popover, and context hide/disable action.
 - [x] Step 3.6: [automated] Implement local notifications in `electron-app/src/main/services/notifications.ts`: session reset, auth expired, provider degraded placeholder, and user-configurable threshold warnings.
-- [ ] Step 3.7: [automated] Polish tray/menu behavior in `electron-app/src/main/tray.ts`: exact Claude countdown/reset text, color/icon state, context menu actions, and launch-at-login handling.
+- [x] Step 3.7: [automated] Polish tray/menu behavior in `electron-app/src/main/tray.ts`: exact Claude countdown/reset text, color/icon state, context menu actions, and launch-at-login handling.
 
 ## Green
 - [ ] Step 3.8: [automated] Add regression tests for pace functions, history compaction, GitHub GraphQL request construction, overlay settings persistence, notification preferences, and renderer component state.
@@ -77,34 +77,33 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 3.7
+## Next Step Plan: Step 3.8
 
-Polish tray/menu behavior for the Electron Phase 3 product UI parity pass.
+Add regression tests for the Phase 3 product UI parity behavior before the final smoke/verification steps.
 
-**What Step 3.7 requires:**
-- Make the tray surface reflect sanitized Claude/provider state instead of the current static skeleton where cross-platform tray APIs allow it.
-- Show exact Claude countdown/reset text using the shared pace/time formatting helpers and the user-selected `settings.timeDisplay` mode.
-- Add color/icon state for normal, warning, critical, expired/degraded, missing configuration, and limit-hit cases without exposing secrets to renderer code.
-- Wire context menu actions that are currently placeholders, especially `Refresh Now`, overlay toggle state, provider selection/pinning placeholders, onboarding/settings, and quit.
-- Apply `settings.launchAtLogin` through Electron app login-item APIs when settings change.
-- Preserve Linux tray fallback behavior and keep window-based controls working when tray creation is unavailable.
+**What Step 3.8 requires:**
+- Cover the pure pace helpers with edge cases for stable-window unknown guards, raw fallback warnings, weekly color mode behavior, limit-hit precedence, daily budget, today usage baseline, countdown formatting, and reset-time formatting.
+- Cover history compaction behavior for 24-hour snapshot retention, hourly compaction from 24h to 7d, and latest-point preservation.
+- Cover GitHub GraphQL request construction, including variables, contribution collection mapping, hourly cache reuse, forced refresh behavior, and token redaction.
+- Cover overlay settings persistence for enable/visible/layout/opacity/bounds changes through the main-process window manager path.
+- Cover notification preference gating for session reset, weekly reset, auth expired, provider degraded, and threshold warnings.
+- Cover renderer component state for settings/onboarding/popover states that were added in Phase 3, including GitHub disabled/configured states and settings draft persistence.
 
 **Files to create or modify:**
-- `electron-app/src/main/tray.ts`: extend `TrayController` with state updates, dynamic tooltip/title/icon/menu rendering, refresh action enablement, and launch-at-login helper support if it belongs with tray behavior.
-- `electron-app/src/main/app.ts`: pass current usage/settings state and action callbacks into the tray controller; update launch-at-login when settings change.
-- `electron-app/src/main/ipc.ts`: only adjust if refresh/action dependencies need a narrow main-process callback; keep renderer responses sanitized.
-- `electron-app/src/shared/formatting/pace.ts` or `electron-app/src/shared/formatting/index.ts`: reuse existing formatting helpers; only add small pure helpers if tray text needs a missing deterministic formatter.
-- `electron-app/src/main/tray.test.ts` or existing foundation main tests: cover menu actions, fallback behavior, tray state text/icon decisions, and launch-at-login calls with mocked Electron APIs.
+- `electron-app/src/shared/formatting/pace.test.ts`: add focused pace helper tests.
+- `electron-app/src/main/storage/history.test.ts`: expand history retention/compaction assertions if gaps remain.
+- `electron-app/src/main/services/github.test.ts`: add GraphQL construction/cache/refresh tests if not already complete.
+- `electron-app/src/main/windows.test.ts` or `electron-app/src/foundation-main.test.ts`: add overlay settings persistence coverage.
+- `electron-app/src/main/services/notifications.test.ts`: expand notification preference coverage.
+- `electron-app/src/foundation-renderer.test.tsx` or focused renderer component tests: add renderer state coverage for Phase 3 UI.
 
 **Approach and trade-offs:**
-- Keep tray rendering deterministic by deriving a small `TrayPresentationState` from sanitized usage/settings state, then applying it to Electron `Tray`/`Menu`.
-- Prefer existing formatting helpers for reset/countdown text instead of duplicating time math in the tray controller.
-- Do not implement full provider adapter rotation in this step; provider selection can remain a placeholder menu structure unless existing state already supports it cleanly.
-- Keep launch-at-login updates idempotent and guarded for unsupported platforms or test mocks.
-- Avoid creating a renderer-facing tray API; the main process already owns tray and settings state.
+- Prefer focused unit/component tests over broad smoke tests in this step; Step 3.9 owns Electron/Playwright smoke coverage.
+- Reuse existing mocks and fixtures in the Electron test suite instead of introducing a new test harness.
+- Keep assertions behavior-focused and secret-safe; any serialized test output involving credentials or tokens must remain redacted or absent.
+- If a behavior already has adequate regression coverage, note that in the Step 3.8 implementation and avoid duplicating the same assertion.
 
-**Validation for Step 3.7:**
+**Validation for Step 3.8:**
 - `npm run typecheck` from `electron-app/`.
 - `npm test -- --run` from `electron-app/`.
-- `npm run build` from `electron-app/`.
-- Add focused tray tests before running the full suite.
+- `npm run build` from `electron-app/` if test or shared exports change in a way that can affect bundling.
