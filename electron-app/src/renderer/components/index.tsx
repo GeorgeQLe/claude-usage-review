@@ -9,7 +9,7 @@ import type {
   UsageHistoryResult
 } from "../../shared/types/ipc.js";
 import type { ProviderCard } from "../../shared/types/provider.js";
-import type { AppSettings } from "../../shared/types/settings.js";
+import type { AppSettings, AppSettingsPatch } from "../../shared/types/settings.js";
 import type { UsageState } from "../../shared/types/usage.js";
 
 export interface RendererSnapshot {
@@ -36,6 +36,7 @@ export type RendererSnapshotResource = SnapshotState & {
   readonly testClaudeConnection: (sessionKey: string, orgId: string) => Promise<ClaudeConnectionTestResult>;
   readonly saveGitHubSettings: (payload: SaveGitHubSettingsPayload) => Promise<void>;
   readonly refreshGitHubHeatmap: () => Promise<void>;
+  readonly updateSettings: (patch: AppSettingsPatch) => Promise<void>;
   readonly isRefreshing: boolean;
 };
 
@@ -209,6 +210,22 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
     );
   }, []);
 
+  const updateSettings = useCallback(async (patch: AppSettingsPatch) => {
+    const settings = await window.claudeUsage.updateSettings(patch);
+    setState((current) =>
+      current.status === "ready"
+        ? {
+            status: "ready",
+            snapshot: {
+              ...current.snapshot,
+              settings
+            },
+            error: null
+          }
+        : current
+    );
+  }, []);
+
   useEffect(() => {
     void reload();
   }, [reload]);
@@ -254,6 +271,7 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
       testClaudeConnection,
       saveGitHubSettings,
       refreshGitHubHeatmap,
+      updateSettings,
       isRefreshing
     }),
     [
@@ -268,7 +286,8 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
       saveGitHubSettings,
       setActiveAccount,
       state,
-      testClaudeConnection
+      testClaudeConnection,
+      updateSettings
     ]
   );
 }
@@ -579,8 +598,268 @@ export function SettingsSummary({ settings }: { readonly settings: AppSettings }
       <Metric label="Launch at login" value={settings.launchAtLogin ? "On" : "Off"} />
       <Metric label="Time" value={formatToken(settings.timeDisplay)} />
       <Metric label="Pace" value={formatToken(settings.paceTheme)} />
+      <Metric label="Weekly color" value={formatToken(settings.weeklyColorMode)} />
       <Metric label="Overlay" value={settings.overlay.enabled ? formatToken(settings.overlay.layout) : "Off"} />
+      <Metric label="Notifications" value={settings.notifications.enabled ? "On" : "Off"} />
     </section>
+  );
+}
+
+export function SettingsControls({
+  settings,
+  onUpdateSettings
+}: {
+  readonly settings: AppSettings;
+  readonly onUpdateSettings: (patch: AppSettingsPatch) => Promise<void>;
+}): React.JSX.Element {
+  const [draft, setDraft] = useState<AppSettings>(settings);
+  const [status, setStatus] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setDraft(settings);
+  }, [settings]);
+
+  const updateDraft = (patch: AppSettingsPatch) => {
+    setDraft((current) => mergeSettings(current, patch));
+  };
+
+  const saveSettings = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    try {
+      setIsSaving(true);
+      await onUpdateSettings(draft);
+      setStatus("Settings saved.");
+    } catch (error) {
+      setStatus(getErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <form className="settings-form" onSubmit={saveSettings}>
+      <section className="settings-section" aria-label="Display">
+        <h3>Display</h3>
+        <div className="form-grid">
+          <label>
+            Reset label
+            <select
+              name="time-display"
+              onChange={(event) => updateDraft({ timeDisplay: event.target.value as AppSettings["timeDisplay"] })}
+              value={draft.timeDisplay}
+            >
+              <option value="countdown">Countdown</option>
+              <option value="reset-time">Clock time</option>
+            </select>
+          </label>
+          <label>
+            Pace theme
+            <select
+              name="pace-theme"
+              onChange={(event) => updateDraft({ paceTheme: event.target.value as AppSettings["paceTheme"] })}
+              value={draft.paceTheme}
+            >
+              <option value="balanced">Balanced</option>
+              <option value="strict">Strict</option>
+              <option value="relaxed">Relaxed</option>
+            </select>
+          </label>
+          <label>
+            Weekly color
+            <select
+              name="weekly-color-mode"
+              onChange={(event) =>
+                updateDraft({ weeklyColorMode: event.target.value as AppSettings["weeklyColorMode"] })
+              }
+              value={draft.weeklyColorMode}
+            >
+              <option value="pace-aware">Pace aware</option>
+              <option value="raw-percentage">Raw percentage</option>
+            </select>
+          </label>
+        </div>
+      </section>
+      <section className="settings-section" aria-label="Launch and overlay">
+        <h3>Launch and overlay</h3>
+        <label className="checkbox-label">
+          <input
+            checked={draft.launchAtLogin}
+            name="launch-at-login"
+            onChange={(event) => updateDraft({ launchAtLogin: event.target.checked })}
+            type="checkbox"
+          />
+          Open at login
+        </label>
+        <label className="checkbox-label">
+          <input
+            checked={draft.overlay.enabled}
+            name="overlay-enabled"
+            onChange={(event) => updateDraft({ overlay: { enabled: event.target.checked } })}
+            type="checkbox"
+          />
+          Enable overlay by default
+        </label>
+        <div className="form-grid">
+          <label>
+            Overlay layout
+            <select
+              name="overlay-layout"
+              onChange={(event) => updateDraft({ overlay: { layout: event.target.value as AppSettings["overlay"]["layout"] } })}
+              value={draft.overlay.layout}
+            >
+              <option value="compact">Compact</option>
+              <option value="minimal">Minimal</option>
+              <option value="sidebar">Sidebar</option>
+            </select>
+          </label>
+          <label>
+            Overlay opacity
+            <input
+              max="1"
+              min="0.2"
+              name="overlay-opacity"
+              onChange={(event) => updateDraft({ overlay: { opacity: Number(event.target.value) } })}
+              step="0.05"
+              type="number"
+              value={draft.overlay.opacity}
+            />
+          </label>
+        </div>
+      </section>
+      <section className="settings-section" aria-label="Providers">
+        <h3>Providers</h3>
+        <p className="muted">Codex and Gemini are saved as placeholders until adapters are available.</p>
+        <div className="form-grid">
+          <ProviderPlaceholderField
+            enabled={draft.providers.codex.enabled}
+            dismissed={draft.providers.codex.setupPromptDismissed}
+            label="Codex"
+            name="codex"
+            onChange={(patch) => updateDraft({ providers: { codex: patch } })}
+          />
+          <ProviderPlaceholderField
+            enabled={draft.providers.gemini.enabled}
+            dismissed={draft.providers.gemini.setupPromptDismissed}
+            label="Gemini"
+            name="gemini"
+            onChange={(patch) => updateDraft({ providers: { gemini: patch } })}
+          />
+        </div>
+      </section>
+      <section className="settings-section" aria-label="Migration">
+        <h3>Migration</h3>
+        <label className="checkbox-label">
+          <input
+            checked={draft.migration.swiftAppImport}
+            name="swift-migration-prompt"
+            onChange={(event) => updateDraft({ migration: { swiftAppImport: event.target.checked } })}
+            type="checkbox"
+          />
+          Offer Swift app import
+        </label>
+        <label className="checkbox-label">
+          <input
+            checked={draft.migration.providerImport}
+            name="provider-migration-prompt"
+            onChange={(event) => updateDraft({ migration: { providerImport: event.target.checked } })}
+            type="checkbox"
+          />
+          Offer provider import
+        </label>
+      </section>
+      <section className="settings-section" aria-label="Notifications">
+        <h3>Notifications</h3>
+        <div className="checkbox-grid">
+          <NotificationCheckbox
+            checked={draft.notifications.enabled}
+            label="Enable notifications"
+            name="notifications-enabled"
+            onChange={(enabled) => updateDraft({ notifications: { enabled } })}
+          />
+          <NotificationCheckbox
+            checked={draft.notifications.sessionReset}
+            label="Session reset"
+            name="session-reset-notification"
+            onChange={(sessionReset) => updateDraft({ notifications: { sessionReset } })}
+          />
+          <NotificationCheckbox
+            checked={draft.notifications.weeklyReset}
+            label="Weekly reset"
+            name="weekly-reset-notification"
+            onChange={(weeklyReset) => updateDraft({ notifications: { weeklyReset } })}
+          />
+          <NotificationCheckbox
+            checked={draft.notifications.authExpired}
+            label="Auth expired"
+            name="auth-expired-notification"
+            onChange={(authExpired) => updateDraft({ notifications: { authExpired } })}
+          />
+          <NotificationCheckbox
+            checked={draft.notifications.providerDegraded}
+            label="Provider degraded"
+            name="provider-degraded-notification"
+            onChange={(providerDegraded) => updateDraft({ notifications: { providerDegraded } })}
+          />
+          <NotificationCheckbox
+            checked={draft.notifications.thresholdWarnings}
+            label="Threshold warnings"
+            name="threshold-warning-notification"
+            onChange={(thresholdWarnings) => updateDraft({ notifications: { thresholdWarnings } })}
+          />
+        </div>
+        <div className="form-grid">
+          <label>
+            Session warning %
+            <input
+              max="100"
+              min="1"
+              name="session-warning-percent"
+              onChange={(event) =>
+                updateDraft({ notifications: { sessionWarningPercent: Number(event.target.value) } })
+              }
+              type="number"
+              value={draft.notifications.sessionWarningPercent}
+            />
+          </label>
+          <label>
+            Weekly warning %
+            <input
+              max="100"
+              min="1"
+              name="weekly-warning-percent"
+              onChange={(event) => updateDraft({ notifications: { weeklyWarningPercent: Number(event.target.value) } })}
+              type="number"
+              value={draft.notifications.weeklyWarningPercent}
+            />
+          </label>
+        </div>
+      </section>
+      <section className="settings-section" aria-label="Onboarding">
+        <h3>Onboarding</h3>
+        <div className="checkbox-grid">
+          <NotificationCheckbox
+            checked={draft.onboarding.completed}
+            label="Setup complete"
+            name="onboarding-completed"
+            onChange={(completed) => updateDraft({ onboarding: { completed, skipped: completed ? false : draft.onboarding.skipped } })}
+          />
+          <NotificationCheckbox
+            checked={draft.onboarding.skipped}
+            label="Setup skipped"
+            name="onboarding-skipped"
+            onChange={(skipped) => updateDraft({ onboarding: { skipped, completed: skipped ? false : draft.onboarding.completed } })}
+          />
+        </div>
+      </section>
+      <div className="button-row">
+        <button disabled={isSaving} type="submit">
+          {isSaving ? "Saving" : "Save settings"}
+        </button>
+      </div>
+      {status ? <p className="form-status">{status}</p> : null}
+    </form>
   );
 }
 
@@ -927,6 +1206,82 @@ function Metric({ label, value }: { readonly label: string; readonly value: stri
       <strong>{value}</strong>
     </div>
   );
+}
+
+function ProviderPlaceholderField({
+  enabled,
+  dismissed,
+  label,
+  name,
+  onChange
+}: {
+  readonly enabled: boolean;
+  readonly dismissed: boolean;
+  readonly label: string;
+  readonly name: string;
+  readonly onChange: (patch: Partial<AppSettings["providers"]["codex"]>) => void;
+}): React.JSX.Element {
+  return (
+    <fieldset className="settings-fieldset">
+      <legend>{label}</legend>
+      <label className="checkbox-label">
+        <input
+          checked={enabled}
+          name={`${name}-provider-enabled`}
+          onChange={(event) => onChange({ enabled: event.target.checked })}
+          type="checkbox"
+        />
+        Track when available
+      </label>
+      <label className="checkbox-label">
+        <input
+          checked={dismissed}
+          name={`${name}-provider-dismissed`}
+          onChange={(event) => onChange({ setupPromptDismissed: event.target.checked })}
+          type="checkbox"
+        />
+        Hide setup prompt
+      </label>
+    </fieldset>
+  );
+}
+
+function NotificationCheckbox({
+  checked,
+  label,
+  name,
+  onChange
+}: {
+  readonly checked: boolean;
+  readonly label: string;
+  readonly name: string;
+  readonly onChange: (checked: boolean) => void;
+}): React.JSX.Element {
+  return (
+    <label className="checkbox-label">
+      <input checked={checked} name={name} onChange={(event) => onChange(event.target.checked)} type="checkbox" />
+      {label}
+    </label>
+  );
+}
+
+function mergeSettings(settings: AppSettings, patch: AppSettingsPatch): AppSettings {
+  return {
+    ...settings,
+    ...patch,
+    overlay: patch.overlay ? { ...settings.overlay, ...patch.overlay } : settings.overlay,
+    providers: patch.providers
+      ? {
+          codex: patch.providers.codex ? { ...settings.providers.codex, ...patch.providers.codex } : settings.providers.codex,
+          gemini: patch.providers.gemini
+            ? { ...settings.providers.gemini, ...patch.providers.gemini }
+            : settings.providers.gemini
+        }
+      : settings.providers,
+    migration: patch.migration ? { ...settings.migration, ...patch.migration } : settings.migration,
+    notifications: patch.notifications ? { ...settings.notifications, ...patch.notifications } : settings.notifications,
+    onboarding: patch.onboarding ? { ...settings.onboarding, ...patch.onboarding } : settings.onboarding
+  };
 }
 
 function getProviderTone(provider: ProviderCard): "active" | "muted" | "warning" {

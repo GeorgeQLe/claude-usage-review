@@ -1,9 +1,12 @@
+import { useState } from "react";
 import {
   AccountManager,
   ClaudeCredentialForm,
   ErrorState,
+  GitHubSettingsForm,
   LoadingState,
   ProviderList,
+  SettingsControls,
   WarningBanner,
   WindowFrame,
   useRendererSnapshot
@@ -11,6 +14,7 @@ import {
 
 export function OnboardingRoute(): React.JSX.Element {
   const resource = useRendererSnapshot();
+  const [status, setStatus] = useState<string | null>(null);
 
   if (resource.status === "loading") {
     return <LoadingState label="Preparing setup" />;
@@ -54,6 +58,25 @@ export function OnboardingRoute(): React.JSX.Element {
         <article className="setup-step">
           <span className="step-number">3</span>
           <div>
+            <h2>Add GitHub contributions</h2>
+            <p className="muted">This can stay off until you want contribution activity beside usage.</p>
+            <GitHubSettingsForm
+              heatmap={githubHeatmap}
+              onRefresh={resource.refreshGitHubHeatmap}
+              onSave={resource.saveGitHubSettings}
+            />
+          </div>
+        </article>
+        <article className="setup-step">
+          <span className="step-number">4</span>
+          <div>
+            <h2>Choose defaults</h2>
+            <SettingsControls settings={settings} onUpdateSettings={resource.updateSettings} />
+          </div>
+        </article>
+        <article className="setup-step">
+          <span className="step-number">5</span>
+          <div>
             <h2>Review provider status</h2>
             <ProviderList
               activeAccount={activeAccount}
@@ -65,10 +88,31 @@ export function OnboardingRoute(): React.JSX.Element {
         </article>
       </section>
       <section className="panel">
-        <h2>Display defaults</h2>
-        <p className="muted">
-          {settings.timeDisplay === "countdown" ? "Countdown reset times are enabled." : "Reset times use clock labels."}
-        </p>
+        <h2>Finish setup</h2>
+        <p className="muted">Setup can be completed or skipped without saving credentials.</p>
+        <div className="button-row">
+          <button
+            onClick={() =>
+              void resource.updateSettings({ onboarding: { completed: true, skipped: false } }).then(() => {
+                setStatus("Setup marked complete.");
+              })
+            }
+            type="button"
+          >
+            Complete setup
+          </button>
+          <button
+            onClick={() =>
+              void resource.updateSettings({ onboarding: { completed: false, skipped: true } }).then(() => {
+                setStatus("Setup skipped.");
+              })
+            }
+            type="button"
+          >
+            Skip for now
+          </button>
+        </div>
+        {status ? <p className="form-status">{status}</p> : null}
       </section>
     </WindowFrame>
   );

@@ -17,7 +17,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -38,7 +39,8 @@ button:disabled {
   cursor: default;
 }
 
-input {
+input,
+select {
   width: 100%;
   min-height: 38px;
   border: 1px solid #b7bfb8;
@@ -51,6 +53,21 @@ input {
 input[type="checkbox"] {
   width: 16px;
   min-height: 16px;
+}
+
+fieldset {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid #d6ddd6;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+legend {
+  padding: 0 4px;
+  color: #15191f;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 label {
@@ -395,14 +412,16 @@ h3 {
   padding: 12px;
 }
 
-.credential-form {
+.credential-form,
+.settings-form {
   display: grid;
   gap: 11px;
 }
 
 .credential-form label,
 .inline-form label,
-.account-action-main label {
+.account-action-main label,
+.settings-form label {
   display: grid;
   gap: 6px;
   color: #15191f;
@@ -410,13 +429,27 @@ h3 {
   font-weight: 700;
 }
 
-.credential-form .checkbox-label {
+.credential-form .checkbox-label,
+.settings-form .checkbox-label {
   display: flex;
   align-items: center;
   gap: 8px;
   color: #15191f;
   font-size: 13px;
   font-weight: 700;
+}
+
+.settings-section,
+.settings-fieldset {
+  display: grid;
+  gap: 10px;
+}
+
+.form-grid,
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .account-manager {
@@ -515,11 +548,13 @@ h3 {
   }
 
   .content-grid-two,
-  .meter-grid,
-  .summary-grid,
-  .sparkline-grid,
-  .inline-form,
-  .account-action-row {
+    .meter-grid,
+    .summary-grid,
+    .sparkline-grid,
+    .form-grid,
+    .checkbox-grid,
+    .inline-form,
+    .account-action-row {
     grid-template-columns: 1fr;
   }
 }
