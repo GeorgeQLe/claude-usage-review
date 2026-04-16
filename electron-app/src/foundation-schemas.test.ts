@@ -52,8 +52,10 @@ describe("foundation IPC schemas", () => {
       weeklyColorMode: "pace-aware",
       overlay: {
         enabled: false,
+        visible: false,
         layout: "compact",
-        opacity: 0.9
+        opacity: 0.9,
+        bounds: null
       },
       providers: {
         codex: {
@@ -102,6 +104,33 @@ describe("foundation IPC schemas", () => {
     });
     expect(settings.overlay.layout).toBe("compact");
     expect(settings.notifications.weeklyWarningPercent).toBe(80);
+    expect(
+      updateSettingsPayloadSchema.parse({
+        patch: {
+          overlay: {
+            bounds: {
+              x: -1200,
+              y: 24,
+              width: 320,
+              height: 180
+            },
+            visible: true
+          }
+        }
+      })
+    ).toEqual({
+      patch: {
+        overlay: {
+          bounds: {
+            x: -1200,
+            y: 24,
+            width: 320,
+            height: 180
+          },
+          visible: true
+        }
+      }
+    });
   });
 
   it("validates account and usage response shapes used by the preload bridge", () => {

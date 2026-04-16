@@ -30,6 +30,8 @@ export interface ClaudeUsageApi {
   subscribeUsageUpdated: (callback: (state: UsageState) => void) => () => void;
   getSettings: () => Promise<AppSettings>;
   updateSettings: (patch: AppSettingsPatch) => Promise<AppSettings>;
+  openPopover: () => Promise<void>;
+  hideOverlay: () => Promise<void>;
   getAccounts: () => Promise<readonly AccountSummary[]>;
   addAccount: (label: string) => Promise<readonly AccountSummary[]>;
   renameAccount: (accountId: AccountId, label: string) => Promise<readonly AccountSummary[]>;
@@ -57,6 +59,8 @@ const preloadInvokeChannels = {
   refreshGitHubHeatmap: ipcChannelNames.refreshGitHubHeatmap,
   getSettings: ipcChannelNames.getSettings,
   updateSettings: ipcChannelNames.updateSettings,
+  openPopover: ipcChannelNames.openPopover,
+  hideOverlay: ipcChannelNames.hideOverlay,
   getAccounts: ipcChannelNames.getAccounts,
   addAccount: ipcChannelNames.addAccount,
   renameAccount: ipcChannelNames.renameAccount,
@@ -107,6 +111,8 @@ export function createClaudeUsageApi(): ClaudeUsageApi {
     },
     getSettings: () => invoke("getSettings"),
     updateSettings: (patch) => invoke("updateSettings", { patch }),
+    openPopover: () => invoke("openPopover"),
+    hideOverlay: () => invoke("hideOverlay"),
     getAccounts: () => invoke("getAccounts"),
     addAccount: (label) => invoke("addAccount", { label }),
     renameAccount: (accountId, label) => invoke("renameAccount", { accountId, label }),

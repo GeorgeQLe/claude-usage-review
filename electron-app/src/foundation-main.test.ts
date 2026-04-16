@@ -34,6 +34,12 @@ const electronMock = vi.hoisted(() => {
     readonly hide = vi.fn(() => {
       this.visible = false;
     });
+    readonly setAlwaysOnTop = vi.fn();
+    readonly setBounds = vi.fn();
+    readonly setOpacity = vi.fn();
+    readonly setSize = vi.fn();
+    readonly setVisibleOnAllWorkspaces = vi.fn();
+    readonly getBounds = vi.fn(() => ({ x: 42, y: 84, width: 320, height: 180 }));
     readonly restore = vi.fn(() => {
       this.minimized = false;
     });
@@ -44,6 +50,9 @@ const electronMock = vi.hoisted(() => {
     readonly destroy = vi.fn(() => {
       this.destroyed = true;
     });
+    readonly emit = (event: string) => {
+      this.handlers.get(event)?.();
+    };
 
     private readonly handlers = new Map<string, () => void>();
     private readonly onceHandlers = new Map<string, () => void>();
@@ -138,9 +147,11 @@ describe("foundation window routing", () => {
 
   it("toggles the overlay window instead of creating duplicate overlay instances", async () => {
     const { AppWindowManager } = await import("./main/windows.js");
+    const updateOverlaySettings = vi.fn();
     const manager = new AppWindowManager({
       devServerUrl: "http://127.0.0.1:5173/",
-      isDevelopment: true
+      isDevelopment: true,
+      updateOverlaySettings
     });
 
     const firstOverlay = await manager.toggleOverlay();
@@ -149,6 +160,50 @@ describe("foundation window routing", () => {
     expect(firstOverlay).toBe(secondOverlay);
     expect(electronMock.BrowserWindow.instances).toHaveLength(1);
     expect(electronMock.BrowserWindow.instances[0]?.hide).toHaveBeenCalled();
+    expect(updateOverlaySettings).toHaveBeenCalledWith({ enabled: true, visible: true });
+    expect(updateOverlaySettings).toHaveBeenCalledWith({ visible: false });
+  });
+
+  it("creates frameless overlay windows and persists moved bounds", async () => {
+    const { AppWindowManager } = await import("./main/windows.js");
+    const updateOverlaySettings = vi.fn();
+    const manager = new AppWindowManager({
+      devServerUrl: "http://127.0.0.1:5173/",
+      getOverlaySettings: () => ({
+        bounds: null,
+        enabled: true,
+        layout: "minimal",
+        opacity: 0.75,
+        visible: true
+      }),
+      isDevelopment: true,
+      updateOverlaySettings
+    });
+
+    await manager.toggleOverlay();
+
+    const window = electronMock.BrowserWindow.instances[0];
+    expect(window?.options).toMatchObject({
+      alwaysOnTop: true,
+      frame: false,
+      height: 180,
+      skipTaskbar: true,
+      transparent: true,
+      width: 320
+    });
+    expect(window?.setAlwaysOnTop).toHaveBeenCalledWith(true, "floating");
+    expect(window?.setOpacity).toHaveBeenCalledWith(0.75);
+    expect(window?.setSize).toHaveBeenCalledWith(240, 96);
+
+    window?.emit("moved");
+    expect(updateOverlaySettings).toHaveBeenCalledWith({
+      bounds: {
+        x: 42,
+        y: 84,
+        width: 320,
+        height: 180
+      }
+    });
   });
 });
 

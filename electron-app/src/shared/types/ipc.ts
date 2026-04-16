@@ -15,6 +15,8 @@ export const ipcChannelNames = {
   refreshGitHubHeatmap: "github:refresh-heatmap",
   getSettings: "settings:get",
   updateSettings: "settings:update",
+  openPopover: "windows:open-popover",
+  hideOverlay: "windows:hide-overlay",
   getAccounts: "accounts:list",
   addAccount: "accounts:add",
   renameAccount: "accounts:rename",
@@ -73,6 +75,16 @@ export interface PreloadInvokeMap {
     readonly channel: typeof ipcChannelNames.updateSettings;
     readonly args: readonly [payload: UpdateSettingsPayload];
     readonly result: AppSettings;
+  };
+  readonly openPopover: {
+    readonly channel: typeof ipcChannelNames.openPopover;
+    readonly args: readonly [];
+    readonly result: void;
+  };
+  readonly hideOverlay: {
+    readonly channel: typeof ipcChannelNames.hideOverlay;
+    readonly args: readonly [];
+    readonly result: void;
   };
   readonly getAccounts: {
     readonly channel: typeof ipcChannelNames.getAccounts;

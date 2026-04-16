@@ -11,6 +11,7 @@ import type {
 import type { ProviderCard } from "../../shared/types/provider.js";
 import type { AppSettings, AppSettingsPatch } from "../../shared/types/settings.js";
 import type { UsageState } from "../../shared/types/usage.js";
+import { mergeAppSettings } from "../../shared/settings/defaults.js";
 
 export interface RendererSnapshot {
   readonly usageState: UsageState;
@@ -621,7 +622,7 @@ export function SettingsControls({
   }, [settings]);
 
   const updateDraft = (patch: AppSettingsPatch) => {
-    setDraft((current) => mergeSettings(current, patch));
+    setDraft((current) => mergeAppSettings(current, patch));
   };
 
   const saveSettings = async (event: FormEvent<HTMLFormElement>) => {
@@ -1263,25 +1264,6 @@ function NotificationCheckbox({
       {label}
     </label>
   );
-}
-
-function mergeSettings(settings: AppSettings, patch: AppSettingsPatch): AppSettings {
-  return {
-    ...settings,
-    ...patch,
-    overlay: patch.overlay ? { ...settings.overlay, ...patch.overlay } : settings.overlay,
-    providers: patch.providers
-      ? {
-          codex: patch.providers.codex ? { ...settings.providers.codex, ...patch.providers.codex } : settings.providers.codex,
-          gemini: patch.providers.gemini
-            ? { ...settings.providers.gemini, ...patch.providers.gemini }
-            : settings.providers.gemini
-        }
-      : settings.providers,
-    migration: patch.migration ? { ...settings.migration, ...patch.migration } : settings.migration,
-    notifications: patch.notifications ? { ...settings.notifications, ...patch.notifications } : settings.notifications,
-    onboarding: patch.onboarding ? { ...settings.onboarding, ...patch.onboarding } : settings.onboarding
-  };
 }
 
 function getProviderTone(provider: ProviderCard): "active" | "muted" | "warning" {

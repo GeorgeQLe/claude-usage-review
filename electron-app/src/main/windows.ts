@@ -1,6 +1,8 @@
-import { BrowserWindow, shell, type BrowserWindowConstructorOptions } from "electron";
+import { BrowserWindow, shell, type BrowserWindowConstructorOptions, type Rectangle } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { createDefaultOverlaySettings } from "../shared/settings/defaults.js";
+import type { OverlayLayout, OverlaySettings } from "../shared/types/settings.js";
 
 export type AppWindowKind = "popover" | "settings" | "overlay" | "onboarding";
 
@@ -16,12 +18,19 @@ export interface AppWindowDescriptor {
 export interface AppWindowManagerOptions {
   readonly isDevelopment: boolean;
   readonly devServerUrl: string;
+  readonly getOverlaySettings?: () => OverlaySettings;
+  readonly updateOverlaySettings?: (patch: Partial<OverlaySettings>) => void;
 }
 
 const mainDir = dirname(fileURLToPath(import.meta.url));
 const preloadPath = join(mainDir, "../preload/index.js");
 const rendererIndexPath = join(mainDir, "../../dist/index.html");
 const rendererIndexUrl = pathToFileURL(rendererIndexPath).toString();
+const overlayWindowSizes = {
+  compact: { width: 320, height: 180 },
+  minimal: { width: 240, height: 96 },
+  sidebar: { width: 300, height: 560 }
+} as const satisfies Record<OverlayLayout, Pick<Rectangle, "width" | "height">>;
 
 export const windowDescriptors: Record<AppWindowKind, AppWindowDescriptor> = {
   popover: {
@@ -45,12 +54,15 @@ export const windowDescriptors: Record<AppWindowKind, AppWindowDescriptor> = {
   overlay: {
     kind: "overlay",
     title: "ClaudeUsage Overlay",
-    width: 320,
-    height: 160,
+    width: overlayWindowSizes.compact.width,
+    height: overlayWindowSizes.compact.height,
     route: "overlay",
     options: {
       alwaysOnTop: true,
+      frame: false,
+      hasShadow: false,
       skipTaskbar: true,
+      transparent: true,
       resizable: false
     }
   },
@@ -85,11 +97,40 @@ export class AppWindowManager {
     const existing = this.windows.get("overlay");
 
     if (existing?.isVisible()) {
-      existing.hide();
+      this.hideOverlay();
       return existing;
     }
 
+    this.options.updateOverlaySettings?.({ enabled: true, visible: true });
     return this.showWindow("overlay");
+  }
+
+  hideOverlay(): BrowserWindow | null {
+    const overlay = this.windows.get("overlay") ?? null;
+
+    if (overlay && !overlay.isDestroyed()) {
+      overlay.hide();
+    }
+
+    this.options.updateOverlaySettings?.({ visible: false });
+    return overlay;
+  }
+
+  applyOverlaySettings(settings: OverlaySettings): void {
+    const overlay = this.windows.get("overlay");
+
+    if (!settings.enabled || !settings.visible) {
+      overlay?.hide();
+      return;
+    }
+
+    if (overlay && !overlay.isDestroyed()) {
+      this.configureOverlayWindow(overlay, settings);
+      overlay.show();
+      return;
+    }
+
+    void this.showWindow("overlay");
   }
 
   async focusPrimaryWindow(): Promise<BrowserWindow> {
@@ -132,12 +173,16 @@ export class AppWindowManager {
     }
 
     const descriptor = windowDescriptors[kind];
+    const overlaySettings = kind === "overlay" ? this.getOverlaySettings() : null;
+    const overlayBounds = overlaySettings ? getOverlayInitialBounds(overlaySettings) : null;
     const window = new BrowserWindow({
       title: descriptor.title,
-      width: descriptor.width,
-      height: descriptor.height,
+      width: overlayBounds?.width ?? descriptor.width,
+      height: overlayBounds?.height ?? descriptor.height,
+      x: overlayBounds?.x,
+      y: overlayBounds?.y,
       show: false,
-      backgroundColor: "#111318",
+      backgroundColor: kind === "overlay" ? "#00000000" : "#111318",
       ...descriptor.options,
       webPreferences: {
         preload: preloadPath,
@@ -151,6 +196,10 @@ export class AppWindowManager {
     });
 
     window.removeMenu();
+    if (kind === "overlay") {
+      this.configureOverlayWindow(window, overlaySettings ?? this.getOverlaySettings());
+      this.trackOverlayBounds(window);
+    }
     window.once("ready-to-show", () => {
       window.show();
     });
@@ -208,6 +257,35 @@ export class AppWindowManager {
     window.focus();
   }
 
+  private getOverlaySettings(): OverlaySettings {
+    return this.options.getOverlaySettings?.() ?? createDefaultOverlaySettings();
+  }
+
+  private configureOverlayWindow(window: BrowserWindow, settings: OverlaySettings): void {
+    const overlayBounds = getOverlayInitialBounds(settings);
+
+    window.setAlwaysOnTop(true, "floating");
+    window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    window.setOpacity(settings.opacity);
+
+    if (overlayBounds) {
+      window.setBounds(overlayBounds);
+      return;
+    }
+
+    const size = overlayWindowSizes[settings.layout];
+    window.setSize(size.width, size.height);
+  }
+
+  private trackOverlayBounds(window: BrowserWindow): void {
+    const persistBounds = () => {
+      this.options.updateOverlaySettings?.({ bounds: normalizeBounds(window.getBounds()) });
+    };
+
+    window.on("moved", persistBounds);
+    window.on("resized", persistBounds);
+  }
+
   private applyNavigationGuards(window: BrowserWindow): void {
     window.webContents.setWindowOpenHandler(({ url }) => {
       if (isExternalHttpUrl(url)) {
@@ -237,6 +315,23 @@ export class AppWindowManager {
 
     return url.startsWith(rendererIndexUrl);
   }
+}
+
+function getOverlayInitialBounds(settings: OverlaySettings): Rectangle | null {
+  if (!settings.bounds) {
+    return null;
+  }
+
+  return normalizeBounds(settings.bounds);
+}
+
+function normalizeBounds(bounds: Rectangle): Rectangle {
+  return {
+    x: Math.round(bounds.x),
+    y: Math.round(bounds.y),
+    width: Math.round(bounds.width),
+    height: Math.round(bounds.height)
+  };
 }
 
 function isExternalHttpUrl(url: string): boolean {

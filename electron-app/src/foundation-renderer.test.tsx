@@ -160,8 +160,29 @@ describe("foundation renderer routes", () => {
     await unmountRoutes();
     document.body.innerHTML = "";
     await renderRoute(<OverlayRoute />);
-    expect(document.body.textContent).toContain("Overlay");
-    expect(document.body.textContent).toContain("Five-hour usage");
+    expect(document.body.textContent).toContain("42% session");
+    expect(document.body.textContent).toContain("Five-hour");
+  });
+
+  it("routes overlay double-click and context actions through narrow preload commands", async () => {
+    const { container } = await renderRoute(<OverlayRoute />);
+    const overlayFrame = container.querySelector<HTMLElement>(".overlay-frame");
+
+    await act(async () => {
+      overlayFrame?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+    expect(window.claudeUsage.openPopover).toHaveBeenCalled();
+
+    await act(async () => {
+      overlayFrame?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+    });
+    expect(findButton(container, "Hide")).not.toBeNull();
+
+    await act(async () => {
+      findButton(container, "Hide")?.click();
+    });
+    expect(window.claudeUsage.updateSettings).toHaveBeenCalledWith({ overlay: { visible: false } });
+    expect(window.claudeUsage.hideOverlay).toHaveBeenCalled();
   });
 
   async function renderRoute(route: React.ReactNode): Promise<{ readonly container: HTMLDivElement }> {
@@ -241,6 +262,8 @@ function createMockPreloadApi() {
     ]),
     setActiveAccount: vi.fn(async () => mockAccounts),
     saveGitHubSettings: vi.fn(async () => mockGitHubHeatmap),
+    hideOverlay: vi.fn(async () => undefined),
+    openPopover: vi.fn(async () => undefined),
     subscribeUsageUpdated: vi.fn(() => () => undefined),
     testClaudeConnection: vi.fn(async () => ({
       ok: true,
@@ -303,8 +326,10 @@ const mockSettings: AppSettings = {
   },
   overlay: {
     enabled: false,
+    visible: false,
     layout: "compact",
-    opacity: 0.9
+    opacity: 0.9,
+    bounds: null
   },
   paceTheme: "balanced",
   providers: {

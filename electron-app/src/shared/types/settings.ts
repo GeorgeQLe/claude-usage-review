@@ -6,10 +6,19 @@ export type WeeklyColorMode = "pace-aware" | "raw-percentage";
 
 export type OverlayLayout = "compact" | "minimal" | "sidebar";
 
+export interface OverlayBounds {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface OverlaySettings {
   readonly enabled: boolean;
+  readonly visible: boolean;
   readonly layout: OverlayLayout;
   readonly opacity: number;
+  readonly bounds: OverlayBounds | null;
 }
 
 export interface ProviderPlaceholderSettings {

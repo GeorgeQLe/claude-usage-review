@@ -21,6 +21,7 @@ import {
 } from "../shared/schemas/ipc.js";
 import { accountSummarySchema } from "../shared/schemas/accounts.js";
 import { appSettingsSchema } from "../shared/schemas/settings.js";
+import { createDefaultAppSettings, mergeAppSettings } from "../shared/settings/defaults.js";
 import { usageStateSchema } from "../shared/schemas/usage.js";
 import type { AccountId, AccountSummary } from "../shared/types/accounts.js";
 import type {
@@ -79,6 +80,11 @@ export interface IpcUsageStateDependencies {
   readonly refreshNow?: () => MaybePromise<UsageState | void>;
 }
 
+export interface IpcSettingsDependencies {
+  readonly getSettings?: () => MaybePromise<AppSettings>;
+  readonly updateSettings?: (patch: AppSettingsPatch) => MaybePromise<AppSettings>;
+}
+
 export interface IpcHistoryDependencies {
   readonly listUsageHistory?: (filters?: GetUsageHistoryPayload) => MaybePromise<UsageHistoryResult>;
 }
@@ -89,13 +95,20 @@ export interface IpcGitHubDependencies {
   readonly refreshHeatmap?: () => MaybePromise<GitHubHeatmapResult>;
 }
 
+export interface IpcWindowDependencies {
+  readonly openPopover?: () => MaybePromise<void>;
+  readonly hideOverlay?: () => MaybePromise<void>;
+}
+
 export interface IpcHandlerDependencies {
   readonly accounts?: IpcAccountDependencies;
   readonly credentials?: IpcCredentialDependencies;
   readonly claudeClient?: IpcClaudeClientDependencies;
   readonly usageState?: IpcUsageStateDependencies;
+  readonly settings?: IpcSettingsDependencies;
   readonly history?: IpcHistoryDependencies;
   readonly github?: IpcGitHubDependencies;
+  readonly windows?: IpcWindowDependencies;
 }
 
 const accountSummariesSchema = z.array(accountSummarySchema);
@@ -109,6 +122,8 @@ const registeredInvokeChannels = [
   ipcChannelNames.refreshGitHubHeatmap,
   ipcChannelNames.getSettings,
   ipcChannelNames.updateSettings,
+  ipcChannelNames.openPopover,
+  ipcChannelNames.hideOverlay,
   ipcChannelNames.getAccounts,
   ipcChannelNames.addAccount,
   ipcChannelNames.renameAccount,
@@ -148,6 +163,8 @@ export function registerIpcHandlers(dependencies: IpcHandlerDependencies = {}): 
   ipcMain.handle(ipcChannelNames.updateSettings, (_event, payload: unknown) =>
     state.updateSettings(parsePayload(updateSettingsPayloadSchema, payload))
   );
+  ipcMain.handle(ipcChannelNames.openPopover, () => state.openPopover());
+  ipcMain.handle(ipcChannelNames.hideOverlay, () => state.hideOverlay());
   ipcMain.handle(ipcChannelNames.getAccounts, () => state.getAccounts());
   ipcMain.handle(ipcChannelNames.addAccount, (_event, payload: unknown) =>
     state.addAccount(parsePayload(addAccountPayloadSchema, payload))
@@ -243,8 +260,26 @@ function createIpcState(dependencies: IpcHandlerDependencies) {
 
       return placeholder.refreshGitHubHeatmap();
     },
-    getSettings: (): AppSettings => placeholder.getSettings(),
-    updateSettings: (payload: { readonly patch: AppSettingsPatch }): AppSettings => placeholder.updateSettings(payload),
+    getSettings: async (): Promise<AppSettings> => {
+      if (dependencies.settings?.getSettings) {
+        return validateSettings(await dependencies.settings.getSettings());
+      }
+
+      return placeholder.getSettings();
+    },
+    updateSettings: async (payload: { readonly patch: AppSettingsPatch }): Promise<AppSettings> => {
+      if (dependencies.settings?.updateSettings) {
+        return validateSettings(await dependencies.settings.updateSettings(payload.patch));
+      }
+
+      return placeholder.updateSettings(payload);
+    },
+    openPopover: async (): Promise<void> => {
+      await dependencies.windows?.openPopover?.();
+    },
+    hideOverlay: async (): Promise<void> => {
+      await dependencies.windows?.hideOverlay?.();
+    },
     getAccounts: async (): Promise<readonly AccountSummary[]> => {
       if (dependencies.accounts?.listAccounts) {
         return validateAccounts(await dependencies.accounts.listAccounts());
@@ -338,45 +373,7 @@ function createIpcState(dependencies: IpcHandlerDependencies) {
 
 function createPlaceholderIpcState() {
   let nextAccountNumber = 2;
-  let settings = validateSettings({
-    launchAtLogin: false,
-    timeDisplay: "countdown",
-    paceTheme: "balanced",
-    weeklyColorMode: "pace-aware",
-    overlay: {
-      enabled: false,
-      layout: "compact",
-      opacity: 0.9
-    },
-    providers: {
-      codex: {
-        enabled: false,
-        setupPromptDismissed: false
-      },
-      gemini: {
-        enabled: false,
-        setupPromptDismissed: false
-      }
-    },
-    migration: {
-      swiftAppImport: true,
-      providerImport: true
-    },
-    notifications: {
-      enabled: true,
-      sessionReset: true,
-      weeklyReset: true,
-      authExpired: true,
-      providerDegraded: false,
-      thresholdWarnings: true,
-      sessionWarningPercent: 80,
-      weeklyWarningPercent: 80
-    },
-    onboarding: {
-      completed: false,
-      skipped: false
-    }
-  });
+  let settings = validateSettings(createDefaultAppSettings());
   let hasGitHubToken = false;
   let githubHeatmap = validateGitHubHeatmapResult({
     enabled: false,
@@ -453,30 +450,7 @@ function createPlaceholderIpcState() {
     },
     getSettings: (): AppSettings => settings,
     updateSettings: (payload: { readonly patch: AppSettingsPatch }): AppSettings => {
-      settings = validateSettings({
-        ...settings,
-        ...payload.patch,
-        overlay: payload.patch.overlay ? { ...settings.overlay, ...payload.patch.overlay } : settings.overlay,
-        providers: payload.patch.providers
-          ? {
-              codex: payload.patch.providers.codex
-                ? { ...settings.providers.codex, ...payload.patch.providers.codex }
-                : settings.providers.codex,
-              gemini: payload.patch.providers.gemini
-                ? { ...settings.providers.gemini, ...payload.patch.providers.gemini }
-                : settings.providers.gemini
-            }
-          : settings.providers,
-        migration: payload.patch.migration
-          ? { ...settings.migration, ...payload.patch.migration }
-          : settings.migration,
-        notifications: payload.patch.notifications
-          ? { ...settings.notifications, ...payload.patch.notifications }
-          : settings.notifications,
-        onboarding: payload.patch.onboarding
-          ? { ...settings.onboarding, ...payload.patch.onboarding }
-          : settings.onboarding
-      });
+      settings = validateSettings(mergeAppSettings(settings, payload.patch));
       return settings;
     },
     getAccounts: (): readonly AccountSummary[] => accounts,

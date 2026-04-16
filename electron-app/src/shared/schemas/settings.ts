@@ -1,9 +1,18 @@
 import { z } from "zod";
 
+export const overlayBoundsSchema = z.object({
+  x: z.number().int(),
+  y: z.number().int(),
+  width: z.number().int().min(160).max(900),
+  height: z.number().int().min(80).max(900)
+});
+
 export const overlaySettingsSchema = z.object({
   enabled: z.boolean(),
+  visible: z.boolean(),
   layout: z.enum(["compact", "minimal", "sidebar"]),
-  opacity: z.number().min(0.2).max(1)
+  opacity: z.number().min(0.2).max(1),
+  bounds: overlayBoundsSchema.nullable()
 });
 
 export const providerPlaceholderSettingsSchema = z.object({

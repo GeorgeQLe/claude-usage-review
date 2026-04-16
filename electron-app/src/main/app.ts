@@ -2,6 +2,9 @@ import { app } from "electron";
 import { AppWindowManager } from "./windows.js";
 import { TrayController, type TrayFallbackStatus } from "./tray.js";
 import { registerIpcHandlers, type IpcRegistration } from "./ipc.js";
+import { createDefaultAppSettings, mergeAppSettings } from "../shared/settings/defaults.js";
+import { appSettingsSchema } from "../shared/schemas/settings.js";
+import type { AppSettings, AppSettingsPatch } from "../shared/types/settings.js";
 
 const isSmokeMode = process.env.CLAUDE_USAGE_ELECTRON_SMOKE === "1";
 const isDevelopment = !app.isPackaged && !isSmokeMode;
@@ -11,6 +14,7 @@ let windowManager: AppWindowManager | null = null;
 let trayController: TrayController | null = null;
 let ipcRegistration: IpcRegistration | null = null;
 let isQuitting = false;
+let settings = appSettingsSchema.parse(createDefaultAppSettings());
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
@@ -45,11 +49,28 @@ if (!hasSingleInstanceLock) {
 }
 
 async function startApp(): Promise<void> {
-  ipcRegistration = registerIpcHandlers();
-
   windowManager = new AppWindowManager({
     isDevelopment,
-    devServerUrl: rendererDevServerUrl
+    devServerUrl: rendererDevServerUrl,
+    getOverlaySettings: () => settings.overlay,
+    updateOverlaySettings: (patch) => {
+      updateSettings({ overlay: patch });
+    }
+  });
+
+  ipcRegistration = registerIpcHandlers({
+    settings: {
+      getSettings: () => settings,
+      updateSettings
+    },
+    windows: {
+      openPopover: () => {
+        void windowManager?.showPopover();
+      },
+      hideOverlay: () => {
+        windowManager?.hideOverlay();
+      }
+    }
   });
 
   trayController = new TrayController({
@@ -82,6 +103,17 @@ async function startApp(): Promise<void> {
       app.quit();
     }, 50);
   }
+}
+
+function updateSettings(patch: AppSettingsPatch): AppSettings {
+  const overlayPatchKeys = patch.overlay ? Object.keys(patch.overlay) : [];
+  settings = appSettingsSchema.parse(mergeAppSettings(settings, patch));
+
+  if (overlayPatchKeys.length === 0 || overlayPatchKeys.some((key) => key !== "bounds")) {
+    windowManager?.applyOverlaySettings(settings.overlay);
+  }
+
+  return settings;
 }
 
 function reportTrayFallback(status: TrayFallbackStatus): void {
