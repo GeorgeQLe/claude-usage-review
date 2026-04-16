@@ -826,3 +826,14 @@ Added the red-phase Provider Telemetry contract tests for the Swift macOS app. T
 Validation:
 - `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`: expected red TDD failure. The test target now compiles the new contract file and fails on missing Provider Telemetry implementation APIs, including `ProviderTelemetryHTTPClient`, `ProviderTelemetryHTTPResponse`, `CodexTelemetryAuthProviding`, `CodexTelemetryAuth`, `GeminiTelemetryAuthProviding`, `GeminiTelemetryAuth`, `ProviderTelemetryClient`, and `ProviderTelemetrySnapshot`.
 - Accepted environment warnings: xcodebuild selected the first of multiple matching local macOS destinations, and AppIntents metadata extraction was skipped because the app has no AppIntents dependency.
+
+## 2026-04-16 — Step 7.2: Swift Provider Telemetry Models And Settings
+
+Added the shared Swift Provider Telemetry surface for Codex and Gemini. The new model layer covers normalized telemetry snapshots, provider-specific Codex rate-limit and Gemini quota payload decoding, injected HTTP/client protocols, auth abstractions, unavailable/degraded failure metadata, redacted diagnostics, a sanitized in-memory store, and passive-snapshot fallback attachment. `ProviderSettingsStore` now accepts injected `UserDefaults` and persists Provider Telemetry toggles separately from existing Accuracy Mode settings, defaulting Codex and Gemini telemetry off. The Xcode project now includes the new telemetry model and placeholder service files.
+
+The placeholder Codex/Gemini telemetry clients and coordinator remain intentionally narrow for the next implementation steps, but they use injected HTTP clients and static test fixtures only; no live provider requests are made.
+
+Validation:
+- `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`: 132 tests passed, 0 failures.
+- Fixed issues found during validation: persistence now drops raw response/prompt diagnostic content, and scheduled telemetry backoff begins only after the three-failure degraded state while manual refresh bypasses backoff.
+- Accepted environment warnings: xcodebuild selected the first of multiple matching local macOS destinations, AppIntents metadata extraction was skipped because the app has no AppIntents dependency, and the XCTest link step warned that the local XCTest libraries target macOS 14 while the app deployment target is macOS 13.
