@@ -1,109 +1,34 @@
-# Phase 3: Product UI Parity
+# Phase 7: Swift Provider Telemetry Endpoints
 
-> Project: ClaudeUsage Electron cross-platform app
-> Source: `specs/electron-cross-platform-ai-usage-monitor.md`
-> Scope: Port the Swift app's non-provider Claude product experience into Electron where cross-platform APIs allow it: pace semantics, history visualization, GitHub heatmap, complete settings/onboarding, overlay behavior, notifications, and polished tray/menu behavior. Preserve the secure Electron boundary: renderer code only receives validated, secret-free state through the preload API.
-> Test strategy: tests-after
+> Project: ClaudeUsage Swift macOS app
+> Source: `specs/provider-telemetry-endpoints.md`
+> Scope: Add opt-in Provider Telemetry for Codex and Gemini Code Assist using provider-supplied quota endpoints, while preserving Claude ingestion and passive/wrapper fallbacks.
+> Test strategy: tdd
 
-## Priority Task Queue
-
-- [ ] `$plan-phases 7` - decompose the new Swift Provider Telemetry Endpoints roadmap phase because `tasks/roadmap.md` now includes Phase 7 from `specs/provider-telemetry-endpoints.md` with goal, scope, and acceptance criteria, but it intentionally has no `### Tests First`, `### Implementation`, or `### Green` execution steps yet.
-- [ ] `$plan-interview --ideas` - triage unspecced ideas because `tasks/ideas.md` was last modified at 2026-03-23 09:07:26 -0400 and still contains idea entries without corresponding specs under `specs/`.
+## Tests First
+- [ ] Step 7.1: [automated] Add failing tests for the Swift Provider Telemetry contract under `ClaudeUsageTests/`: provider telemetry settings default off, Codex/Gemini telemetry model decoding, injected HTTP client behavior, confidence transitions from passive to provider-supplied and back, refresh/backoff state, redaction, and adapter fallback. Tests must use fixtures and fake clients only; no live Codex, ChatGPT, Gemini, Google, or Vertex requests.
 
 ## Implementation
-- [x] Step 3.1: [automated] Port Swift pace semantics into shared pure functions under `electron-app/src/shared/formatting/pace.ts`: session/weekly pace windows, unknown guards, behind/way-behind/warning/critical/limit-hit status, daily budget, today usage baseline, and time display formatting.
-
-  **What:** Add the pure, renderer-safe formatting/calculation layer that later Phase 3 UI and tray work can call. Match the Swift `UsageViewModel` pace semantics without introducing main-process storage, IPC, or UI changes in this step.
-
-  **Files to create or modify:**
-  - `electron-app/src/shared/formatting/pace.ts`: new pure TypeScript module for pace calculations and formatting helpers.
-  - `electron-app/src/shared/formatting/index.ts`: optional barrel export if local convention needs one.
-  - `electron-app/src/shared/types/index.ts` or `electron-app/src/shared/schemas/index.ts`: export formatting types only if needed by existing imports; avoid widening runtime schemas unless a later renderer/API step needs it.
-
-  **Swift reference behavior to port:**
-  - Weekly pace ratio uses the 7-day window from `sevenDay.resetsAt`.
-  - Weekly pace is unknown in the first 6 hours and final 1 hour of the window.
-  - Session pace ratio uses the 5-hour window from `fiveHour.resetsAt`.
-  - Session pace is unknown in the first 15 minutes and final 5 minutes of the window.
-  - Status values: `unknown`, `on_track`, `behind_pace`, `way_behind`, `warning`, `critical`, `limit_hit`.
-  - Ratio thresholds: `> 1.4` is `critical`, `> 1.15` is `warning`, `< 0.6` is `way_behind`, `< 0.85` is `behind_pace`, otherwise `on_track`.
-  - Session fallback before the stable window: raw utilization `>= 80` is `critical`, `>= 60` is `warning`, otherwise `unknown`.
-  - Weekly under-use states only apply when weekly color mode is `pace_aware`; raw-percentage mode should not classify under-use as behind/way-behind.
-  - `limit_hit` wins when the relevant utilization is `>= 100`.
-
-  **Recommended API shape:**
-  - `type PaceStatus = "unknown" | "on_track" | "behind_pace" | "way_behind" | "warning" | "critical" | "limit_hit"`.
-  - `type WeeklyColorMode = "pace_aware" | "raw_percentage"`.
-  - `type TimeDisplayFormat = "reset_time" | "remaining_time"`.
-  - `calculatePaceRatio(limit, options)` where `options` includes `windowSeconds`, `now`, `minimumElapsedSeconds`, and `minimumRemainingSeconds`.
-  - `getSessionPaceStatus(fiveHour, now)`.
-  - `getWeeklyPaceStatus(sevenDay, { now, weeklyColorMode })`.
-  - `getWeeklyPaceIndicator(sevenDay, now)` returning `""`, `"▲"`, or `"▼"`.
-  - `calculateTodayUsagePercent(currentWeeklyUtilization, snapshots, now)` using `UsageSnapshotSummary`-like data. Prefer the last snapshot before local midnight; fall back to the earliest same-day snapshot; clamp negative deltas to 0.
-  - `calculateDailyBudgetPercent(sevenDay, now)` returning rounded remaining weekly percentage divided by remaining days, or `0` when reset has passed or remaining usage is exhausted.
-  - `getPaceGuidance(status)` and `formatWeeklyPaceDetail(...)` matching Swift copy: `On pace - use more`, `Behind pace - pick it up`, `Way behind - use it or lose it`, `Ahead of pace - ease up`, `Way ahead - slow down`, `Maxed out`, `Calculating...`.
-  - `formatCountdown(resetAt, now)` as `h:mm:ss`, clamped at `0:00:00`.
-  - `formatResetTime(resetAt, locale?)` using local timezone formatting suitable for tray/popover text.
-  - `formatTimeDisplay({ format, resetAt, now, locale })` selecting reset time or countdown.
-
-  **Implementation notes:**
-  - Use `ClaudeUsageLimit` from `electron-app/src/shared/schemas/claudeUsage.ts` as the input shape where practical.
-  - Keep the module side-effect free and deterministic by passing `now` into calculations; do not read system time internally except in thin default wrappers if unavoidable.
-  - Treat malformed or absent reset timestamps as `unknown`/empty formatting output instead of throwing in renderer-facing helpers.
-  - Keep all values as percentages on the same 0-100 scale returned by Claude, not 0-1 utilization fractions.
-  - Do not add emojis or theme UI in this step unless a small static map is required by `formatWeeklyPaceDetail`; settings UI for themes belongs to Step 3.4.
-
-  **Validation for Step 3.1:**
-  - `npm run typecheck` from `electron-app/`.
-  - `npm test -- --run` from `electron-app/` to catch existing regressions.
-  - `npm run build` from `electron-app/` if shared exports or renderer imports change.
-  - No Electron smoke is required for this pure shared module step unless runtime wiring is added unexpectedly.
-
-- [x] Step 3.2: [automated] Expand history storage and visualization with `electron-app/src/main/storage/history.ts` and renderer components under `electron-app/src/renderer/components/`: 24-hour snapshots, 24h-to-7d hourly compaction, session/weekly sparklines, and last-updated text.
-- [x] Step 3.3: [automated] Implement GitHub contribution heatmap support in `electron-app/src/main/services/github.ts`, secret GitHub token storage, settings controls, hourly refresh behavior, GraphQL variables, and renderer heatmap components.
-- [x] Step 3.4: [automated] Implement the complete settings/onboarding experience in `electron-app/src/renderer/settings/` and `electron-app/src/renderer/onboarding/`: time display, pace theme, weekly color mode, launch at login, provider enablement placeholders, migration prompt placeholders, and notification preferences.
-- [x] Step 3.5: [automated] Implement overlay behavior in `electron-app/src/main/windows.ts` and `electron-app/src/renderer/overlay/`: compact/minimal/sidebar layouts, always-on-top behavior, opacity, drag-to-move, position persistence, double-click popover, and context hide/disable action.
-- [x] Step 3.6: [automated] Implement local notifications in `electron-app/src/main/services/notifications.ts`: session reset, auth expired, provider degraded placeholder, and user-configurable threshold warnings.
-- [x] Step 3.7: [automated] Polish tray/menu behavior in `electron-app/src/main/tray.ts`: exact Claude countdown/reset text, color/icon state, context menu actions, and launch-at-login handling.
+- [ ] Step 7.2: [automated] Add shared telemetry models and settings in `ClaudeUsage/Models/ProviderTelemetryTypes.swift`, `ClaudeUsage/Models/ProviderSettingsStore.swift`, `ClaudeUsage/Models/ProviderTypes.swift`, and related tests: per-provider Provider Telemetry toggles, normalized telemetry snapshots, provider-specific Codex/Gemini payloads, degraded/unavailable states, account labels, and failure metadata.
+- [ ] Step 7.3: [automated] Add the refresh/backoff orchestration and snapshot persistence in `ClaudeUsage/Services/ProviderTelemetryCoordinator.swift` and `ClaudeUsage/Services/ProviderTelemetryStore.swift`, integrating with `ProviderShellViewModel` without changing Claude polling or Claude API ingestion.
+- [ ] Step 7.4: [automated] Implement Codex provider telemetry in `ClaudeUsage/Services/CodexTelemetryClient.swift`, `ClaudeUsage/Services/CodexDetector.swift`, `ClaudeUsage/Services/CodexAdapter.swift`, and `ClaudeUsage/Models/CodexTypes.swift`: detect usable existing CLI auth, select `https://chatgpt.com/backend-api/wham/usage` or `{base_url}/api/codex/usage`, parse rate-limit snapshots, map provider-supplied fields, redact auth diagnostics, and fall back to passive Codex state on unsupported auth or endpoint drift.
+- [ ] Step 7.5: [automated] Implement Gemini Code Assist provider telemetry in `ClaudeUsage/Services/GeminiTelemetryClient.swift`, `ClaudeUsage/Services/GeminiDetector.swift`, `ClaudeUsage/Services/GeminiAdapter.swift`, and `ClaudeUsage/Models/GeminiTypes.swift`: detect Code Assist auth support, discover the project id, call `POST https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota`, parse quota buckets, handle encrypted/unsupported credentials, redact auth diagnostics, and fall back to passive Gemini state.
+- [ ] Step 7.6: [automated] Wire Provider Telemetry into the Swift UI and docs in `ClaudeUsage/Views/SettingsView.swift`, `ClaudeUsage/Views/ProviderCardView.swift`, `ClaudeUsage/Models/ProviderShellViewModel.swift`, `README.md`, and any Xcode project registration needed for new Swift files: show opt-in toggles separate from Accuracy Mode, provider-specific telemetry details, last telemetry refresh time, degraded reasons, manual refresh behavior, and experimental/unofficial endpoint copy.
 
 ## Green
-- [ ] Step 3.8: [automated] Add regression tests for pace functions, history compaction, GitHub GraphQL request construction, overlay settings persistence, notification preferences, and renderer component state.
-- [ ] Step 3.9: [automated] Add Electron/Playwright smoke coverage for settings, onboarding, popover, overlay layouts, error states, and GitHub disabled/configured states.
-- [ ] Step 3.10: [automated] Run Phase 3 verification: `npm run typecheck`, `npm test`, `npm run build`, and renderer smoke tests.
+- [ ] Step 7.7: [automated] Make the Phase 7 test suite pass and add any missing regression coverage for endpoint-shape drift, three-failure degradation, manual refresh bypassing backoff, no raw response persistence, no prompt/response persistence, and diagnostics redaction.
+- [ ] Step 7.8: [automated] Run Phase 7 verification: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`, confirm existing Claude usage tests still pass unchanged, confirm no automated test performs a live provider request, and update `tasks/history.md` with the implementation result.
 
 ## Milestone
-- [ ] Electron matches the Swift product's non-provider Claude UI behavior where cross-platform APIs allow it.
-- [ ] Pace, countdown, history, heatmap, overlay, notifications, and settings work without exposing secrets.
+- [ ] Provider Telemetry is off by default and opt-in per provider.
+- [ ] Provider Telemetry is separate from Accuracy Mode in settings, copy, and behavior.
+- [ ] Codex can show provider-supplied rate-limit snapshots when existing Codex CLI auth supports the endpoint.
+- [ ] Gemini can show Code Assist quota buckets when existing Gemini CLI/Code Assist auth supports `retrieveUserQuota`.
+- [ ] Telemetry refreshes every 5 minutes while active, supports manual refresh, and backs off after repeated failures.
+- [ ] Three consecutive telemetry failures mark provider telemetry degraded and preserve passive/wrapper fallback display.
+- [ ] Claude behavior and Claude ingestion are unchanged.
+- [ ] Automated tests use injected HTTP clients and fixtures; no automated test calls live provider endpoints.
+- [ ] Diagnostics redact tokens, cookies, account ids, and auth headers.
+- [ ] No raw provider tokens, raw endpoint responses, prompts, or model responses are persisted by default.
 - [ ] All phase tests pass.
 - [ ] No regressions.
-
-## Next Step Plan: Step 3.8
-
-Add regression tests for the Phase 3 product UI parity behavior before the final smoke/verification steps.
-
-**What Step 3.8 requires:**
-- Cover the pure pace helpers with edge cases for stable-window unknown guards, raw fallback warnings, weekly color mode behavior, limit-hit precedence, daily budget, today usage baseline, countdown formatting, and reset-time formatting.
-- Cover history compaction behavior for 24-hour snapshot retention, hourly compaction from 24h to 7d, and latest-point preservation.
-- Cover GitHub GraphQL request construction, including variables, contribution collection mapping, hourly cache reuse, forced refresh behavior, and token redaction.
-- Cover overlay settings persistence for enable/visible/layout/opacity/bounds changes through the main-process window manager path.
-- Cover notification preference gating for session reset, weekly reset, auth expired, provider degraded, and threshold warnings.
-- Cover renderer component state for settings/onboarding/popover states that were added in Phase 3, including GitHub disabled/configured states and settings draft persistence.
-
-**Files to create or modify:**
-- `electron-app/src/shared/formatting/pace.test.ts`: add focused pace helper tests.
-- `electron-app/src/main/storage/history.test.ts`: expand history retention/compaction assertions if gaps remain.
-- `electron-app/src/main/services/github.test.ts`: add GraphQL construction/cache/refresh tests if not already complete.
-- `electron-app/src/main/windows.test.ts` or `electron-app/src/foundation-main.test.ts`: add overlay settings persistence coverage.
-- `electron-app/src/main/services/notifications.test.ts`: expand notification preference coverage.
-- `electron-app/src/foundation-renderer.test.tsx` or focused renderer component tests: add renderer state coverage for Phase 3 UI.
-
-**Approach and trade-offs:**
-- Prefer focused unit/component tests over broad smoke tests in this step; Step 3.9 owns Electron/Playwright smoke coverage.
-- Reuse existing mocks and fixtures in the Electron test suite instead of introducing a new test harness.
-- Keep assertions behavior-focused and secret-safe; any serialized test output involving credentials or tokens must remain redacted or absent.
-- If a behavior already has adequate regression coverage, note that in the Step 3.8 implementation and avoid duplicating the same assertion.
-
-**Validation for Step 3.8:**
-- `npm run typecheck` from `electron-app/`.
-- `npm test -- --run` from `electron-app/`.
-- `npm run build` from `electron-app/` if test or shared exports change in a way that can affect bundling.
