@@ -1,6 +1,8 @@
-# Electron Cross-Platform AI Usage Monitor — Phase Plan
+# ClaudeUsage Product Roadmap — Electron Cross-Platform and Swift Provider Telemetry
 
 Build `electron-app/` as the full Windows/Linux implementation of ClaudeUsage while keeping the Swift app as the premium canonical macOS menu-bar product. The Electron path should port the complete product behavior from the Swift implementation where cross-platform APIs allow it: Claude exact usage, history, pace, GitHub heatmap, overlay, notifications, provider rotation, Codex/Gemini monitoring, Accuracy Mode wrappers, migration, diagnostics, and packaged Windows/Linux artifacts.
+
+Also add the Swift macOS Provider Telemetry add-on from `specs/provider-telemetry-endpoints.md`: opt-in provider-supplied quota reads for Codex and Gemini Code Assist, with passive/wrapper fallback and no changes to Claude ingestion.
 
 | Phase | Focus | Outcome |
 | --- | --- | --- |
@@ -10,6 +12,7 @@ Build `electron-app/` as the full Windows/Linux implementation of ClaudeUsage wh
 | 4 | Provider shell and passive adapters | Shared provider model plus Codex/Gemini passive monitoring, Gemini `/stats`, confidence, stale/degraded handling |
 | 5 | Accuracy Mode wrappers | Explicit opt-in Codex/Gemini wrappers, setup verification, event ledgers, and privacy guarantees |
 | 6 | Migration, diagnostics, packaging | Non-secret migration, diagnostics export, Windows/Linux packages, and final regression gates |
+| 7 | Swift provider telemetry endpoints | Opt-in Codex and Gemini Code Assist provider quota telemetry in the macOS app |
 
 ## Phase 1: Electron Runtime Foundation
 > Test strategy: tests-after
@@ -170,10 +173,43 @@ Build `electron-app/` as the full Windows/Linux implementation of ClaudeUsage wh
 - All phase tests pass.
 - No regressions.
 
+## Phase 7: Swift Provider Telemetry Endpoints
+> Source: `specs/provider-telemetry-endpoints.md`
+> Test strategy: tdd
+> Status: planned
+
+### Goal
+
+Add an opt-in Provider Telemetry layer to the Swift macOS app that can read provider-supplied quota state for Codex and Gemini Code Assist, while preserving the existing Claude ingestion path and passive/wrapper fallbacks.
+
+### Scope
+
+- Add per-provider `Provider Telemetry` settings separate from existing `Accuracy Mode`.
+- Default provider telemetry off for Codex and Gemini.
+- Implement Codex provider telemetry for source-backed rate-limit endpoints when existing Codex CLI authentication supports it.
+- Implement Gemini Code Assist telemetry for `retrieveUserQuota` when existing Gemini CLI/Code Assist authentication supports it.
+- Persist only normalized quota snapshots, telemetry settings, timestamps, account labels when safe, failure counts, and degraded reasons.
+- Display provider-specific telemetry details without forcing Codex and Gemini into one shared quota shape.
+- Fall back quietly to passive or Accuracy Mode state when telemetry is unavailable, unsupported, expired, or degraded.
+- Keep raw provider tokens, raw endpoint responses, prompt content, model responses, and secret request headers out of persistent product telemetry.
+
+### Acceptance Criteria
+
+- Claude behavior is unchanged.
+- Provider Telemetry is explicit, opt-in, and separate from Accuracy Mode.
+- Codex can show provider-supplied rate-limit snapshots when Codex CLI auth supports the provider endpoint.
+- Gemini can show Code Assist quota buckets when Gemini CLI/Code Assist auth supports `retrieveUserQuota`.
+- Telemetry refreshes every 5 minutes while active, supports manual refresh, and backs off after repeated failures.
+- Three consecutive telemetry failures mark that provider's telemetry degraded and preserve passive/wrapper fallback display.
+- Automated tests use injected HTTP clients and fixtures; no automated test calls live provider endpoints.
+- Diagnostics redact tokens, cookies, account ids, and auth headers.
+- Manual verification covers live Codex auth, live Gemini Code Assist auth, endpoint failure fallback, and unsupported/encrypted credential fallback.
+
 ## Cross-Phase Concerns
 
 - Security: keep Node integration disabled, context isolation enabled, IPC schemas validated, CSP strict, and renderer state secret-free in every phase.
 - Privacy: persist only derived provider telemetry; never persist raw prompts, CLI stdout, session keys, GitHub tokens, or provider auth tokens outside secret storage.
+- Swift telemetry: keep existing Claude ingestion untouched; provider telemetry may read only the minimum existing CLI auth material needed at request time and must never copy provider auth into app-owned analytics storage.
 - Accessibility: ensure tray alternatives, keyboard navigation, readable contrast, and settings/onboarding forms are usable without mouse-only flows.
 - Performance: avoid expensive recursive provider scans without bookmarks; keep polling local and incremental; index SQLite tables used for history/provider windows.
 - Cross-platform behavior: test Windows/Linux path differences for tray, notifications, launch at login, `safeStorage`, filesystem paths, and wrapper setup instructions.

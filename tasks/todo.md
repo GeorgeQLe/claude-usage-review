@@ -7,7 +7,7 @@
 
 ## Priority Task Queue
 
-- [ ] `$roadmap --existing specs/provider-telemetry-endpoints.md` - reconcile the provider telemetry add-on into `tasks/roadmap.md` because `specs/provider-telemetry-endpoints.md` was modified at 2026-04-16 14:14:00 -0400, after `tasks/roadmap.md` at 2026-04-16 12:02:39 -0400, and the current roadmap only contains Electron phases with no Provider Telemetry phase.
+- [ ] `$plan-phases 7` - decompose the new Swift Provider Telemetry Endpoints roadmap phase because `tasks/roadmap.md` now includes Phase 7 from `specs/provider-telemetry-endpoints.md` with goal, scope, and acceptance criteria, but it intentionally has no `### Tests First`, `### Implementation`, or `### Green` execution steps yet.
 - [ ] `$plan-interview --ideas` - triage unspecced ideas because `tasks/ideas.md` was last modified at 2026-03-23 09:07:26 -0400 and still contains idea entries without corresponding specs under `specs/`.
 
 ## Implementation
