@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-16 — Step 3.2: Electron History Storage and Sparklines
+
+Expanded the Electron usage history path around the existing `usage_snapshots` table. Added a sanitized history view that keeps every snapshot from the most recent 24 hours, compacts older 24h-to-7d history into hourly buckets by highest session utilization, and excludes older points from renderer history. Added a typed `usage:get-history` IPC/preload contract with Zod validation and an empty placeholder result when no main-process history dependency is wired. The renderer snapshot hook now loads active-account Claude history, refreshes it after usage refreshes/account changes/usage-update events, and renders session plus weekly SVG sparklines with last-updated text in the Claude card across popover, onboarding, and overlay routes.
+
+Validation: `npm run typecheck` passed from `electron-app/`. `npm test -- --run` passed with 21 files and 68 tests. `npm run build` passed from `electron-app/`. Accepted warning: Node's experimental SQLite warning during existing storage/integration tests.
+
 ## 2026-04-16 — Step 3.1: Electron Pace Formatting Helpers
 
 Ported the Swift pace semantics into a pure Electron shared module. Added `electron-app/src/shared/formatting/pace.ts` with deterministic helpers for session and weekly pace ratios, stability-window guards, pace statuses, weekly pace indicators, today usage deltas, daily budget estimates, guidance copy, countdown/reset-time formatting, and weekly pace detail text. Added `electron-app/src/shared/formatting/index.ts` as the local formatting barrel. The module uses `ClaudeUsageLimit`, accepts explicit `now` values, treats malformed reset timestamps as unknown or empty output, and does not touch main-process storage, IPC, or UI wiring.

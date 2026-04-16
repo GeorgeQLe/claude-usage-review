@@ -54,7 +54,7 @@
   - `npm run build` from `electron-app/` if shared exports or renderer imports change.
   - No Electron smoke is required for this pure shared module step unless runtime wiring is added unexpectedly.
 
-- [ ] Step 3.2: [automated] Expand history storage and visualization with `electron-app/src/main/storage/history.ts` and renderer components under `electron-app/src/renderer/components/`: 24-hour snapshots, 24h-to-7d hourly compaction, session/weekly sparklines, and last-updated text.
+- [x] Step 3.2: [automated] Expand history storage and visualization with `electron-app/src/main/storage/history.ts` and renderer components under `electron-app/src/renderer/components/`: 24-hour snapshots, 24h-to-7d hourly compaction, session/weekly sparklines, and last-updated text.
 - [ ] Step 3.3: [automated] Implement GitHub contribution heatmap support in `electron-app/src/main/services/github.ts`, secret GitHub token storage, settings controls, hourly refresh behavior, GraphQL variables, and renderer heatmap components.
 - [ ] Step 3.4: [automated] Implement the complete settings/onboarding experience in `electron-app/src/renderer/settings/` and `electron-app/src/renderer/onboarding/`: time display, pace theme, weekly color mode, launch at login, provider enablement placeholders, migration prompt placeholders, and notification preferences.
 - [ ] Step 3.5: [automated] Implement overlay behavior in `electron-app/src/main/windows.ts` and `electron-app/src/renderer/overlay/`: compact/minimal/sidebar layouts, always-on-top behavior, opacity, drag-to-move, position persistence, double-click popover, and context hide/disable action.
@@ -72,32 +72,34 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 3.2
+## Next Step Plan: Step 3.3
 
-Expand history storage and renderer visualization around the existing SQLite `usage_snapshots` table.
+Implement GitHub contribution heatmap support without exposing tokens to renderer code.
 
-**What Step 3.2 requires:**
-- Keep every snapshot from the last 24 hours.
-- Compact snapshots older than 24 hours but newer than 7 days into one hourly point, matching Swift's history behavior of keeping the highest session-utilization snapshot in each hour bucket.
-- Drop snapshots older than 7 days from returned history views.
-- Expose renderer-safe history summaries with no secrets and no raw credential material.
-- Render session and weekly sparklines plus last-updated text in the existing Claude UI surfaces.
+**What Step 3.3 requires:**
+- Add a main-process GitHub service that can build and execute contribution-calendar GraphQL requests with variables, not string interpolation.
+- Store the GitHub token through the existing secret-storage boundary; never return the token, request headers, or raw credential payloads to renderer code.
+- Add settings controls for disabled/configured GitHub states and a write-only token entry flow.
+- Add hourly refresh behavior for contribution data and renderer-safe state updates.
+- Render a GitHub-style contribution heatmap with disabled, configured, loading, and error states.
 
 **Files to create or modify:**
-- `electron-app/src/main/storage/history.ts`: add list/compaction helpers for 24h/7d history windows while preserving existing record/list APIs.
-- `electron-app/src/main/ipc.ts`: add a typed history query handler if renderer state does not already have enough history data.
-- `electron-app/src/preload/api.ts` and `electron-app/src/shared/types/ipc.ts`: expose a narrow preload method for renderer history reads if IPC is required.
-- `electron-app/src/shared/schemas/ipc.ts` or `electron-app/src/shared/types/usage.ts`: add validated, secret-free history summary shapes if IPC is required.
-- `electron-app/src/renderer/components/index.tsx`: add reusable sparkline/last-updated components and wire them into the Claude usage card.
-- `electron-app/src/renderer/styles/app.css`: style the sparklines with stable dimensions and readable empty states.
+- `electron-app/src/main/services/github.ts`: GitHub GraphQL request construction, response parsing, refresh result typing, and failure classification.
+- `electron-app/src/main/storage/secrets.ts`: add account- or app-scoped GitHub token helpers if the current generic secret key API is insufficient.
+- `electron-app/src/main/ipc.ts`: add typed handlers for saving/testing GitHub token state and reading sanitized heatmap data.
+- `electron-app/src/preload/api.ts`, `electron-app/src/shared/types/ipc.ts`, and `electron-app/src/shared/schemas/ipc.ts`: expose only validated, token-free GitHub commands/results.
+- `electron-app/src/renderer/settings/index.tsx`: add GitHub disabled/configured controls and write-only token entry.
+- `electron-app/src/renderer/components/index.tsx`: add reusable heatmap components and wire them into the Claude/product overview surface.
+- `electron-app/src/renderer/styles/app.css`: add stable heatmap grid sizing and readable empty/error states.
 
 **Approach and trade-offs:**
-- Prefer a pure compaction helper in `history.ts` so Step 3.8 can test it directly.
-- Reuse the existing `usage_snapshots` table; do not add migrations unless the current columns are insufficient.
-- Use SVG sparklines or simple DOM/CSS paths in renderer code; avoid canvas for this small static visualization.
-- Keep the renderer data contract small: timestamp, session utilization, weekly utilization, reset time, and provider/account metadata only when needed.
+- Keep token persistence in the main process and reuse the existing `safeStorage`-backed secret envelope pattern.
+- Prefer a pure request-construction helper in `github.ts` so Step 3.8 can test GraphQL variables directly.
+- Treat GitHub as optional: default renderer state should be disabled/empty unless configured.
+- Use simple DOM grid cells for the heatmap instead of canvas so it remains accessible and easy to test.
+- Do not expand provider enablement or onboarding beyond the GitHub controls required for this step; broader settings/onboarding polish belongs to Step 3.4.
 
-**Validation for Step 3.2:**
+**Validation for Step 3.3:**
 - `npm run typecheck` from `electron-app/`.
 - `npm test -- --run` from `electron-app/`.
-- `npm run build` from `electron-app/` because renderer and preload/shared contracts may change.
+- `npm run build` from `electron-app/` because renderer, preload, and shared contracts will change.
