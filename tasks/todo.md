@@ -1,153 +1,77 @@
-# Phase 2: Claude Exact Usage and Accounts
+# Phase 3: Product UI Parity
 
 > Project: ClaudeUsage Electron cross-platform app
 > Source: `specs/electron-cross-platform-ai-usage-monitor.md`
-> Scope: Replace Phase 1 placeholder Claude/account state with durable account metadata, secret-backed credentials, exact Claude usage fetching, polling, and live renderer/tray state. Preserve the secure Electron boundary: renderer code never receives session keys or direct Node/filesystem access.
-> Test strategy: tdd
-
-## Tests First
-- [x] Step 2.1: [automated] Add failing tests for Claude API parsing, `Set-Cookie` session-key rotation, account metadata CRUD, secret write/read/delete, polling backoff, reset-time fetch scheduling, auth-expired handling, and typed IPC command validation under `electron-app/src/main/**/__tests__/` and `electron-app/src/shared/**/__tests__/`.
-
-  **What:** Define the Phase 2 behavior contract before implementation. These tests should fail because the real account store, Claude client, polling scheduler, and durable IPC wiring do not exist yet.
-
-  **Files to create or modify:**
-  - `electron-app/src/main/services/claudeUsage.test.ts`: Claude API client contract tests using mocked `fetch` responses. Cover request URL/header/cookie construction, usage JSON parsing for all known limit fields, 401/403 auth expiry, network error classification, malformed responses, and `Set-Cookie` session-key rotation extraction.
-  - `electron-app/src/main/storage/accounts.test.ts`: account metadata persistence tests against an in-memory or temp SQLite database. Cover add/rename/remove/switch active account, persisted org IDs, active-account normalization after deletion, and absence of session keys in account summaries.
-  - `electron-app/src/main/storage/secrets.test.ts`: extend existing secret-wrapper coverage for Claude credential write/read/delete semantics with an injected safeStorage adapter. Cover encrypted blob persistence and weak-backend status reporting without exposing decrypted values to renderer-facing shapes.
-  - `electron-app/src/main/services/polling.test.ts`: polling scheduler contract tests with fake timers and stubbed Claude/account services. Cover 5-minute default cadence, exponential backoff on network errors, reset-time scheduling, manual refresh, cancellation on account switch, and auth-expired stop/degraded behavior.
-  - `electron-app/src/main/ipc.test.ts` or focused IPC service tests: cover add/rename/remove/switch account, save credentials, test connection, get usage state, refresh now, and usage-updated events. Ensure payload validation rejects malformed commands and renderer-visible state omits session keys.
-  - `electron-app/src/shared/schemas/*.test.ts`: add schema coverage only where Phase 2 introduces new usage/account/auth state fields or stricter response contracts.
-  - `electron-app/src/foundation-*.test.ts`: keep existing Phase 1 coverage passing; move or split files only if it makes the Phase 2 tests clearer.
-
-  **Test data and fixtures:**
-  - Create minimal Claude usage fixtures inline or under `electron-app/src/main/services/__fixtures__/` if the payloads become large.
-  - Include a fixture with `Set-Cookie` containing a rotated `sessionKey`.
-  - Include auth-expired and malformed-response fixtures.
-  - Use fake timers for polling tests; avoid real network calls and avoid launching Electron.
-
-  **Expected red phase:**
-  - The new test files should fail with missing-module or not-implemented assertions for `accounts.ts`, `claudeUsage.ts`, `polling.ts`, and durable IPC integration.
-  - Existing Phase 1 tests should still pass unless they are intentionally updated to the new Phase 2 contract.
-  - Do not implement production behavior in this step beyond tiny testability seams required to express the failing tests.
-
-  **Step 2.1 Review:**
-  - Added red-phase Vitest coverage for Claude usage fetching/parsing/session rotation, account metadata CRUD, credential secret persistence, polling cadence/backoff/reset/auth-expired behavior, IPC command validation/service wiring, and Phase 2 Claude usage schemas.
-  - `npm run typecheck` passes from `electron-app/`.
-  - `npm test -- --run src/foundation-main.test.ts src/foundation-storage.test.ts src/foundation-schemas.test.ts src/foundation-renderer.test.tsx src/scaffold.test.ts` passes with 5 files and 22 tests.
-  - `npm test -- --run` fails as expected with 17 red-phase failures: missing `claudeUsage.js`, `accounts.js`, `polling.js`, missing `createClaudeCredentialStore`, placeholder IPC not calling injected durable services, and the connection-result schema not yet accepting `connected`.
-  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in the new account tests.
+> Scope: Port the Swift app's non-provider Claude product experience into Electron where cross-platform APIs allow it: pace semantics, history visualization, GitHub heatmap, complete settings/onboarding, overlay behavior, notifications, and polished tray/menu behavior. Preserve the secure Electron boundary: renderer code only receives validated, secret-free state through the preload API.
+> Test strategy: tests-after
 
 ## Implementation
-- [x] Step 2.2: [automated] Implement account metadata and active-account persistence in `electron-app/src/main/storage/accounts.ts`, with session keys stored only through the secret store and never serialized to renderer state.
+- [ ] Step 3.1: [automated] Port Swift pace semantics into shared pure functions under `electron-app/src/shared/formatting/pace.ts`: session/weekly pace windows, unknown guards, behind/way-behind/warning/critical/limit-hit status, daily budget, today usage baseline, and time display formatting.
 
-  **Step 2.2 Review:**
-  - Added `createAccountStore` in `electron-app/src/main/storage/accounts.ts` over the existing SQLite `accounts` table.
-  - Implemented add, rename, remove, switch active account, org-ID save, account listing, and active-account lookup.
-  - Account store results use renderer-safe `AccountSummary` fields only: `id`, `label`, `orgId`, `isActive`, and `authStatus`.
-  - Active-account state is normalized after create/delete/switch so one account is active when accounts exist.
-  - Exported the account store through `electron-app/src/main/storage/index.ts`.
-  - `npm run typecheck` passes from `electron-app/`.
-  - `npm test -- --run src/main/storage/accounts.test.ts src/foundation-storage.test.ts` passes with 2 files and 10 tests.
-  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in account tests.
-- [x] Step 2.3: [automated] Implement the Claude usage client in `electron-app/src/main/services/claudeUsage.ts`, matching the Swift/Tauri API behavior: `sessionKey` cookie, `anthropic-client-platform: web_claude_ai`, all known usage limit fields, 401/403 auth expiry, and session-key rotation.
+  **What:** Add the pure, renderer-safe formatting/calculation layer that later Phase 3 UI and tray work can call. Match the Swift `UsageViewModel` pace semantics without introducing main-process storage, IPC, or UI changes in this step.
 
-  **Step 2.3 Review:**
-  - Added `createClaudeUsageClient` in `electron-app/src/main/services/claudeUsage.ts`.
-  - The client requests `https://claude.ai/api/organizations/{orgId}/usage` with Claude web-client headers and a `sessionKey` cookie.
-  - Normalized known Claude limit fields into camel-case usage data, including nullable Sonnet/Opus/OAuth Apps/Cowork limits, unknown non-extra fields as `other`, and `extra_usage` without requiring `resets_at`.
-  - Added `parseRotatedSessionKey` to extract only `sessionKey` from `Set-Cookie`; no storage or renderer state wiring was added in this step.
-  - Classified 401/403 as `{ kind: "auth_expired" }`, fetch failures as `{ kind: "network_error" }`, and malformed payloads as `{ kind: "invalid_response" }`.
-  - `npm run typecheck` passes from `electron-app/`.
-  - `npm test -- --run src/main/services/claudeUsage.test.ts` passes with 1 file and 4 tests.
-  - `npm test -- --run src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts src/foundation-storage.test.ts` passes with 3 files and 14 tests.
-  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in account/storage tests.
-- [x] Step 2.4: [automated] Implement polling and scheduling in `electron-app/src/main/services/polling.ts`: 5-minute default cadence, exponential network backoff, manual refresh, reset-time fetch, cancellation on account switch, and event emission to renderers.
+  **Files to create or modify:**
+  - `electron-app/src/shared/formatting/pace.ts`: new pure TypeScript module for pace calculations and formatting helpers.
+  - `electron-app/src/shared/formatting/index.ts`: optional barrel export if local convention needs one.
+  - `electron-app/src/shared/types/index.ts` or `electron-app/src/shared/schemas/index.ts`: export formatting types only if needed by existing imports; avoid widening runtime schemas unless a later renderer/API step needs it.
 
-  **Step 2.4 Review:**
-  - Added `createUsagePollingScheduler` in `electron-app/src/main/services/polling.ts`.
-  - The scheduler polls immediately on start, resumes the 5-minute success cadence, and schedules future reset-time fetches when Claude returns `fiveHour.resetsAt`.
-  - Network errors now use exponential backoff from the documented 300-second base: 600 seconds, 1200 seconds, capped at 3600 seconds, and reset after a successful fetch.
-  - Manual refresh, account switching, stop/cancellation, auth-expired handling, renderer-safe state emission, and rotated session-key callbacks are implemented through injected main-process services.
-  - `npm run typecheck` passes from `electron-app/`.
-  - `npm test -- --run src/main/services/polling.test.ts` passes with 1 file and 4 tests.
-  - `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts` passes with 3 files and 11 tests.
-  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in account tests.
-- [x] Step 2.5: [automated] Wire account and Claude commands through `electron-app/src/main/ipc.ts` and `electron-app/src/preload/api.ts`, including add/rename/remove/switch account, save credentials, test connection, get usage state, refresh now, and subscribe to usage updates.
+  **Swift reference behavior to port:**
+  - Weekly pace ratio uses the 7-day window from `sevenDay.resetsAt`.
+  - Weekly pace is unknown in the first 6 hours and final 1 hour of the window.
+  - Session pace ratio uses the 5-hour window from `fiveHour.resetsAt`.
+  - Session pace is unknown in the first 15 minutes and final 5 minutes of the window.
+  - Status values: `unknown`, `on_track`, `behind_pace`, `way_behind`, `warning`, `critical`, `limit_hit`.
+  - Ratio thresholds: `> 1.4` is `critical`, `> 1.15` is `warning`, `< 0.6` is `way_behind`, `< 0.85` is `behind_pace`, otherwise `on_track`.
+  - Session fallback before the stable window: raw utilization `>= 80` is `critical`, `>= 60` is `warning`, otherwise `unknown`.
+  - Weekly under-use states only apply when weekly color mode is `pace_aware`; raw-percentage mode should not classify under-use as behind/way-behind.
+  - `limit_hit` wins when the relevant utilization is `>= 100`.
 
-  **Step 2.5 Review:**
-  - Extended `registerIpcHandlers(dependencies?)` in `electron-app/src/main/ipc.ts` so durable account, credential, Claude client, and usage-state adapters can be injected while the default app-startup path keeps Phase 1 placeholder behavior.
-  - Wired account add/rename/remove/switch commands through injected account services and made credential saves write the Claude session key through an injected credential store before saving org/auth metadata.
-  - Wired `testClaudeConnection` through the Claude usage client and returns sanitized `connected`, `auth_expired`, `network_error`, or `invalid` results without echoing submitted or rotated session keys.
-  - Added account-scoped Claude credential storage in `electron-app/src/main/storage/secrets.ts`, plus shared Claude usage schemas in `electron-app/src/shared/schemas/claudeUsage.ts`.
-  - Added account auth-status persistence support via `setAuthStatus` in `electron-app/src/main/storage/accounts.ts`.
-  - `npm run typecheck` passes from `electron-app/`.
-  - `npm test -- --run src/main/ipc.test.ts src/main/storage/secrets.test.ts src/shared/schemas/claudeUsage.test.ts` passes with 3 files and 8 tests.
-  - `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts` passes with 3 files and 11 tests.
-  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in account tests.
-  - `npm run build` was not run because the build script executes the full Phase 2 test suite, which is still expected to remain red for renderer UI and history snapshot work until Steps 2.6-2.8.
-- [x] Step 2.6: [automated] Implement Claude-aware tray/popover/settings/onboarding UI in `electron-app/src/renderer/`, including write-only credential fields, account picker, auth status, exact usage bars, refresh actions, and basic error states.
+  **Recommended API shape:**
+  - `type PaceStatus = "unknown" | "on_track" | "behind_pace" | "way_behind" | "warning" | "critical" | "limit_hit"`.
+  - `type WeeklyColorMode = "pace_aware" | "raw_percentage"`.
+  - `type TimeDisplayFormat = "reset_time" | "remaining_time"`.
+  - `calculatePaceRatio(limit, options)` where `options` includes `windowSeconds`, `now`, `minimumElapsedSeconds`, and `minimumRemainingSeconds`.
+  - `getSessionPaceStatus(fiveHour, now)`.
+  - `getWeeklyPaceStatus(sevenDay, { now, weeklyColorMode })`.
+  - `getWeeklyPaceIndicator(sevenDay, now)` returning `""`, `"▲"`, or `"▼"`.
+  - `calculateTodayUsagePercent(currentWeeklyUtilization, snapshots, now)` using `UsageSnapshotSummary`-like data. Prefer the last snapshot before local midnight; fall back to the earliest same-day snapshot; clamp negative deltas to 0.
+  - `calculateDailyBudgetPercent(sevenDay, now)` returning rounded remaining weekly percentage divided by remaining days, or `0` when reset has passed or remaining usage is exhausted.
+  - `getPaceGuidance(status)` and `formatWeeklyPaceDetail(...)` matching Swift copy: `On pace - use more`, `Behind pace - pick it up`, `Way behind - use it or lose it`, `Ahead of pace - ease up`, `Way ahead - slow down`, `Maxed out`, `Calculating...`.
+  - `formatCountdown(resetAt, now)` as `h:mm:ss`, clamped at `0:00:00`.
+  - `formatResetTime(resetAt, locale?)` using local timezone formatting suitable for tray/popover text.
+  - `formatTimeDisplay({ format, resetAt, now, locale })` selecting reset time or countdown.
 
-  **Step 2.6 Review:**
-  - Expanded `useRendererSnapshot` with renderer-safe account mutations, credential save, connection test, refresh, and usage-update subscription helpers.
-  - Replaced placeholder Claude renderer views with exact Claude usage cards, five-hour and weekly utilization bars, reset/updated/account/auth summaries, and compact later-phase cards for Codex/Gemini.
-  - Added reusable account controls for create/rename/remove/switch flows in Settings and Onboarding.
-  - Upgraded the credential flow to write-only session-key inputs with sanitized connection-test feedback; session keys are cleared after save/test and never rendered back into the DOM.
-  - Updated Popover, Settings, Onboarding, and Overlay routes to use the Claude-aware UI and sanitized preload API state.
-  - `npm run typecheck` passes from `electron-app/`.
-  - `npm test -- --run src/foundation-renderer.test.tsx src/foundation-schemas.test.ts src/main/ipc.test.ts src/main/storage/secrets.test.ts src/shared/schemas/claudeUsage.test.ts` passes with 5 files and 17 tests.
-  - `npm run build:renderer` passes from `electron-app/`.
-  - `npm run build` was not run because it executes the full Phase 2 test suite, which is still expected to remain red for history snapshot work until Step 2.7 and the green gate in Step 2.8.
-- [x] Step 2.7: [automated] Persist Claude usage snapshots in SQLite through `electron-app/src/main/storage/history.ts`, but keep advanced history visualization for Phase 3.
+  **Implementation notes:**
+  - Use `ClaudeUsageLimit` from `electron-app/src/shared/schemas/claudeUsage.ts` as the input shape where practical.
+  - Keep the module side-effect free and deterministic by passing `now` into calculations; do not read system time internally except in thin default wrappers if unavoidable.
+  - Treat malformed or absent reset timestamps as `unknown`/empty formatting output instead of throwing in renderer-facing helpers.
+  - Keep all values as percentages on the same 0-100 scale returned by Claude, not 0-1 utilization fractions.
+  - Do not add emojis or theme UI in this step unless a small static map is required by `formatWeeklyPaceDetail`; settings UI for themes belongs to Step 3.4.
 
-  **Step 2.7 Review:**
-  - Added `createUsageHistoryStore` in `electron-app/src/main/storage/history.ts` over the existing `usage_snapshots` SQLite table.
-  - Added focused history coverage for recording Claude snapshots, listing recent snapshots by account/provider newest-first with limits, preserving normalized metrics and raw `payload_json`, and keeping historical snapshots after account deletion via `account_id = NULL`.
-  - The history store validates payloads through `claudeUsageDataSchema`, stores only usage/account/provider data, and does not persist session keys, cookies, request headers, or credential test payloads.
-  - Exported the history store through `electron-app/src/main/storage/index.ts` and exported Claude usage schema types for shared storage typing.
-  - `npm run typecheck` passes from `electron-app/`.
-  - `npm test -- --run src/main/storage/history.test.ts src/main/storage/accounts.test.ts src/foundation-storage.test.ts` passes with 3 files and 13 tests.
-  - `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts` passes with 2 files and 8 tests.
-  - `npm test -- --run` passes with 12 files and 44 tests.
-  - `npm run build` passes from `electron-app/`.
-  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in storage tests.
+  **Validation for Step 3.1:**
+  - `npm run typecheck` from `electron-app/`.
+  - `npm test -- --run` from `electron-app/` to catch existing regressions.
+  - `npm run build` from `electron-app/` if shared exports or renderer imports change.
+  - No Electron smoke is required for this pure shared module step unless runtime wiring is added unexpectedly.
+
+- [ ] Step 3.2: [automated] Expand history storage and visualization with `electron-app/src/main/storage/history.ts` and renderer components under `electron-app/src/renderer/components/`: 24-hour snapshots, 24h-to-7d hourly compaction, session/weekly sparklines, and last-updated text.
+- [ ] Step 3.3: [automated] Implement GitHub contribution heatmap support in `electron-app/src/main/services/github.ts`, secret GitHub token storage, settings controls, hourly refresh behavior, GraphQL variables, and renderer heatmap components.
+- [ ] Step 3.4: [automated] Implement the complete settings/onboarding experience in `electron-app/src/renderer/settings/` and `electron-app/src/renderer/onboarding/`: time display, pace theme, weekly color mode, launch at login, provider enablement placeholders, migration prompt placeholders, and notification preferences.
+- [ ] Step 3.5: [automated] Implement overlay behavior in `electron-app/src/main/windows.ts` and `electron-app/src/renderer/overlay/`: compact/minimal/sidebar layouts, always-on-top behavior, opacity, drag-to-move, position persistence, double-click popover, and context hide/disable action.
+- [ ] Step 3.6: [automated] Implement local notifications in `electron-app/src/main/services/notifications.ts`: session reset, auth expired, provider degraded placeholder, and user-configurable threshold warnings.
+- [ ] Step 3.7: [automated] Polish tray/menu behavior in `electron-app/src/main/tray.ts`: exact Claude countdown/reset text, color/icon state, context menu actions, and launch-at-login handling.
 
 ## Green
-- [x] Step 2.8: [automated] Make all Phase 2 tests pass and add integration coverage proving renderer state omits secrets while main-process state can fetch/update Claude usage.
-
-  **Step 2.8 Review:**
-  - Added main-process integration coverage in `electron-app/src/main/services/usageIntegration.test.ts`.
-  - The integration test composes the real account store, account-scoped Claude credential store, Claude usage client, polling scheduler, and usage history store with mocked safeStorage and Claude network responses.
-  - Verified active account metadata plus a secret-backed session key can fetch Claude usage, save a rotated session key through the credential store, emit updated renderer-visible usage state, and persist a sanitized history snapshot.
-  - Added an injected `recordUsageSnapshot` callback to `createUsagePollingScheduler` so successful Claude fetches can persist sanitized usage snapshots at the main-process service boundary.
-  - Added assertions that emitted renderer-visible state and persisted history snapshots do not contain submitted or rotated session keys.
-  - Baseline `npm test -- --run` passed before changes with 19 files and 66 tests.
-  - `npm test -- --run src/main/services/usageIntegration.test.ts src/main/services/polling.test.ts` passes with 2 files and 5 tests.
-  - `npm run typecheck` passes from `electron-app/`.
-  - `npm test -- --run` passes with 20 files and 67 tests.
-  - `npm run build` passes from `electron-app/`.
-  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening in-memory SQLite databases in storage/integration tests.
-- [x] Step 2.9: [automated] Run Phase 2 verification: `npm run typecheck`, `npm test`, `npm run build`, and an Electron smoke launch using mocked Claude responses.
-
-  **Step 2.9 Review:**
-  - Added `npm run smoke:electron` in `electron-app/package.json` backed by `electron-app/scripts/smoke-electron.mjs`.
-  - Added an env-gated Electron smoke mode in `electron-app/src/main/app.ts` that loads the built renderer instead of requiring the Vite dev server, emits a success marker after the popover loads, and quits cleanly.
-  - Added `electron-app/vite.preload.config.ts` and wired `npm run build` to bundle the sandboxed preload bridge as CommonJS-compatible output so Electron can load it at runtime.
-  - Added a renderer Content Security Policy in `electron-app/index.html`.
-  - The smoke command runs with mocked local usage state and fails if the preload-load warning, Electron security warning, or startup failure output reappears.
-  - `npm run typecheck` passes from `electron-app/`.
-  - `npm test -- --run` passes with 21 files and 68 tests.
-  - `npm run build` passes from `electron-app/`.
-  - `npm run smoke:electron` passes after launching the local Electron app with mocked local usage state.
-  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening in-memory SQLite databases in storage/integration tests.
+- [ ] Step 3.8: [automated] Add regression tests for pace functions, history compaction, GitHub GraphQL request construction, overlay settings persistence, notification preferences, and renderer component state.
+- [ ] Step 3.9: [automated] Add Electron/Playwright smoke coverage for settings, onboarding, popover, overlay layouts, error states, and GitHub disabled/configured states.
+- [ ] Step 3.10: [automated] Run Phase 3 verification: `npm run typecheck`, `npm test`, `npm run build`, and renderer smoke tests.
 
 ## Milestone
-- [x] Claude exact usage works end-to-end in Electron with account management and secure secrets.
-- [x] Auth expiry, network errors, manual refresh, backoff, reset fetch, and session-key rotation are covered.
-- [x] Renderer never receives session keys.
-- [x] Tray and popover show live Claude state.
-- [x] All phase tests pass.
-- [x] No regressions.
+- [ ] Electron matches the Swift product's non-provider Claude UI behavior where cross-platform APIs allow it.
+- [ ] Pace, countdown, history, heatmap, overlay, notifications, and settings work without exposing secrets.
+- [ ] All phase tests pass.
+- [ ] No regressions.
 
-## Next Step Plan
+## Next Step Plan: Step 3.1
 
-Phase 2 is complete. Advance `tasks/todo.md` to Phase 3 from `tasks/roadmap.md` and add a self-contained implementation plan for Step 3.1 before the next run.
+Implement `electron-app/src/shared/formatting/pace.ts` as a pure shared module first, then wire exports only as needed. Use the Swift `UsageViewModel` formulas and thresholds above as the source of truth. Keep this step focused on reusable calculations and formatting; renderer display, settings controls, and broad regression coverage are later Phase 3 steps.
