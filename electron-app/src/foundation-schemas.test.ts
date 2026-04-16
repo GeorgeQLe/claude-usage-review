@@ -54,13 +54,54 @@ describe("foundation IPC schemas", () => {
         enabled: false,
         layout: "compact",
         opacity: 0.9
+      },
+      providers: {
+        codex: {
+          enabled: false,
+          setupPromptDismissed: false
+        },
+        gemini: {
+          enabled: false,
+          setupPromptDismissed: false
+        }
+      },
+      migration: {
+        swiftAppImport: true,
+        providerImport: true
+      },
+      notifications: {
+        enabled: true,
+        sessionReset: true,
+        weeklyReset: true,
+        authExpired: true,
+        providerDegraded: false,
+        thresholdWarnings: true,
+        sessionWarningPercent: 80,
+        weeklyWarningPercent: 80
+      },
+      onboarding: {
+        completed: false,
+        skipped: false
       }
     });
 
-    expect(updateSettingsPayloadSchema.parse({ patch: { overlay: { enabled: true } } })).toEqual({
-      patch: { overlay: { enabled: true } }
+    expect(
+      updateSettingsPayloadSchema.parse({
+        patch: {
+          overlay: { enabled: true },
+          providers: { codex: { enabled: true } },
+          notifications: { weeklyWarningPercent: 85 }
+        }
+      })
+    ).toEqual({
+      patch: {
+        overlay: { enabled: true },
+        providers: { codex: { enabled: true } },
+        notifications: { weeklyWarningPercent: 85 }
+      }
     });
     expect(settings.overlay.layout).toBe("compact");
+    expect(settings.notifications.weeklyWarningPercent).toBe(80);
   });
 
   it("validates account and usage response shapes used by the preload bridge", () => {

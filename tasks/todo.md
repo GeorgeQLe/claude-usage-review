@@ -56,7 +56,7 @@
 
 - [x] Step 3.2: [automated] Expand history storage and visualization with `electron-app/src/main/storage/history.ts` and renderer components under `electron-app/src/renderer/components/`: 24-hour snapshots, 24h-to-7d hourly compaction, session/weekly sparklines, and last-updated text.
 - [x] Step 3.3: [automated] Implement GitHub contribution heatmap support in `electron-app/src/main/services/github.ts`, secret GitHub token storage, settings controls, hourly refresh behavior, GraphQL variables, and renderer heatmap components.
-- [ ] Step 3.4: [automated] Implement the complete settings/onboarding experience in `electron-app/src/renderer/settings/` and `electron-app/src/renderer/onboarding/`: time display, pace theme, weekly color mode, launch at login, provider enablement placeholders, migration prompt placeholders, and notification preferences.
+- [x] Step 3.4: [automated] Implement the complete settings/onboarding experience in `electron-app/src/renderer/settings/` and `electron-app/src/renderer/onboarding/`: time display, pace theme, weekly color mode, launch at login, provider enablement placeholders, migration prompt placeholders, and notification preferences.
 - [ ] Step 3.5: [automated] Implement overlay behavior in `electron-app/src/main/windows.ts` and `electron-app/src/renderer/overlay/`: compact/minimal/sidebar layouts, always-on-top behavior, opacity, drag-to-move, position persistence, double-click popover, and context hide/disable action.
 - [ ] Step 3.6: [automated] Implement local notifications in `electron-app/src/main/services/notifications.ts`: session reset, auth expired, provider degraded placeholder, and user-configurable threshold warnings.
 - [ ] Step 3.7: [automated] Polish tray/menu behavior in `electron-app/src/main/tray.ts`: exact Claude countdown/reset text, color/icon state, context menu actions, and launch-at-login handling.
@@ -72,30 +72,32 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 3.4
+## Next Step Plan: Step 3.5
 
-Implement the complete settings and onboarding experience for the Phase 3 Claude product controls.
+Implement Electron overlay behavior and persistence for the Phase 3 overlay product surface.
 
-**What Step 3.4 requires:**
-- Replace the current settings summary-only preferences with editable controls for time display, pace theme, weekly color mode, launch at login, overlay defaults, provider enablement placeholders, migration prompt placeholders, and notification preferences.
-- Expand onboarding from a simple account/credential checklist into a guided flow that covers Claude setup, optional GitHub setup, provider placeholders, migration prompts, and display defaults.
-- Keep stored secrets write-only and keep renderer state limited to sanitized settings/status values.
-- Preserve the existing secure preload API boundary and avoid implementing provider adapters, overlay behavior, or notification delivery in this step; those belong to Steps 3.5 and 3.6.
+**What Step 3.5 requires:**
+- Wire overlay window behavior in the main process: always-on-top, frameless/transparent behavior where supported, user-controlled visibility, opacity, layout mode, and persisted bounds/position.
+- Expand the renderer overlay route from a status-only card into compact, minimal, and sidebar layouts driven by sanitized usage/settings state.
+- Add drag-to-move behavior without exposing Node/Electron APIs directly to renderer code beyond narrow preload commands if needed.
+- Add double-click behavior that opens the popover and a context action that hides or disables the overlay.
+- Keep provider adapters and notification delivery out of scope; Step 3.5 should only use existing usage/settings data.
 
 **Files to create or modify:**
-- `electron-app/src/shared/types/settings.ts` and `electron-app/src/shared/schemas/settings.ts`: add notification, provider placeholder, migration prompt, and any onboarding/settings fields needed by the UI.
-- `electron-app/src/main/ipc.ts`: extend placeholder settings update/merge behavior for the new settings fields while preserving validation.
-- `electron-app/src/preload/api.ts` and shared IPC types only if settings save helpers need narrower command wrappers.
-- `electron-app/src/renderer/settings/index.tsx`: add editable settings sections for display, overlay defaults, launch at login, providers, migration, notifications, Claude credentials, GitHub heatmap, and accounts.
-- `electron-app/src/renderer/onboarding/index.tsx`: add a guided setup flow that can be completed or skipped without requiring secrets.
-- `electron-app/src/renderer/components/index.tsx` and `electron-app/src/renderer/styles/app.css`: factor reusable controls and stable responsive layouts.
+- `electron-app/src/shared/types/settings.ts` and `electron-app/src/shared/schemas/settings.ts`: extend overlay settings with position/bounds or visibility fields if needed for persistence.
+- `electron-app/src/shared/types/ipc.ts`, `electron-app/src/shared/schemas/ipc.ts`, and `electron-app/src/preload/api.ts`: add narrow overlay commands only if renderer needs explicit hide/disable/move actions.
+- `electron-app/src/main/windows.ts`: apply overlay-specific window options and persist/restore overlay bounds through settings or a small main-process helper.
+- `electron-app/src/main/ipc.ts`: validate and merge any new overlay persistence fields through the existing settings path.
+- `electron-app/src/renderer/overlay/index.tsx`: render compact, minimal, and sidebar layouts and wire double-click/context actions.
+- `electron-app/src/renderer/components/index.tsx` and `electron-app/src/renderer/styles/app.css`: factor reusable overlay display primitives and stable responsive overlay sizing.
 
 **Approach and trade-offs:**
-- Reuse `window.claudeUsage.updateSettings` for settings persistence instead of adding one-off IPC channels unless a write path needs special validation.
-- Keep provider enablement, migration, and notification controls as explicit placeholders with persisted user preferences; do not implement actual Codex/Gemini adapters, migration import, or notification dispatch here.
-- Keep forms layout-stable and mobile-safe with simple DOM controls; avoid broad visual refactors outside the settings/onboarding surfaces.
+- Prefer extending the existing settings contract for overlay layout/opacity/position instead of adding separate storage unless `BrowserWindow` bounds persistence needs main-process-only state.
+- Keep renderer overlay commands narrow and validated; do not expose generic window movement APIs.
+- Use CSS layouts for compact/minimal/sidebar first, and only add main-process window behavior where Electron APIs are required.
 
-**Validation for Step 3.4:**
+**Validation for Step 3.5:**
 - `npm run typecheck` from `electron-app/`.
 - `npm test -- --run` from `electron-app/`.
-- `npm run build` from `electron-app/` because renderer and shared settings contracts will change.
+- `npm run build` from `electron-app/`.
+- Add or update focused tests for overlay settings persistence and renderer layout state if implementation changes observable contracts.

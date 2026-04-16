@@ -57,12 +57,33 @@ describe("foundation renderer routes", () => {
     const renameInput = container.querySelector<HTMLInputElement>('input[name="rename-local-placeholder"]');
     const sessionInput = container.querySelector<HTMLInputElement>('input[name="session-key"]');
     const orgInput = container.querySelector<HTMLInputElement>('input[name="org-id"]');
+    const timeSelect = container.querySelector<HTMLSelectElement>('select[name="time-display"]');
 
     expect(document.body.textContent).toContain("Account and display");
     expect(accountInput).not.toBeNull();
     expect(renameInput).not.toBeNull();
     expect(sessionInput).not.toBeNull();
     expect(orgInput).not.toBeNull();
+    expect(timeSelect).not.toBeNull();
+
+    await act(async () => {
+      if (timeSelect) {
+        setSelectValue(timeSelect, "reset-time");
+      }
+    });
+    await act(async () => {
+      timeSelect?.closest("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(window.claudeUsage.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeDisplay: "reset-time",
+        providers: expect.objectContaining({
+          codex: expect.objectContaining({ enabled: false }),
+          gemini: expect.objectContaining({ enabled: false })
+        }),
+        notifications: expect.objectContaining({ sessionWarningPercent: 80 })
+      })
+    );
 
     await act(async () => {
       if (accountInput) {
@@ -237,6 +258,12 @@ function setInputValue(input: HTMLInputElement, value: string): void {
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+function setSelectValue(select: HTMLSelectElement, value: string): void {
+  const valueSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+  valueSetter?.call(select, value);
+  select.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
 const mockAccounts: readonly AccountSummary[] = [
   {
     authStatus: "missing_credentials",
@@ -256,12 +283,40 @@ const mockAccounts: readonly AccountSummary[] = [
 
 const mockSettings: AppSettings = {
   launchAtLogin: false,
+  migration: {
+    providerImport: true,
+    swiftAppImport: true
+  },
+  notifications: {
+    authExpired: true,
+    enabled: true,
+    providerDegraded: false,
+    sessionReset: true,
+    sessionWarningPercent: 80,
+    thresholdWarnings: true,
+    weeklyReset: true,
+    weeklyWarningPercent: 80
+  },
+  onboarding: {
+    completed: false,
+    skipped: false
+  },
   overlay: {
     enabled: false,
     layout: "compact",
     opacity: 0.9
   },
   paceTheme: "balanced",
+  providers: {
+    codex: {
+      enabled: false,
+      setupPromptDismissed: false
+    },
+    gemini: {
+      enabled: false,
+      setupPromptDismissed: false
+    }
+  },
   timeDisplay: "countdown",
   weeklyColorMode: "pace-aware"
 };
