@@ -4,14 +4,21 @@ import Combine
 class ProviderSettingsStore: ObservableObject {
     @Published var enabledProviders: Set<ProviderId>
 
+    private let defaults: UserDefaults
+
     private static let keys: [ProviderId: String] = [
         .claude: "provider_claude_enabled",
         .codex: "provider_codex_enabled",
         .gemini: "provider_gemini_enabled",
     ]
 
-    init() {
-        let defaults = UserDefaults.standard
+    private static let telemetryKeys: [ProviderId: String] = [
+        .codex: "provider_codex_telemetry_enabled",
+        .gemini: "provider_gemini_telemetry_enabled",
+    ]
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         var enabled: Set<ProviderId> = [.claude]
         if defaults.bool(forKey: Self.keys[.codex]!) {
             enabled.insert(.codex)
@@ -34,12 +41,12 @@ class ProviderSettingsStore: ObservableObject {
         } else {
             enabledProviders.remove(id)
         }
-        UserDefaults.standard.set(enabled, forKey: Self.keys[id]!)
+        defaults.set(enabled, forKey: Self.keys[id]!)
     }
 
     func codexPlan() -> CodexPlanProfile? {
-        guard let name = UserDefaults.standard.string(forKey: "provider_codex_plan"),
-              let limit = UserDefaults.standard.object(forKey: "provider_codex_plan_limit") as? Int else {
+        guard let name = defaults.string(forKey: "provider_codex_plan"),
+              let limit = defaults.object(forKey: "provider_codex_plan_limit") as? Int else {
             return nil
         }
         return CodexPlanProfile(name: name, dailyTokenLimit: limit)
@@ -48,35 +55,36 @@ class ProviderSettingsStore: ObservableObject {
     func setCodexPlan(_ plan: CodexPlanProfile?) {
         objectWillChange.send()
         if let plan = plan {
-            UserDefaults.standard.set(plan.name, forKey: "provider_codex_plan")
-            UserDefaults.standard.set(plan.dailyTokenLimit, forKey: "provider_codex_plan_limit")
+            defaults.set(plan.name, forKey: "provider_codex_plan")
+            defaults.set(plan.dailyTokenLimit, forKey: "provider_codex_plan_limit")
         } else {
-            UserDefaults.standard.removeObject(forKey: "provider_codex_plan")
-            UserDefaults.standard.removeObject(forKey: "provider_codex_plan_limit")
+            defaults.removeObject(forKey: "provider_codex_plan")
+            defaults.removeObject(forKey: "provider_codex_plan_limit")
         }
     }
 
     func codexAccuracyMode() -> Bool {
-        UserDefaults.standard.bool(forKey: "provider_codex_accuracy_mode")
+        defaults.bool(forKey: "provider_codex_accuracy_mode")
     }
 
     func setCodexAccuracyMode(_ enabled: Bool) {
-        UserDefaults.standard.set(enabled, forKey: "provider_codex_accuracy_mode")
+        objectWillChange.send()
+        defaults.set(enabled, forKey: "provider_codex_accuracy_mode")
     }
 
     func geminiAccuracyMode() -> Bool {
-        UserDefaults.standard.bool(forKey: "provider_gemini_accuracy_mode")
+        defaults.bool(forKey: "provider_gemini_accuracy_mode")
     }
 
     func setGeminiAccuracyMode(_ enabled: Bool) {
         objectWillChange.send()
-        UserDefaults.standard.set(enabled, forKey: "provider_gemini_accuracy_mode")
+        defaults.set(enabled, forKey: "provider_gemini_accuracy_mode")
     }
 
     func geminiPlan() -> GeminiPlanProfile? {
-        guard let name = UserDefaults.standard.string(forKey: "provider_gemini_plan"),
-              let dailyLimit = UserDefaults.standard.object(forKey: "provider_gemini_plan_daily_limit") as? Int,
-              let rpmLimit = UserDefaults.standard.object(forKey: "provider_gemini_plan_rpm_limit") as? Int else {
+        guard let name = defaults.string(forKey: "provider_gemini_plan"),
+              let dailyLimit = defaults.object(forKey: "provider_gemini_plan_daily_limit") as? Int,
+              let rpmLimit = defaults.object(forKey: "provider_gemini_plan_rpm_limit") as? Int else {
             return nil
         }
         return GeminiPlanProfile(name: name, dailyRequestLimit: dailyLimit, requestsPerMinuteLimit: rpmLimit)
@@ -85,18 +93,18 @@ class ProviderSettingsStore: ObservableObject {
     func setGeminiPlan(_ plan: GeminiPlanProfile?) {
         objectWillChange.send()
         if let plan = plan {
-            UserDefaults.standard.set(plan.name, forKey: "provider_gemini_plan")
-            UserDefaults.standard.set(plan.dailyRequestLimit, forKey: "provider_gemini_plan_daily_limit")
-            UserDefaults.standard.set(plan.requestsPerMinuteLimit, forKey: "provider_gemini_plan_rpm_limit")
+            defaults.set(plan.name, forKey: "provider_gemini_plan")
+            defaults.set(plan.dailyRequestLimit, forKey: "provider_gemini_plan_daily_limit")
+            defaults.set(plan.requestsPerMinuteLimit, forKey: "provider_gemini_plan_rpm_limit")
         } else {
-            UserDefaults.standard.removeObject(forKey: "provider_gemini_plan")
-            UserDefaults.standard.removeObject(forKey: "provider_gemini_plan_daily_limit")
-            UserDefaults.standard.removeObject(forKey: "provider_gemini_plan_rpm_limit")
+            defaults.removeObject(forKey: "provider_gemini_plan")
+            defaults.removeObject(forKey: "provider_gemini_plan_daily_limit")
+            defaults.removeObject(forKey: "provider_gemini_plan_rpm_limit")
         }
     }
 
     func geminiAuthMode() -> GeminiAuthMode? {
-        guard let raw = UserDefaults.standard.string(forKey: "provider_gemini_auth_mode") else {
+        guard let raw = defaults.string(forKey: "provider_gemini_auth_mode") else {
             return nil
         }
         return GeminiAuthMode(rawValue: raw)
@@ -105,9 +113,24 @@ class ProviderSettingsStore: ObservableObject {
     func setGeminiAuthMode(_ mode: GeminiAuthMode?) {
         objectWillChange.send()
         if let mode = mode {
-            UserDefaults.standard.set(mode.rawValue, forKey: "provider_gemini_auth_mode")
+            defaults.set(mode.rawValue, forKey: "provider_gemini_auth_mode")
         } else {
-            UserDefaults.standard.removeObject(forKey: "provider_gemini_auth_mode")
+            defaults.removeObject(forKey: "provider_gemini_auth_mode")
         }
+    }
+
+    func providerTelemetryEnabled(for id: ProviderId) -> Bool {
+        guard let key = Self.telemetryKeys[id] else {
+            return false
+        }
+        return defaults.bool(forKey: key)
+    }
+
+    func setProviderTelemetryEnabled(_ enabled: Bool, for id: ProviderId) {
+        guard let key = Self.telemetryKeys[id] else {
+            return
+        }
+        objectWillChange.send()
+        defaults.set(enabled, forKey: key)
     }
 }

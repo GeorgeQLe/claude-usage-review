@@ -50,6 +50,10 @@
 		AA000041 /* GeminiWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100044 /* GeminiWrapper.swift */; };
 		AA000042 /* DiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100045 /* DiagnosticsTests.swift */; };
 		AA000043 /* ProviderTelemetryContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100046 /* ProviderTelemetryContractTests.swift */; };
+		AA000044 /* ProviderTelemetryTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100047 /* ProviderTelemetryTypes.swift */; };
+		AA000045 /* ProviderTelemetryCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100048 /* ProviderTelemetryCoordinator.swift */; };
+		AA000046 /* CodexTelemetryClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100049 /* CodexTelemetryClient.swift */; };
+		AA000047 /* GeminiTelemetryClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100050 /* GeminiTelemetryClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -109,6 +113,10 @@
 		AA100044 /* GeminiWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiWrapper.swift; sourceTree = "<group>"; };
 		AA100045 /* DiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsTests.swift; sourceTree = "<group>"; };
 		AA100046 /* ProviderTelemetryContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTelemetryContractTests.swift; sourceTree = "<group>"; };
+		AA100047 /* ProviderTelemetryTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTelemetryTypes.swift; sourceTree = "<group>"; };
+		AA100048 /* ProviderTelemetryCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTelemetryCoordinator.swift; sourceTree = "<group>"; };
+		AA100049 /* CodexTelemetryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexTelemetryClient.swift; sourceTree = "<group>"; };
+		AA100050 /* GeminiTelemetryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiTelemetryClient.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -201,6 +209,7 @@
 				AA100024 /* ProviderTypes.swift */,
 				AA100025 /* ProviderShellViewModel.swift */,
 				AA100027 /* ProviderSettingsStore.swift */,
+				AA100047 /* ProviderTelemetryTypes.swift */,
 				AA100032 /* CodexTypes.swift */,
 				AA100040 /* GeminiTypes.swift */,
 			);
@@ -225,6 +234,9 @@
 				AA100041 /* GeminiAdapter.swift */,
 				AA100043 /* GeminiEventLedger.swift */,
 				AA100044 /* GeminiWrapper.swift */,
+				AA100048 /* ProviderTelemetryCoordinator.swift */,
+				AA100049 /* CodexTelemetryClient.swift */,
+				AA100050 /* GeminiTelemetryClient.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -334,18 +346,22 @@
 				AA000022 /* ProviderShellViewModel.swift in Sources */,
 				AA000023 /* ProviderCardView.swift in Sources */,
 				AA000024 /* ProviderSettingsStore.swift in Sources */,
+				AA000044 /* ProviderTelemetryTypes.swift in Sources */,
 				AA000026 /* CodexDetector.swift in Sources */,
 				AA000027 /* CodexActivityParser.swift in Sources */,
 				AA000028 /* CodexTypes.swift in Sources */,
 				AA000029 /* CodexAdapter.swift in Sources */,
 				AA000032 /* CodexEventLedger.swift in Sources */,
 				AA000033 /* CodexWrapper.swift in Sources */,
+				AA000045 /* ProviderTelemetryCoordinator.swift in Sources */,
+				AA000046 /* CodexTelemetryClient.swift in Sources */,
 				AA000035 /* GeminiDetector.swift in Sources */,
 				AA000036 /* GeminiActivityParser.swift in Sources */,
 				AA000037 /* GeminiTypes.swift in Sources */,
 				AA000038 /* GeminiAdapter.swift in Sources */,
 				AA000040 /* GeminiEventLedger.swift in Sources */,
 				AA000041 /* GeminiWrapper.swift in Sources */,
+				AA000047 /* GeminiTelemetryClient.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
