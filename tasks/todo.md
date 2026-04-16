@@ -57,7 +57,7 @@
 - [x] Step 3.2: [automated] Expand history storage and visualization with `electron-app/src/main/storage/history.ts` and renderer components under `electron-app/src/renderer/components/`: 24-hour snapshots, 24h-to-7d hourly compaction, session/weekly sparklines, and last-updated text.
 - [x] Step 3.3: [automated] Implement GitHub contribution heatmap support in `electron-app/src/main/services/github.ts`, secret GitHub token storage, settings controls, hourly refresh behavior, GraphQL variables, and renderer heatmap components.
 - [x] Step 3.4: [automated] Implement the complete settings/onboarding experience in `electron-app/src/renderer/settings/` and `electron-app/src/renderer/onboarding/`: time display, pace theme, weekly color mode, launch at login, provider enablement placeholders, migration prompt placeholders, and notification preferences.
-- [ ] Step 3.5: [automated] Implement overlay behavior in `electron-app/src/main/windows.ts` and `electron-app/src/renderer/overlay/`: compact/minimal/sidebar layouts, always-on-top behavior, opacity, drag-to-move, position persistence, double-click popover, and context hide/disable action.
+- [x] Step 3.5: [automated] Implement overlay behavior in `electron-app/src/main/windows.ts` and `electron-app/src/renderer/overlay/`: compact/minimal/sidebar layouts, always-on-top behavior, opacity, drag-to-move, position persistence, double-click popover, and context hide/disable action.
 - [ ] Step 3.6: [automated] Implement local notifications in `electron-app/src/main/services/notifications.ts`: session reset, auth expired, provider degraded placeholder, and user-configurable threshold warnings.
 - [ ] Step 3.7: [automated] Polish tray/menu behavior in `electron-app/src/main/tray.ts`: exact Claude countdown/reset text, color/icon state, context menu actions, and launch-at-login handling.
 
@@ -72,32 +72,34 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 3.5
+## Next Step Plan: Step 3.6
 
-Implement Electron overlay behavior and persistence for the Phase 3 overlay product surface.
+Implement local notification behavior for Phase 3 without exposing secrets to renderer code.
 
-**What Step 3.5 requires:**
-- Wire overlay window behavior in the main process: always-on-top, frameless/transparent behavior where supported, user-controlled visibility, opacity, layout mode, and persisted bounds/position.
-- Expand the renderer overlay route from a status-only card into compact, minimal, and sidebar layouts driven by sanitized usage/settings state.
-- Add drag-to-move behavior without exposing Node/Electron APIs directly to renderer code beyond narrow preload commands if needed.
-- Add double-click behavior that opens the popover and a context action that hides or disables the overlay.
-- Keep provider adapters and notification delivery out of scope; Step 3.5 should only use existing usage/settings data.
+**What Step 3.6 requires:**
+- Add a main-process notification service that receives sanitized usage/settings/account state and decides whether to display local Electron notifications.
+- Support session reset notifications, auth-expired notifications, provider degraded placeholder notifications, and threshold warnings driven by `settings.notifications`.
+- Keep notification state in the main process; renderer code should only edit validated notification preferences through the existing settings path.
+- Prevent repeated notifications for the same condition by tracking dedupe keys such as provider id, reset timestamp, threshold bucket, or auth status transition.
+- Keep provider adapter implementation out of scope; degraded-provider notifications can be driven by existing placeholder provider card status.
 
 **Files to create or modify:**
-- `electron-app/src/shared/types/settings.ts` and `electron-app/src/shared/schemas/settings.ts`: extend overlay settings with position/bounds or visibility fields if needed for persistence.
-- `electron-app/src/shared/types/ipc.ts`, `electron-app/src/shared/schemas/ipc.ts`, and `electron-app/src/preload/api.ts`: add narrow overlay commands only if renderer needs explicit hide/disable/move actions.
-- `electron-app/src/main/windows.ts`: apply overlay-specific window options and persist/restore overlay bounds through settings or a small main-process helper.
-- `electron-app/src/main/ipc.ts`: validate and merge any new overlay persistence fields through the existing settings path.
-- `electron-app/src/renderer/overlay/index.tsx`: render compact, minimal, and sidebar layouts and wire double-click/context actions.
-- `electron-app/src/renderer/components/index.tsx` and `electron-app/src/renderer/styles/app.css`: factor reusable overlay display primitives and stable responsive overlay sizing.
+- `electron-app/src/main/services/notifications.ts`: new pure-ish service/controller that evaluates usage state against notification preferences and calls Electron `Notification`.
+- `electron-app/src/main/services/notifications.test.ts`: focused tests for threshold warnings, session reset dedupe, auth-expired dedupe, disabled preferences, and provider degraded placeholder behavior.
+- `electron-app/src/main/app.ts`: instantiate the notification service and feed it usage refresh/update events where current app wiring permits.
+- `electron-app/src/main/ipc.ts`: if needed, invoke notification evaluation after `refreshNow` returns sanitized usage state; do not expose secret-bearing data.
+- `electron-app/src/shared/types/settings.ts` and `electron-app/src/shared/schemas/settings.ts`: only adjust notification preference types/schema if the existing fields are insufficient.
+- `electron-app/src/foundation-renderer.test.tsx` or settings-focused tests: update only if notification preference UI behavior changes.
 
 **Approach and trade-offs:**
-- Prefer extending the existing settings contract for overlay layout/opacity/position instead of adding separate storage unless `BrowserWindow` bounds persistence needs main-process-only state.
-- Keep renderer overlay commands narrow and validated; do not expose generic window movement APIs.
-- Use CSS layouts for compact/minimal/sidebar first, and only add main-process window behavior where Electron APIs are required.
+- Prefer a deterministic `evaluateNotifications(...)` core that can be tested without Electron, with a thin adapter that constructs and shows `Notification`.
+- Reuse existing notification preference fields from Step 3.4: `enabled`, `sessionReset`, `weeklyReset`, `authExpired`, `providerDegraded`, `thresholdWarnings`, `sessionWarningPercent`, and `weeklyWarningPercent`.
+- Treat missing reset timestamps and unknown utilization as non-notifiable instead of errors.
+- Keep dedupe state in memory for now; durable notification history is not part of Phase 3 unless a later step requires it.
+- Do not add renderer notification APIs unless tests reveal a real need.
 
-**Validation for Step 3.5:**
+**Validation for Step 3.6:**
 - `npm run typecheck` from `electron-app/`.
 - `npm test -- --run` from `electron-app/`.
 - `npm run build` from `electron-app/`.
-- Add or update focused tests for overlay settings persistence and renderer layout state if implementation changes observable contracts.
+- Add focused tests for notification evaluation/dedupe before running the full suite.

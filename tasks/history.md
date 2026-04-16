@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-16 — Step 3.5: Electron Overlay Behavior
+
+Implemented the Electron overlay product surface. The shared settings contract now tracks overlay visibility and saved bounds, the preload/IPC boundary exposes only narrow popover/hide overlay commands, and the app runtime shares overlay settings between IPC and the window manager. Overlay windows are frameless, transparent, always-on-top, opacity-aware, draggable through CSS app regions, restore saved bounds, and hide/disable through renderer actions. The renderer overlay now supports compact, minimal, and sidebar layouts driven by sanitized usage/settings state and double-clicks back to the popover.
+
+Validation: `npm run typecheck` passed from `electron-app/`. `npm test -- --run` passed with 21 files and 70 tests. `npm run build` passed from `electron-app/`. Accepted warning: Node's experimental SQLite warning during existing storage/integration tests.
+
 ## 2026-04-16 — Step 3.4: Electron Settings and Onboarding
 
 Expanded the Electron settings and onboarding experience around the existing secure preload boundary. Added validated shared settings for provider placeholders, migration prompts, notification preferences, and onboarding state, plus nested settings patch validation and placeholder IPC merge behavior. Settings now edits display mode, pace theme, weekly color mode, launch at login, overlay defaults, provider placeholders, migration prompts, notification thresholds, Claude credentials, GitHub heatmap, and accounts. Onboarding now walks through local account setup, write-only Claude credentials, optional GitHub setup, product defaults, provider status, and complete/skip actions without requiring secrets.
