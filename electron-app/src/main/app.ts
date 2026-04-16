@@ -2,6 +2,7 @@ import { app } from "electron";
 import { AppWindowManager } from "./windows.js";
 import { TrayController, type TrayFallbackStatus } from "./tray.js";
 import { registerIpcHandlers, type IpcRegistration } from "./ipc.js";
+import { createLocalNotificationService, type LocalNotificationService } from "./services/notifications.js";
 import { createDefaultAppSettings, mergeAppSettings } from "../shared/settings/defaults.js";
 import { appSettingsSchema } from "../shared/schemas/settings.js";
 import type { AppSettings, AppSettingsPatch } from "../shared/types/settings.js";
@@ -13,6 +14,7 @@ const rendererDevServerUrl = process.env.ELECTRON_RENDERER_URL ?? "http://127.0.
 let windowManager: AppWindowManager | null = null;
 let trayController: TrayController | null = null;
 let ipcRegistration: IpcRegistration | null = null;
+let notificationService: LocalNotificationService | null = null;
 let isQuitting = false;
 let settings = appSettingsSchema.parse(createDefaultAppSettings());
 
@@ -49,6 +51,8 @@ if (!hasSingleInstanceLock) {
 }
 
 async function startApp(): Promise<void> {
+  notificationService = createLocalNotificationService();
+
   windowManager = new AppWindowManager({
     isDevelopment,
     devServerUrl: rendererDevServerUrl,
@@ -59,6 +63,14 @@ async function startApp(): Promise<void> {
   });
 
   ipcRegistration = registerIpcHandlers({
+    notifications: {
+      evaluateUsageState: (usageState) => {
+        notificationService?.evaluateUsageState({
+          usageState,
+          settings: settings.notifications
+        });
+      }
+    },
     settings: {
       getSettings: () => settings,
       updateSettings

@@ -80,6 +80,10 @@ export interface IpcUsageStateDependencies {
   readonly refreshNow?: () => MaybePromise<UsageState | void>;
 }
 
+export interface IpcNotificationDependencies {
+  readonly evaluateUsageState?: (usageState: UsageState) => MaybePromise<void>;
+}
+
 export interface IpcSettingsDependencies {
   readonly getSettings?: () => MaybePromise<AppSettings>;
   readonly updateSettings?: (patch: AppSettingsPatch) => MaybePromise<AppSettings>;
@@ -105,6 +109,7 @@ export interface IpcHandlerDependencies {
   readonly credentials?: IpcCredentialDependencies;
   readonly claudeClient?: IpcClaudeClientDependencies;
   readonly usageState?: IpcUsageStateDependencies;
+  readonly notifications?: IpcNotificationDependencies;
   readonly settings?: IpcSettingsDependencies;
   readonly history?: IpcHistoryDependencies;
   readonly github?: IpcGitHubDependencies;
@@ -148,6 +153,7 @@ export function registerIpcHandlers(dependencies: IpcHandlerDependencies = {}): 
   ipcMain.handle(ipcChannelNames.getUsageState, () => state.getUsageState());
   ipcMain.handle(ipcChannelNames.refreshNow, async () => {
     const usageState = await state.refreshNow();
+    await state.evaluateNotifications(usageState);
     broadcastUsageUpdated(usageState);
     return usageState;
   });
@@ -231,6 +237,17 @@ function createIpcState(dependencies: IpcHandlerDependencies) {
       }
 
       return placeholder.refreshNow();
+    },
+    evaluateNotifications: async (usageState: UsageState): Promise<void> => {
+      if (!dependencies.notifications?.evaluateUsageState) {
+        return;
+      }
+
+      try {
+        await dependencies.notifications.evaluateUsageState(usageState);
+      } catch (error) {
+        console.warn("Failed to evaluate local notifications.", error);
+      }
     },
     getUsageHistory: async (payload?: GetUsageHistoryPayload): Promise<UsageHistoryResult> => {
       if (dependencies.history?.listUsageHistory) {

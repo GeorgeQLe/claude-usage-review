@@ -108,6 +108,23 @@ describe("Phase 2 IPC command contract", () => {
     expect(JSON.stringify(state)).not.toContain("sessionKey");
     expect(JSON.stringify(state)).not.toContain("sk-ant");
   });
+
+  it("routes sanitized refresh results to local notification evaluation", async () => {
+    const { ipcChannelNames, registerIpcHandlers } = await import("./ipc.js");
+    const evaluateUsageState = vi.fn();
+
+    registerIpcHandlers({
+      notifications: {
+        evaluateUsageState
+      }
+    });
+
+    const state = await invoke(ipcChannelNames.refreshNow);
+
+    expect(evaluateUsageState).toHaveBeenCalledWith(state);
+    expect(JSON.stringify(evaluateUsageState.mock.calls)).not.toContain("sessionKey");
+    expect(JSON.stringify(evaluateUsageState.mock.calls)).not.toContain("sk-ant");
+  });
 });
 
 async function invoke(channel: string, payload?: unknown): Promise<unknown> {
