@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-16 — Step 7.1: Swift Provider Telemetry Red Tests
+
+Added `ClaudeUsageTests/ProviderTelemetryContractTests.swift` for the Swift Provider Telemetry TDD contract and registered it in `ClaudeUsage.xcodeproj`. The tests define the expected surface for per-provider telemetry settings defaulting off, settings separation from Accuracy Mode, Codex/Gemini telemetry payload decoding, injected fake HTTP clients, passive-to-provider-supplied and fallback confidence transitions, refresh/backoff behavior, diagnostics redaction, no raw response/prompt persistence, and adapter fallback behavior. All fixtures and fakes are local; no automated test performs live Codex, ChatGPT, Gemini, Google, or Vertex requests.
+
+Validation: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/ProviderTelemetrySettingsContractTests` fails as expected for the red phase because Provider Telemetry production types/protocols do not exist yet, including `ProviderTelemetryHTTPClient`, `ProviderTelemetryHTTPResponse`, `CodexTelemetryAuthProviding`, `CodexTelemetryAuth`, `GeminiTelemetryAuthProviding`, `GeminiTelemetryAuth`, `ProviderTelemetryClient`, and `ProviderTelemetrySnapshot`. Accepted warning: Xcode selected the first of multiple matching macOS destinations.
+
 ## 2026-04-16 — Provider Telemetry Roadmap Reconciliation
 
 Reconciled `specs/provider-telemetry-endpoints.md` into the task pipeline. Added Swift Provider Telemetry as Phase 7 in `tasks/roadmap.md`, decomposed the active `tasks/todo.md` into a TDD phase for opt-in Codex and Gemini Code Assist provider quota telemetry, and captured post-verification manual checks in `tasks/manual-todo.md`. The plan keeps Claude ingestion unchanged, defaults telemetry off, requires injected HTTP clients and fixtures for automated tests, and preserves passive/wrapper fallback behavior when provider telemetry is unavailable or degraded.
@@ -812,3 +818,11 @@ Validation:
 - `npm test -- --run` in `electron-app/`: 85 tests passed.
 - `npm run build` in `electron-app/`: typecheck, full tests, main build, preload build, and renderer build passed.
 - Accepted existing environment warning: Node emitted `ExperimentalWarning: SQLite is an experimental feature` during SQLite-backed storage tests.
+
+## 2026-04-16 — Step 7.1: Swift Provider Telemetry Contract Tests
+
+Added the red-phase Provider Telemetry contract tests for the Swift macOS app. The new `ProviderTelemetryContractTests.swift` covers telemetry settings default-off behavior separate from Accuracy Mode, Codex and Gemini telemetry payload decoding fixtures, injected HTTP client behavior, passive-to-provider-supplied confidence transitions and fallback, refresh/backoff state, diagnostics redaction, raw-response/prompt persistence guards, and adapter fallback hooks. The tests use static fixtures and fake clients only; no live Codex, ChatGPT, Gemini, Google, or Vertex requests are made.
+
+Validation:
+- `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`: expected red TDD failure. The test target now compiles the new contract file and fails on missing Provider Telemetry implementation APIs, including `ProviderTelemetryHTTPClient`, `ProviderTelemetryHTTPResponse`, `CodexTelemetryAuthProviding`, `CodexTelemetryAuth`, `GeminiTelemetryAuthProviding`, `GeminiTelemetryAuth`, `ProviderTelemetryClient`, and `ProviderTelemetrySnapshot`.
+- Accepted environment warnings: xcodebuild selected the first of multiple matching local macOS destinations, and AppIntents metadata extraction was skipped because the app has no AppIntents dependency.
