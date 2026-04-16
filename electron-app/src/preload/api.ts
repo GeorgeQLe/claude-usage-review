@@ -5,9 +5,11 @@ import type { AccountSummary } from "../shared/types/accounts.js";
 import type {
   ClaudeConnectionTestResult,
   DiagnosticsExportResult,
+  GitHubHeatmapResult,
   GetUsageHistoryPayload,
   ProviderDetectionResult,
   ProviderDiagnosticsResult,
+  SaveGitHubSettingsPayload,
   UsageHistoryResult,
   WrapperSetupResult,
   WrapperVerificationResult
@@ -22,6 +24,9 @@ export interface ClaudeUsageApi {
   getUsageState: () => Promise<UsageState>;
   refreshNow: () => Promise<UsageState>;
   getUsageHistory: (payload?: GetUsageHistoryPayload) => Promise<UsageHistoryResult>;
+  getGitHubHeatmap: () => Promise<GitHubHeatmapResult>;
+  saveGitHubSettings: (payload: SaveGitHubSettingsPayload) => Promise<GitHubHeatmapResult>;
+  refreshGitHubHeatmap: () => Promise<GitHubHeatmapResult>;
   subscribeUsageUpdated: (callback: (state: UsageState) => void) => () => void;
   getSettings: () => Promise<AppSettings>;
   updateSettings: (patch: AppSettingsPatch) => Promise<AppSettings>;
@@ -47,6 +52,9 @@ const preloadInvokeChannels = {
   getUsageState: ipcChannelNames.getUsageState,
   refreshNow: ipcChannelNames.refreshNow,
   getUsageHistory: ipcChannelNames.getUsageHistory,
+  getGitHubHeatmap: ipcChannelNames.getGitHubHeatmap,
+  saveGitHubSettings: ipcChannelNames.saveGitHubSettings,
+  refreshGitHubHeatmap: ipcChannelNames.refreshGitHubHeatmap,
   getSettings: ipcChannelNames.getSettings,
   updateSettings: ipcChannelNames.updateSettings,
   getAccounts: ipcChannelNames.getAccounts,
@@ -77,6 +85,9 @@ export function createClaudeUsageApi(): ClaudeUsageApi {
     getUsageState: () => invoke("getUsageState"),
     refreshNow: () => invoke("refreshNow"),
     getUsageHistory: (payload) => invoke("getUsageHistory", payload),
+    getGitHubHeatmap: () => invoke("getGitHubHeatmap"),
+    saveGitHubSettings: (payload) => invoke("saveGitHubSettings", payload),
+    refreshGitHubHeatmap: () => invoke("refreshGitHubHeatmap"),
     subscribeUsageUpdated: (callback) => {
       const listener = (_event: IpcRendererEvent, payload: unknown) => {
         const result = usageStateSchema.safeParse(payload);

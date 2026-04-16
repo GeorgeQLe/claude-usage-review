@@ -38,11 +38,23 @@ export interface ClaudeCredentialStatus {
   readonly storageWarning: string | null;
 }
 
+export interface GitHubCredentialStatus {
+  readonly hasGitHubToken: boolean;
+  readonly storageWarning: string | null;
+}
+
 export interface ClaudeCredentialStore {
   readonly writeClaudeSessionKey: (accountId: string, sessionKey: string) => void;
   readonly readClaudeSessionKey: (accountId: string) => string | null;
   readonly deleteClaudeSessionKey: (accountId: string) => void;
   readonly getCredentialStatus: (accountId: string) => ClaudeCredentialStatus;
+}
+
+export interface GitHubCredentialStore {
+  readonly writeGitHubToken: (token: string) => void;
+  readonly readGitHubToken: () => string | null;
+  readonly deleteGitHubToken: () => void;
+  readonly getCredentialStatus: () => GitHubCredentialStatus;
 }
 
 export interface ClaudeCredentialStoreOptions {
@@ -93,6 +105,27 @@ export function createClaudeCredentialStore(options: ClaudeCredentialStoreOption
   };
 }
 
+export function createGitHubCredentialStore(options: ClaudeCredentialStoreOptions): GitHubCredentialStore {
+  const secretStore = createSecretStore(options.safeStorage, options.platform);
+
+  return {
+    writeGitHubToken: (token: string): void => {
+      options.persistence.write(getGitHubTokenPersistenceKey(), secretStore.encryptSecret(token));
+    },
+    readGitHubToken: (): string | null => {
+      const envelope = options.persistence.read(getGitHubTokenPersistenceKey());
+      return envelope ? secretStore.decryptSecret(envelope) : null;
+    },
+    deleteGitHubToken: (): void => {
+      options.persistence.delete(getGitHubTokenPersistenceKey());
+    },
+    getCredentialStatus: (): GitHubCredentialStatus => ({
+      hasGitHubToken: options.persistence.read(getGitHubTokenPersistenceKey()) !== null,
+      storageWarning: secretStore.getStatus().warning
+    })
+  };
+}
+
 export function getSecretStorageStatus(
   storage: SafeStorageAdapter = safeStorage,
   platform: NodeJS.Platform = process.platform
@@ -127,4 +160,8 @@ function assertEncryptionAvailable(storage: SafeStorageAdapter): void {
 
 function getClaudeSessionKeyPersistenceKey(accountId: string): string {
   return `${accountId}:claude:sessionKey`;
+}
+
+function getGitHubTokenPersistenceKey(): string {
+  return "app:github:token";
 }

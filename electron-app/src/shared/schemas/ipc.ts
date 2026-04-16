@@ -62,6 +62,33 @@ export const usageHistoryResultSchema = z.object({
   generatedAt: z.string().datetime()
 });
 
+export const githubContributionDaySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
+  contributionCount: z.number().int().min(0)
+});
+
+export const githubContributionWeekSchema = z.object({
+  contributionDays: z.array(githubContributionDaySchema)
+});
+
+export const githubHeatmapResultSchema = z.object({
+  enabled: z.boolean(),
+  configured: z.boolean(),
+  username: z.string().min(1).nullable(),
+  status: z.enum(["disabled", "not_configured", "configured", "loading", "ready", "error", "auth_expired"]),
+  weeks: z.array(githubContributionWeekSchema),
+  totalContributions: z.number().int().min(0),
+  lastFetchedAt: z.string().datetime().nullable(),
+  nextRefreshAt: z.string().datetime().nullable(),
+  error: z.string().nullable()
+});
+
+export const saveGitHubSettingsPayloadSchema = z.object({
+  enabled: z.boolean(),
+  username: z.string().min(1).nullable(),
+  token: z.string().min(1).nullable().optional()
+});
+
 export const providerDiagnosticsResultSchema = z.object({
   providerId: z.string().min(1),
   status: z.enum(["not_configured", "ready", "degraded"]),

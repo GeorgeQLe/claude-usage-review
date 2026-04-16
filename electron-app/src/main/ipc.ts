@@ -5,12 +5,14 @@ import {
   addAccountPayloadSchema,
   claudeConnectionTestResultSchema,
   diagnosticsExportResultSchema,
+  githubHeatmapResultSchema,
   getUsageHistoryPayloadSchema,
   providerCommandPayloadSchema,
   providerDetectionResultSchema,
   providerDiagnosticsResultSchema,
   renameAccountPayloadSchema,
   saveClaudeCredentialsPayloadSchema,
+  saveGitHubSettingsPayloadSchema,
   testClaudeConnectionPayloadSchema,
   updateSettingsPayloadSchema,
   usageHistoryResultSchema,
@@ -24,9 +26,11 @@ import type { AccountId, AccountSummary } from "../shared/types/accounts.js";
 import type {
   ClaudeConnectionTestResult,
   DiagnosticsExportResult,
+  GitHubHeatmapResult,
   GetUsageHistoryPayload,
   ProviderDetectionResult,
   ProviderDiagnosticsResult,
+  SaveGitHubSettingsPayload,
   UsageHistoryResult,
   WrapperSetupResult,
   WrapperVerificationResult
@@ -79,12 +83,19 @@ export interface IpcHistoryDependencies {
   readonly listUsageHistory?: (filters?: GetUsageHistoryPayload) => MaybePromise<UsageHistoryResult>;
 }
 
+export interface IpcGitHubDependencies {
+  readonly getHeatmapState?: () => MaybePromise<GitHubHeatmapResult>;
+  readonly saveSettings?: (payload: SaveGitHubSettingsPayload) => MaybePromise<GitHubHeatmapResult>;
+  readonly refreshHeatmap?: () => MaybePromise<GitHubHeatmapResult>;
+}
+
 export interface IpcHandlerDependencies {
   readonly accounts?: IpcAccountDependencies;
   readonly credentials?: IpcCredentialDependencies;
   readonly claudeClient?: IpcClaudeClientDependencies;
   readonly usageState?: IpcUsageStateDependencies;
   readonly history?: IpcHistoryDependencies;
+  readonly github?: IpcGitHubDependencies;
 }
 
 const accountSummariesSchema = z.array(accountSummarySchema);
@@ -93,6 +104,9 @@ const registeredInvokeChannels = [
   ipcChannelNames.getUsageState,
   ipcChannelNames.refreshNow,
   ipcChannelNames.getUsageHistory,
+  ipcChannelNames.getGitHubHeatmap,
+  ipcChannelNames.saveGitHubSettings,
+  ipcChannelNames.refreshGitHubHeatmap,
   ipcChannelNames.getSettings,
   ipcChannelNames.updateSettings,
   ipcChannelNames.getAccounts,
@@ -125,6 +139,11 @@ export function registerIpcHandlers(dependencies: IpcHandlerDependencies = {}): 
   ipcMain.handle(ipcChannelNames.getUsageHistory, (_event, payload: unknown) =>
     state.getUsageHistory(parsePayload(getUsageHistoryPayloadSchema, payload))
   );
+  ipcMain.handle(ipcChannelNames.getGitHubHeatmap, () => state.getGitHubHeatmap());
+  ipcMain.handle(ipcChannelNames.saveGitHubSettings, (_event, payload: unknown) =>
+    state.saveGitHubSettings(parsePayload(saveGitHubSettingsPayloadSchema, payload))
+  );
+  ipcMain.handle(ipcChannelNames.refreshGitHubHeatmap, () => state.refreshGitHubHeatmap());
   ipcMain.handle(ipcChannelNames.getSettings, () => state.getSettings());
   ipcMain.handle(ipcChannelNames.updateSettings, (_event, payload: unknown) =>
     state.updateSettings(parsePayload(updateSettingsPayloadSchema, payload))
@@ -202,6 +221,27 @@ function createIpcState(dependencies: IpcHandlerDependencies) {
       }
 
       return placeholder.getUsageHistory();
+    },
+    getGitHubHeatmap: async (): Promise<GitHubHeatmapResult> => {
+      if (dependencies.github?.getHeatmapState) {
+        return validateGitHubHeatmapResult(await dependencies.github.getHeatmapState());
+      }
+
+      return placeholder.getGitHubHeatmap();
+    },
+    saveGitHubSettings: async (payload: SaveGitHubSettingsPayload): Promise<GitHubHeatmapResult> => {
+      if (dependencies.github?.saveSettings) {
+        return validateGitHubHeatmapResult(await dependencies.github.saveSettings(payload));
+      }
+
+      return placeholder.saveGitHubSettings(payload);
+    },
+    refreshGitHubHeatmap: async (): Promise<GitHubHeatmapResult> => {
+      if (dependencies.github?.refreshHeatmap) {
+        return validateGitHubHeatmapResult(await dependencies.github.refreshHeatmap());
+      }
+
+      return placeholder.refreshGitHubHeatmap();
     },
     getSettings: (): AppSettings => placeholder.getSettings(),
     updateSettings: (payload: { readonly patch: AppSettingsPatch }): AppSettings => placeholder.updateSettings(payload),
@@ -309,6 +349,18 @@ function createPlaceholderIpcState() {
       opacity: 0.9
     }
   });
+  let hasGitHubToken = false;
+  let githubHeatmap = validateGitHubHeatmapResult({
+    enabled: false,
+    configured: false,
+    username: null,
+    status: "disabled",
+    weeks: [],
+    totalContributions: 0,
+    lastFetchedAt: null,
+    nextRefreshAt: null,
+    error: null
+  });
   let accounts = validateAccounts([
     {
       id: "local-placeholder",
@@ -348,6 +400,29 @@ function createPlaceholderIpcState() {
         generatedAt: new Date().toISOString(),
         points: []
       }),
+    getGitHubHeatmap: (): GitHubHeatmapResult => githubHeatmap,
+    saveGitHubSettings: (payload: SaveGitHubSettingsPayload): GitHubHeatmapResult => {
+      if (payload.token === null) {
+        hasGitHubToken = false;
+      } else if (payload.token) {
+        hasGitHubToken = true;
+      }
+
+      githubHeatmap = createPlaceholderGitHubHeatmap({
+        enabled: payload.enabled,
+        hasToken: hasGitHubToken,
+        username: payload.username
+      });
+      return githubHeatmap;
+    },
+    refreshGitHubHeatmap: (): GitHubHeatmapResult => {
+      githubHeatmap = createPlaceholderGitHubHeatmap({
+        enabled: githubHeatmap.enabled,
+        hasToken: hasGitHubToken,
+        username: githubHeatmap.username
+      });
+      return githubHeatmap;
+    },
     getSettings: (): AppSettings => settings,
     updateSettings: (payload: { readonly patch: AppSettingsPatch }): AppSettings => {
       settings = validateSettings({
@@ -520,6 +595,27 @@ function createPlaceholderProviderCard(providerId: ProviderId, displayName: stri
   };
 }
 
+function createPlaceholderGitHubHeatmap(input: {
+  readonly enabled: boolean;
+  readonly hasToken: boolean;
+  readonly username: string | null;
+}): GitHubHeatmapResult {
+  const username = input.username?.trim() ? input.username.trim() : null;
+  const configured = input.enabled && username !== null && input.hasToken;
+
+  return validateGitHubHeatmapResult({
+    enabled: input.enabled,
+    configured,
+    username,
+    status: !input.enabled ? "disabled" : configured ? "configured" : "not_configured",
+    weeks: [],
+    totalContributions: 0,
+    lastFetchedAt: null,
+    nextRefreshAt: null,
+    error: null
+  });
+}
+
 function parsePayload<T>(schema: z.ZodType<T>, payload: unknown): T {
   return schema.parse(payload);
 }
@@ -542,6 +638,10 @@ function validateClaudeConnectionResult(value: unknown): ClaudeConnectionTestRes
 
 function validateUsageHistoryResult(value: unknown): UsageHistoryResult {
   return usageHistoryResultSchema.parse(value);
+}
+
+function validateGitHubHeatmapResult(value: unknown): GitHubHeatmapResult {
+  return githubHeatmapResultSchema.parse(value);
 }
 
 function validateProviderDiagnosticsResult(value: unknown): ProviderDiagnosticsResult {

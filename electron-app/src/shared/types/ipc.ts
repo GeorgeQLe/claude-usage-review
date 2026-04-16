@@ -10,6 +10,9 @@ export const ipcChannelNames = {
   refreshNow: "usage:refresh-now",
   getUsageHistory: "usage:get-history",
   usageUpdated: "usage:updated",
+  getGitHubHeatmap: "github:get-heatmap",
+  saveGitHubSettings: "github:save-settings",
+  refreshGitHubHeatmap: "github:refresh-heatmap",
   getSettings: "settings:get",
   updateSettings: "settings:update",
   getAccounts: "accounts:list",
@@ -45,6 +48,21 @@ export interface PreloadInvokeMap {
     readonly channel: typeof ipcChannelNames.getUsageHistory;
     readonly args: readonly [payload?: GetUsageHistoryPayload];
     readonly result: UsageHistoryResult;
+  };
+  readonly getGitHubHeatmap: {
+    readonly channel: typeof ipcChannelNames.getGitHubHeatmap;
+    readonly args: readonly [];
+    readonly result: GitHubHeatmapResult;
+  };
+  readonly saveGitHubSettings: {
+    readonly channel: typeof ipcChannelNames.saveGitHubSettings;
+    readonly args: readonly [payload: SaveGitHubSettingsPayload];
+    readonly result: GitHubHeatmapResult;
+  };
+  readonly refreshGitHubHeatmap: {
+    readonly channel: typeof ipcChannelNames.refreshGitHubHeatmap;
+    readonly args: readonly [];
+    readonly result: GitHubHeatmapResult;
   };
   readonly getSettings: {
     readonly channel: typeof ipcChannelNames.getSettings;
@@ -161,6 +179,35 @@ export interface UsageHistoryPoint {
 export interface UsageHistoryResult {
   readonly points: readonly UsageHistoryPoint[];
   readonly generatedAt: string;
+}
+
+export type GitHubHeatmapStatus = "disabled" | "not_configured" | "configured" | "loading" | "ready" | "error" | "auth_expired";
+
+export interface GitHubContributionDay {
+  readonly date: string;
+  readonly contributionCount: number;
+}
+
+export interface GitHubContributionWeek {
+  readonly contributionDays: readonly GitHubContributionDay[];
+}
+
+export interface GitHubHeatmapResult {
+  readonly enabled: boolean;
+  readonly configured: boolean;
+  readonly username: string | null;
+  readonly status: GitHubHeatmapStatus;
+  readonly weeks: readonly GitHubContributionWeek[];
+  readonly totalContributions: number;
+  readonly lastFetchedAt: string | null;
+  readonly nextRefreshAt: string | null;
+  readonly error: string | null;
+}
+
+export interface SaveGitHubSettingsPayload {
+  readonly enabled: boolean;
+  readonly username: string | null;
+  readonly token?: string | null;
 }
 
 export interface UpdateSettingsPayload {
