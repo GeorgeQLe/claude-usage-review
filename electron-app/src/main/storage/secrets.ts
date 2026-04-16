@@ -2,6 +2,13 @@ import { safeStorage, type SafeStorage } from "electron";
 
 export type SafeStorageBackend = ReturnType<SafeStorage["getSelectedStorageBackend"]>;
 
+export interface SafeStorageAdapter {
+  readonly decryptString: (encrypted: Buffer) => string;
+  readonly encryptString: (plainText: string) => Buffer;
+  readonly getSelectedStorageBackend: () => SafeStorageBackend;
+  readonly isEncryptionAvailable: () => boolean;
+}
+
 export interface SecretEnvelope {
   readonly version: 1;
   readonly encryptedBase64: string;
@@ -20,7 +27,34 @@ export interface SecretStore {
   readonly clearSecret: () => null;
 }
 
-export function createSecretStore(storage: SafeStorage = safeStorage, platform: NodeJS.Platform = process.platform): SecretStore {
+export interface CredentialPersistence {
+  readonly delete: (key: string) => void;
+  readonly read: (key: string) => SecretEnvelope | null;
+  readonly write: (key: string, envelope: SecretEnvelope) => void;
+}
+
+export interface ClaudeCredentialStatus {
+  readonly hasClaudeSessionKey: boolean;
+  readonly storageWarning: string | null;
+}
+
+export interface ClaudeCredentialStore {
+  readonly writeClaudeSessionKey: (accountId: string, sessionKey: string) => void;
+  readonly readClaudeSessionKey: (accountId: string) => string | null;
+  readonly deleteClaudeSessionKey: (accountId: string) => void;
+  readonly getCredentialStatus: (accountId: string) => ClaudeCredentialStatus;
+}
+
+export interface ClaudeCredentialStoreOptions {
+  readonly safeStorage?: SafeStorageAdapter;
+  readonly persistence: CredentialPersistence;
+  readonly platform?: NodeJS.Platform;
+}
+
+export function createSecretStore(
+  storage: SafeStorageAdapter = safeStorage,
+  platform: NodeJS.Platform = process.platform
+): SecretStore {
   return {
     getStatus: () => getSecretStorageStatus(storage, platform),
     encryptSecret: (plainText: string): SecretEnvelope => {
@@ -38,8 +72,29 @@ export function createSecretStore(storage: SafeStorage = safeStorage, platform: 
   };
 }
 
+export function createClaudeCredentialStore(options: ClaudeCredentialStoreOptions): ClaudeCredentialStore {
+  const secretStore = createSecretStore(options.safeStorage, options.platform);
+
+  return {
+    writeClaudeSessionKey: (accountId: string, sessionKey: string): void => {
+      options.persistence.write(getClaudeSessionKeyPersistenceKey(accountId), secretStore.encryptSecret(sessionKey));
+    },
+    readClaudeSessionKey: (accountId: string): string | null => {
+      const envelope = options.persistence.read(getClaudeSessionKeyPersistenceKey(accountId));
+      return envelope ? secretStore.decryptSecret(envelope) : null;
+    },
+    deleteClaudeSessionKey: (accountId: string): void => {
+      options.persistence.delete(getClaudeSessionKeyPersistenceKey(accountId));
+    },
+    getCredentialStatus: (accountId: string): ClaudeCredentialStatus => ({
+      hasClaudeSessionKey: options.persistence.read(getClaudeSessionKeyPersistenceKey(accountId)) !== null,
+      storageWarning: secretStore.getStatus().warning
+    })
+  };
+}
+
 export function getSecretStorageStatus(
-  storage: SafeStorage = safeStorage,
+  storage: SafeStorageAdapter = safeStorage,
   platform: NodeJS.Platform = process.platform
 ): SecretStorageStatus {
   const available = storage.isEncryptionAvailable();
@@ -56,7 +111,7 @@ export function getSecretStorageStatus(
   };
 }
 
-function getSelectedStorageBackend(storage: SafeStorage, platform: NodeJS.Platform): SafeStorageBackend | null {
+function getSelectedStorageBackend(storage: SafeStorageAdapter, platform: NodeJS.Platform): SafeStorageBackend | null {
   if (platform !== "linux") {
     return null;
   }
@@ -64,8 +119,12 @@ function getSelectedStorageBackend(storage: SafeStorage, platform: NodeJS.Platfo
   return storage.getSelectedStorageBackend();
 }
 
-function assertEncryptionAvailable(storage: SafeStorage): void {
+function assertEncryptionAvailable(storage: SafeStorageAdapter): void {
   if (!storage.isEncryptionAvailable()) {
     throw new Error("Electron safeStorage encryption is not available.");
   }
+}
+
+function getClaudeSessionKeyPersistenceKey(accountId: string): string {
+  return `${accountId}:claude:sessionKey`;
 }

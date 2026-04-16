@@ -37,9 +37,9 @@ export const providerCommandPayloadSchema = z.object({
 
 export const claudeConnectionTestResultSchema = z.object({
   ok: z.boolean(),
-  status: z.enum(["not_implemented", "invalid"]),
+  status: z.enum(["not_implemented", "connected", "auth_expired", "network_error", "invalid"]),
   message: z.string()
-});
+}).strip();
 
 export const providerDiagnosticsResultSchema = z.object({
   providerId: z.string().min(1),

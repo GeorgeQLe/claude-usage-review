@@ -148,7 +148,7 @@ export interface ProviderCommandPayload {
 
 export interface ClaudeConnectionTestResult {
   readonly ok: boolean;
-  readonly status: "not_implemented" | "invalid";
+  readonly status: "not_implemented" | "connected" | "auth_expired" | "network_error" | "invalid";
   readonly message: string;
 }
 

@@ -19,6 +19,7 @@ export interface AccountStore {
   readonly removeAccount: (accountId: AccountId) => readonly AccountSummary[];
   readonly setActiveAccount: (accountId: AccountId) => readonly AccountSummary[];
   readonly saveOrgId: (accountId: AccountId, orgId: string) => AccountSummary;
+  readonly setAuthStatus: (accountId: AccountId, authStatus: AccountAuthStatus) => AccountSummary;
   readonly listAccounts: () => readonly AccountSummary[];
   readonly getActiveAccount: () => AccountSummary | null;
 }
@@ -92,6 +93,15 @@ export function createAccountStore(options: AccountStoreOptions): AccountStore {
       database
         .prepare("UPDATE accounts SET org_id = ?, updated_at = ? WHERE id = ?;")
         .run(orgId, now(), accountId);
+
+      return getAccountOrThrow(database, accountId);
+    },
+    setAuthStatus: (accountId: AccountId, authStatus: AccountAuthStatus): AccountSummary => {
+      assertKnownAccount(database, accountId);
+
+      database
+        .prepare("UPDATE accounts SET auth_status = ?, updated_at = ? WHERE id = ?;")
+        .run(authStatus, now(), accountId);
 
       return getAccountOrThrow(database, accountId);
     },

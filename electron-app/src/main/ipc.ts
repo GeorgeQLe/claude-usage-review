@@ -40,6 +40,44 @@ export interface IpcRegistration {
   dispose: () => void;
 }
 
+type MaybePromise<T> = T | Promise<T>;
+type AccountMutationResult = AccountSummary | readonly AccountSummary[];
+
+export interface IpcAccountDependencies {
+  readonly listAccounts?: () => MaybePromise<readonly AccountSummary[]>;
+  readonly addAccount?: (input: { readonly label: string }) => MaybePromise<AccountMutationResult>;
+  readonly renameAccount?: (accountId: AccountId, label: string) => MaybePromise<AccountMutationResult>;
+  readonly removeAccount?: (accountId: AccountId) => MaybePromise<readonly AccountSummary[]>;
+  readonly setActiveAccount?: (accountId: AccountId) => MaybePromise<readonly AccountSummary[]>;
+  readonly saveOrgId?: (accountId: AccountId, orgId: string) => MaybePromise<AccountSummary>;
+  readonly setAuthStatus?: (
+    accountId: AccountId,
+    authStatus: "missing_credentials" | "configured" | "expired"
+  ) => MaybePromise<AccountSummary>;
+}
+
+export interface IpcCredentialDependencies {
+  readonly writeClaudeSessionKey?: (accountId: AccountId, sessionKey: string) => MaybePromise<void>;
+  readonly readClaudeSessionKey?: (accountId: AccountId) => MaybePromise<string | null>;
+  readonly deleteClaudeSessionKey?: (accountId: AccountId) => MaybePromise<void>;
+}
+
+export interface IpcClaudeClientDependencies {
+  readonly fetchUsage: (credentials: { readonly orgId: string; readonly sessionKey: string }) => Promise<unknown>;
+}
+
+export interface IpcUsageStateDependencies {
+  readonly getUsageState?: () => MaybePromise<UsageState>;
+  readonly refreshNow?: () => MaybePromise<UsageState | void>;
+}
+
+export interface IpcHandlerDependencies {
+  readonly accounts?: IpcAccountDependencies;
+  readonly credentials?: IpcCredentialDependencies;
+  readonly claudeClient?: IpcClaudeClientDependencies;
+  readonly usageState?: IpcUsageStateDependencies;
+}
+
 const accountSummariesSchema = z.array(accountSummarySchema);
 
 const registeredInvokeChannels = [
@@ -61,16 +99,16 @@ const registeredInvokeChannels = [
   ipcChannelNames.exportDiagnostics
 ] as const satisfies readonly IpcChannelName[];
 
-export function registerIpcHandlers(): IpcRegistration {
-  const state = createPlaceholderIpcState();
+export function registerIpcHandlers(dependencies: IpcHandlerDependencies = {}): IpcRegistration {
+  const state = createIpcState(dependencies);
 
   for (const channel of registeredInvokeChannels) {
     ipcMain.removeHandler(channel);
   }
 
   ipcMain.handle(ipcChannelNames.getUsageState, () => state.getUsageState());
-  ipcMain.handle(ipcChannelNames.refreshNow, () => {
-    const usageState = state.refreshNow();
+  ipcMain.handle(ipcChannelNames.refreshNow, async () => {
+    const usageState = await state.refreshNow();
     broadcastUsageUpdated(usageState);
     return usageState;
   });
@@ -80,7 +118,7 @@ export function registerIpcHandlers(): IpcRegistration {
   );
   ipcMain.handle(ipcChannelNames.getAccounts, () => state.getAccounts());
   ipcMain.handle(ipcChannelNames.addAccount, (_event, payload: unknown) =>
-    state.addAccount(parsePayload(addAccountPayloadSchema, payload).label)
+    state.addAccount(parsePayload(addAccountPayloadSchema, payload))
   );
   ipcMain.handle(ipcChannelNames.renameAccount, (_event, payload: unknown) =>
     state.renameAccount(parsePayload(renameAccountPayloadSchema, payload))
@@ -94,14 +132,9 @@ export function registerIpcHandlers(): IpcRegistration {
   ipcMain.handle(ipcChannelNames.saveClaudeCredentials, (_event, payload: unknown) =>
     state.saveClaudeCredentials(parsePayload(saveClaudeCredentialsPayloadSchema, payload))
   );
-  ipcMain.handle(ipcChannelNames.testClaudeConnection, (_event, payload: unknown) => {
-    parsePayload(testClaudeConnectionPayloadSchema, payload);
-    return validateClaudeConnectionResult({
-      ok: false,
-      status: "not_implemented",
-      message: "Claude connection testing is not connected in the foundation IPC skeleton."
-    });
-  });
+  ipcMain.handle(ipcChannelNames.testClaudeConnection, (_event, payload: unknown) =>
+    state.testClaudeConnection(parsePayload(testClaudeConnectionPayloadSchema, payload))
+  );
   ipcMain.handle(ipcChannelNames.getProviderDiagnostics, (_event, payload: unknown) =>
     state.getProviderDiagnostics(parsePayload(providerCommandPayloadSchema, payload).providerId)
   );
@@ -122,6 +155,124 @@ export function registerIpcHandlers(): IpcRegistration {
         ipcMain.removeHandler(channel);
       }
     }
+  };
+}
+
+function createIpcState(dependencies: IpcHandlerDependencies) {
+  const placeholder = createPlaceholderIpcState();
+
+  return {
+    getUsageState: async (): Promise<UsageState> => {
+      if (dependencies.usageState?.getUsageState) {
+        return validateUsageState(await dependencies.usageState.getUsageState());
+      }
+
+      return placeholder.getUsageState();
+    },
+    refreshNow: async (): Promise<UsageState> => {
+      if (dependencies.usageState?.refreshNow) {
+        const refreshedState = await dependencies.usageState.refreshNow();
+        if (refreshedState) {
+          return validateUsageState(refreshedState);
+        }
+      }
+
+      if (dependencies.usageState?.getUsageState) {
+        return validateUsageState(await dependencies.usageState.getUsageState());
+      }
+
+      return placeholder.refreshNow();
+    },
+    getSettings: (): AppSettings => placeholder.getSettings(),
+    updateSettings: (payload: { readonly patch: AppSettingsPatch }): AppSettings => placeholder.updateSettings(payload),
+    getAccounts: async (): Promise<readonly AccountSummary[]> => {
+      if (dependencies.accounts?.listAccounts) {
+        return validateAccounts(await dependencies.accounts.listAccounts());
+      }
+
+      return placeholder.getAccounts();
+    },
+    addAccount: async (payload: { readonly label: string }): Promise<readonly AccountSummary[]> => {
+      if (dependencies.accounts?.addAccount) {
+        const result = await dependencies.accounts.addAccount(payload);
+        return accountMutationResultToSummaries(result, dependencies.accounts);
+      }
+
+      return placeholder.addAccount(payload.label);
+    },
+    renameAccount: async (payload: {
+      readonly accountId: AccountId;
+      readonly label: string;
+    }): Promise<readonly AccountSummary[]> => {
+      if (dependencies.accounts?.renameAccount) {
+        const result = await dependencies.accounts.renameAccount(payload.accountId, payload.label);
+        return accountMutationResultToSummaries(result, dependencies.accounts);
+      }
+
+      return placeholder.renameAccount(payload);
+    },
+    removeAccount: async (accountId: AccountId): Promise<readonly AccountSummary[]> => {
+      if (dependencies.accounts?.removeAccount) {
+        return validateAccounts(await dependencies.accounts.removeAccount(accountId));
+      }
+
+      return placeholder.removeAccount(accountId);
+    },
+    setActiveAccount: async (accountId: AccountId): Promise<readonly AccountSummary[]> => {
+      if (dependencies.accounts?.setActiveAccount) {
+        return validateAccounts(await dependencies.accounts.setActiveAccount(accountId));
+      }
+
+      return placeholder.setActiveAccount(accountId);
+    },
+    saveClaudeCredentials: async (payload: {
+      readonly accountId: AccountId;
+      readonly sessionKey: string;
+      readonly orgId: string;
+    }): Promise<readonly AccountSummary[]> => {
+      if (!dependencies.credentials && !dependencies.accounts?.saveOrgId && !dependencies.accounts?.setAuthStatus) {
+        return placeholder.saveClaudeCredentials(payload);
+      }
+
+      await dependencies.credentials?.writeClaudeSessionKey?.(payload.accountId, payload.sessionKey);
+      const savedAccount = await dependencies.accounts?.saveOrgId?.(payload.accountId, payload.orgId);
+      const configuredAccount = await dependencies.accounts?.setAuthStatus?.(payload.accountId, "configured");
+      const mutationResult = configuredAccount ?? savedAccount;
+      return accountMutationResultToSummaries(mutationResult, dependencies.accounts);
+    },
+    testClaudeConnection: async (payload: {
+      readonly orgId: string;
+      readonly sessionKey: string;
+    }): Promise<ClaudeConnectionTestResult> => {
+      if (!dependencies.claudeClient) {
+        return validateClaudeConnectionResult({
+          ok: false,
+          status: "not_implemented",
+          message: "Claude connection testing is not connected in the foundation IPC skeleton."
+        });
+      }
+
+      try {
+        await dependencies.claudeClient.fetchUsage({
+          orgId: payload.orgId,
+          sessionKey: payload.sessionKey
+        });
+
+        return validateClaudeConnectionResult({
+          ok: true,
+          status: "connected",
+          message: "Claude connection succeeded."
+        });
+      } catch (error) {
+        return validateClaudeConnectionResult(createClaudeConnectionFailure(error));
+      }
+    },
+    getProviderDiagnostics: (providerId: ProviderId): ProviderDiagnosticsResult =>
+      placeholder.getProviderDiagnostics(providerId),
+    runProviderDetection: (providerId: ProviderId): ProviderDetectionResult => placeholder.runProviderDetection(providerId),
+    generateWrapper: (providerId: ProviderId): WrapperSetupResult => placeholder.generateWrapper(providerId),
+    verifyWrapper: (providerId: ProviderId): WrapperVerificationResult => placeholder.verifyWrapper(providerId),
+    exportDiagnostics: (): DiagnosticsExportResult => placeholder.exportDiagnostics()
   };
 }
 
@@ -274,6 +425,53 @@ function createPlaceholderIpcState() {
 
 function deriveStorageWarning(): string | null {
   return getSecretStorageStatus().warning;
+}
+
+async function accountMutationResultToSummaries(
+  result: AccountMutationResult | undefined,
+  accounts?: IpcAccountDependencies
+): Promise<readonly AccountSummary[]> {
+  if (accounts?.listAccounts) {
+    return validateAccounts(await accounts.listAccounts());
+  }
+
+  if (Array.isArray(result)) {
+    return validateAccounts(result);
+  }
+
+  if (result) {
+    return validateAccounts([result]);
+  }
+
+  return validateAccounts([]);
+}
+
+function createClaudeConnectionFailure(error: unknown): ClaudeConnectionTestResult {
+  if (hasClaudeErrorKind(error, "auth_expired")) {
+    return {
+      ok: false,
+      status: "auth_expired",
+      message: "Claude authentication has expired."
+    };
+  }
+
+  if (hasClaudeErrorKind(error, "network_error")) {
+    return {
+      ok: false,
+      status: "network_error",
+      message: "Claude connection failed because the network request did not complete."
+    };
+  }
+
+  return {
+    ok: false,
+    status: "invalid",
+    message: "Claude returned an invalid response."
+  };
+}
+
+function hasClaudeErrorKind(error: unknown, kind: string): boolean {
+  return typeof error === "object" && error !== null && "kind" in error && error.kind === kind;
 }
 
 function createPlaceholderProviderCard(providerId: ProviderId, displayName: string): UsageState["providers"][number] {
