@@ -8,6 +8,7 @@ import type { UsageState } from "./usage.js";
 export const ipcChannelNames = {
   getUsageState: "usage:get-state",
   refreshNow: "usage:refresh-now",
+  getUsageHistory: "usage:get-history",
   usageUpdated: "usage:updated",
   getSettings: "settings:get",
   updateSettings: "settings:update",
@@ -39,6 +40,11 @@ export interface PreloadInvokeMap {
     readonly channel: typeof ipcChannelNames.refreshNow;
     readonly args: readonly [];
     readonly result: UsageState;
+  };
+  readonly getUsageHistory: {
+    readonly channel: typeof ipcChannelNames.getUsageHistory;
+    readonly args: readonly [payload?: GetUsageHistoryPayload];
+    readonly result: UsageHistoryResult;
   };
   readonly getSettings: {
     readonly channel: typeof ipcChannelNames.getSettings;
@@ -136,6 +142,25 @@ export interface SaveClaudeCredentialsPayload {
 export interface TestClaudeConnectionPayload {
   readonly sessionKey: string;
   readonly orgId: string;
+}
+
+export interface GetUsageHistoryPayload {
+  readonly accountId?: AccountId | null;
+  readonly providerId?: ProviderId;
+}
+
+export interface UsageHistoryPoint {
+  readonly capturedAt: string;
+  readonly accountId: AccountId | null;
+  readonly providerId: ProviderId;
+  readonly sessionUtilization: number | null;
+  readonly weeklyUtilization: number | null;
+  readonly resetAt: string | null;
+}
+
+export interface UsageHistoryResult {
+  readonly points: readonly UsageHistoryPoint[];
+  readonly generatedAt: string;
 }
 
 export interface UpdateSettingsPayload {

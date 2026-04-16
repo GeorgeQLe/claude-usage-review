@@ -68,6 +68,12 @@ h2 {
   line-height: 1.25;
 }
 
+h3 {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
 .window-frame {
   min-height: 100vh;
   display: grid;
@@ -236,6 +242,66 @@ h2 {
   background: #1c6b5d;
 }
 
+.usage-history {
+  display: grid;
+  gap: 8px;
+}
+
+.usage-history-header,
+.sparkline-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.usage-history-header span,
+.sparkline-label span {
+  color: #6d7470;
+  font-size: 11px;
+}
+
+.usage-history-header span {
+  text-align: right;
+}
+
+.sparkline-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sparkline {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.sparkline-label strong {
+  color: #15191f;
+  font-size: 12px;
+}
+
+.sparkline svg {
+  width: 100%;
+  height: 38px;
+  overflow: visible;
+}
+
+.sparkline-baseline {
+  stroke: #d6ddd6;
+  stroke-width: 1;
+}
+
+.sparkline-line {
+  fill: none;
+  stroke: #9a3441;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
 .status-pill {
   flex: 0 0 auto;
   display: inline-flex;
@@ -393,6 +459,7 @@ h2 {
   .content-grid-two,
   .meter-grid,
   .summary-grid,
+  .sparkline-grid,
   .inline-form,
   .account-action-row {
     grid-template-columns: 1fr;

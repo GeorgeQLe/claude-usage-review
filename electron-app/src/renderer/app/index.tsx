@@ -62,7 +62,7 @@ export function PopoverRoute(): React.JSX.Element {
     return <ErrorState message={resource.error} onRetry={() => void resource.reload()} />;
   }
 
-  const { accounts, settings, usageState } = resource.snapshot;
+  const { accounts, settings, usageHistory, usageState } = resource.snapshot;
   const activeAccount = accounts.find((account) => account.isActive) ?? null;
   const claudeProvider = getClaudeProvider(usageState);
 
@@ -77,7 +77,7 @@ export function PopoverRoute(): React.JSX.Element {
       title="Usage overview"
     >
       <WarningBanner warning={usageState.warning} />
-      <ProviderList activeAccount={activeAccount} providers={usageState.providers} />
+      <ProviderList activeAccount={activeAccount} providers={usageState.providers} usageHistory={usageHistory} />
       <section className="content-grid content-grid-two">
         <div className="panel">
           <h2>Active account</h2>

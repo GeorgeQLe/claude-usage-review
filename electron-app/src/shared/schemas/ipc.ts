@@ -25,6 +25,13 @@ export const testClaudeConnectionPayloadSchema = z.object({
   orgId: z.string().min(1)
 });
 
+export const getUsageHistoryPayloadSchema = z
+  .object({
+    accountId: z.string().min(1).nullable().optional(),
+    providerId: z.string().min(1).optional()
+  })
+  .optional();
+
 export const updateSettingsPayloadSchema = z.object({
   patch: appSettingsSchema.partial().extend({
     overlay: overlaySettingsSchema.partial().optional()
@@ -40,6 +47,20 @@ export const claudeConnectionTestResultSchema = z.object({
   status: z.enum(["not_implemented", "connected", "auth_expired", "network_error", "invalid"]),
   message: z.string()
 }).strip();
+
+export const usageHistoryPointSchema = z.object({
+  capturedAt: z.string().datetime(),
+  accountId: z.string().min(1).nullable(),
+  providerId: z.string().min(1),
+  sessionUtilization: z.number().min(0).max(1).nullable(),
+  weeklyUtilization: z.number().min(0).max(1).nullable(),
+  resetAt: z.string().datetime().nullable()
+});
+
+export const usageHistoryResultSchema = z.object({
+  points: z.array(usageHistoryPointSchema),
+  generatedAt: z.string().datetime()
+});
 
 export const providerDiagnosticsResultSchema = z.object({
   providerId: z.string().min(1),

@@ -5,6 +5,7 @@ import {
   addAccountPayloadSchema,
   claudeConnectionTestResultSchema,
   diagnosticsExportResultSchema,
+  getUsageHistoryPayloadSchema,
   providerCommandPayloadSchema,
   providerDetectionResultSchema,
   providerDiagnosticsResultSchema,
@@ -12,6 +13,7 @@ import {
   saveClaudeCredentialsPayloadSchema,
   testClaudeConnectionPayloadSchema,
   updateSettingsPayloadSchema,
+  usageHistoryResultSchema,
   wrapperSetupResultSchema,
   wrapperVerificationResultSchema
 } from "../shared/schemas/ipc.js";
@@ -22,8 +24,10 @@ import type { AccountId, AccountSummary } from "../shared/types/accounts.js";
 import type {
   ClaudeConnectionTestResult,
   DiagnosticsExportResult,
+  GetUsageHistoryPayload,
   ProviderDetectionResult,
   ProviderDiagnosticsResult,
+  UsageHistoryResult,
   WrapperSetupResult,
   WrapperVerificationResult
 } from "../shared/types/ipc.js";
@@ -71,11 +75,16 @@ export interface IpcUsageStateDependencies {
   readonly refreshNow?: () => MaybePromise<UsageState | void>;
 }
 
+export interface IpcHistoryDependencies {
+  readonly listUsageHistory?: (filters?: GetUsageHistoryPayload) => MaybePromise<UsageHistoryResult>;
+}
+
 export interface IpcHandlerDependencies {
   readonly accounts?: IpcAccountDependencies;
   readonly credentials?: IpcCredentialDependencies;
   readonly claudeClient?: IpcClaudeClientDependencies;
   readonly usageState?: IpcUsageStateDependencies;
+  readonly history?: IpcHistoryDependencies;
 }
 
 const accountSummariesSchema = z.array(accountSummarySchema);
@@ -83,6 +92,7 @@ const accountSummariesSchema = z.array(accountSummarySchema);
 const registeredInvokeChannels = [
   ipcChannelNames.getUsageState,
   ipcChannelNames.refreshNow,
+  ipcChannelNames.getUsageHistory,
   ipcChannelNames.getSettings,
   ipcChannelNames.updateSettings,
   ipcChannelNames.getAccounts,
@@ -112,6 +122,9 @@ export function registerIpcHandlers(dependencies: IpcHandlerDependencies = {}): 
     broadcastUsageUpdated(usageState);
     return usageState;
   });
+  ipcMain.handle(ipcChannelNames.getUsageHistory, (_event, payload: unknown) =>
+    state.getUsageHistory(parsePayload(getUsageHistoryPayloadSchema, payload))
+  );
   ipcMain.handle(ipcChannelNames.getSettings, () => state.getSettings());
   ipcMain.handle(ipcChannelNames.updateSettings, (_event, payload: unknown) =>
     state.updateSettings(parsePayload(updateSettingsPayloadSchema, payload))
@@ -182,6 +195,13 @@ function createIpcState(dependencies: IpcHandlerDependencies) {
       }
 
       return placeholder.refreshNow();
+    },
+    getUsageHistory: async (payload?: GetUsageHistoryPayload): Promise<UsageHistoryResult> => {
+      if (dependencies.history?.listUsageHistory) {
+        return validateUsageHistoryResult(await dependencies.history.listUsageHistory(payload));
+      }
+
+      return placeholder.getUsageHistory();
     },
     getSettings: (): AppSettings => placeholder.getSettings(),
     updateSettings: (payload: { readonly patch: AppSettingsPatch }): AppSettings => placeholder.updateSettings(payload),
@@ -323,6 +343,11 @@ function createPlaceholderIpcState() {
       });
       return usageState;
     },
+    getUsageHistory: (): UsageHistoryResult =>
+      validateUsageHistoryResult({
+        generatedAt: new Date().toISOString(),
+        points: []
+      }),
     getSettings: (): AppSettings => settings,
     updateSettings: (payload: { readonly patch: AppSettingsPatch }): AppSettings => {
       settings = validateSettings({
@@ -513,6 +538,10 @@ function validateAccounts(value: unknown): readonly AccountSummary[] {
 
 function validateClaudeConnectionResult(value: unknown): ClaudeConnectionTestResult {
   return claudeConnectionTestResultSchema.parse(value);
+}
+
+function validateUsageHistoryResult(value: unknown): UsageHistoryResult {
+  return usageHistoryResultSchema.parse(value);
 }
 
 function validateProviderDiagnosticsResult(value: unknown): ProviderDiagnosticsResult {

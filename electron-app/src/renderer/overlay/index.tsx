@@ -19,7 +19,7 @@ export function OverlayRoute(): React.JSX.Element {
     return <ErrorState message={resource.error} onRetry={() => void resource.reload()} />;
   }
 
-  const { accounts, usageState } = resource.snapshot;
+  const { accounts, usageHistory, usageState } = resource.snapshot;
   const activeAccount = accounts.find((account) => account.isActive) ?? null;
   const claudeProvider = getClaudeProvider(usageState);
 
@@ -28,7 +28,7 @@ export function OverlayRoute(): React.JSX.Element {
       <WarningBanner warning={usageState.warning} />
       <section className="overlay-status" aria-label="Overlay status">
         {claudeProvider ? (
-          <ClaudeUsageCard activeAccount={activeAccount} compact provider={claudeProvider} />
+          <ClaudeUsageCard activeAccount={activeAccount} compact provider={claudeProvider} usageHistory={usageHistory} />
         ) : (
           <p className="muted">No providers available.</p>
         )}

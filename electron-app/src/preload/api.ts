@@ -5,8 +5,10 @@ import type { AccountSummary } from "../shared/types/accounts.js";
 import type {
   ClaudeConnectionTestResult,
   DiagnosticsExportResult,
+  GetUsageHistoryPayload,
   ProviderDetectionResult,
   ProviderDiagnosticsResult,
+  UsageHistoryResult,
   WrapperSetupResult,
   WrapperVerificationResult
 } from "../shared/types/ipc.js";
@@ -19,6 +21,7 @@ export interface ClaudeUsageApi {
   readonly version: string;
   getUsageState: () => Promise<UsageState>;
   refreshNow: () => Promise<UsageState>;
+  getUsageHistory: (payload?: GetUsageHistoryPayload) => Promise<UsageHistoryResult>;
   subscribeUsageUpdated: (callback: (state: UsageState) => void) => () => void;
   getSettings: () => Promise<AppSettings>;
   updateSettings: (patch: AppSettingsPatch) => Promise<AppSettings>;
@@ -43,6 +46,7 @@ export interface ClaudeUsageApi {
 const preloadInvokeChannels = {
   getUsageState: ipcChannelNames.getUsageState,
   refreshNow: ipcChannelNames.refreshNow,
+  getUsageHistory: ipcChannelNames.getUsageHistory,
   getSettings: ipcChannelNames.getSettings,
   updateSettings: ipcChannelNames.updateSettings,
   getAccounts: ipcChannelNames.getAccounts,
@@ -72,6 +76,7 @@ export function createClaudeUsageApi(): ClaudeUsageApi {
     version: "0.1.0",
     getUsageState: () => invoke("getUsageState"),
     refreshNow: () => invoke("refreshNow"),
+    getUsageHistory: (payload) => invoke("getUsageHistory", payload),
     subscribeUsageUpdated: (callback) => {
       const listener = (_event: IpcRendererEvent, payload: unknown) => {
         const result = usageStateSchema.safeParse(payload);

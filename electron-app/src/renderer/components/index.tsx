@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import type { AccountId, AccountSummary } from "../../shared/types/accounts.js";
-import type { ClaudeConnectionTestResult } from "../../shared/types/ipc.js";
+import type { ClaudeConnectionTestResult, UsageHistoryPoint, UsageHistoryResult } from "../../shared/types/ipc.js";
 import type { ProviderCard } from "../../shared/types/provider.js";
 import type { AppSettings } from "../../shared/types/settings.js";
 import type { UsageState } from "../../shared/types/usage.js";
@@ -9,6 +9,7 @@ export interface RendererSnapshot {
   readonly usageState: UsageState;
   readonly settings: AppSettings;
   readonly accounts: readonly AccountSummary[];
+  readonly usageHistory: UsageHistoryResult;
 }
 
 type SnapshotState =
@@ -36,30 +37,59 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const loadUsageHistory = useCallback((accounts: readonly AccountSummary[]) => {
+    const activeAccount = accounts.find((account) => account.isActive) ?? null;
+    return window.claudeUsage.getUsageHistory(
+      activeAccount ? { accountId: activeAccount.id, providerId: "claude" } : { providerId: "claude" }
+    );
+  }, []);
+
   const loadSnapshot = useCallback(async () => {
     const [usageState, settings, accounts] = await Promise.all([
       window.claudeUsage.getUsageState(),
       window.claudeUsage.getSettings(),
       window.claudeUsage.getAccounts()
     ]);
+    const usageHistory = await loadUsageHistory(accounts);
 
-    return { usageState, settings, accounts };
-  }, []);
+    return { usageState, settings, accounts, usageHistory };
+  }, [loadUsageHistory]);
 
-  const updateAccounts = useCallback((accounts: readonly AccountSummary[]) => {
+  const updateAccounts = useCallback(async (accounts: readonly AccountSummary[]) => {
+    const usageHistory = await loadUsageHistory(accounts);
     setState((current) =>
       current.status === "ready"
         ? {
             status: "ready",
             snapshot: {
               ...current.snapshot,
-              accounts
+              accounts,
+              usageHistory
             },
             error: null
           }
         : current
     );
-  }, []);
+  }, [loadUsageHistory]);
+
+  const reloadUsageHistory = useCallback(
+    async (accounts: readonly AccountSummary[]) => {
+      const usageHistory = await loadUsageHistory(accounts);
+      setState((current) =>
+        current.status === "ready"
+          ? {
+              status: "ready",
+              snapshot: {
+                ...current.snapshot,
+                usageHistory
+              },
+              error: null
+            }
+          : current
+      );
+    },
+    [loadUsageHistory]
+  );
 
   const reload = useCallback(async () => {
     try {
@@ -73,14 +103,17 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
   const refreshNow = useCallback(async () => {
     try {
       setIsRefreshing(true);
+      const accounts = state.status === "ready" ? state.snapshot.accounts : [];
       const usageState = await window.claudeUsage.refreshNow();
+      const usageHistory = await loadUsageHistory(accounts);
       setState((current) =>
         current.status === "ready"
           ? {
               status: "ready",
               snapshot: {
                 ...current.snapshot,
-                usageState
+                usageState,
+                usageHistory
               },
               error: null
             }
@@ -91,39 +124,39 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
     } finally {
       setIsRefreshing(false);
     }
-  }, []);
+  }, [loadUsageHistory, state]);
 
   const addAccount = useCallback(
     async (label: string) => {
-      updateAccounts(await window.claudeUsage.addAccount(label));
+      await updateAccounts(await window.claudeUsage.addAccount(label));
     },
     [updateAccounts]
   );
 
   const renameAccount = useCallback(
     async (accountId: AccountId, label: string) => {
-      updateAccounts(await window.claudeUsage.renameAccount(accountId, label));
+      await updateAccounts(await window.claudeUsage.renameAccount(accountId, label));
     },
     [updateAccounts]
   );
 
   const removeAccount = useCallback(
     async (accountId: AccountId) => {
-      updateAccounts(await window.claudeUsage.removeAccount(accountId));
+      await updateAccounts(await window.claudeUsage.removeAccount(accountId));
     },
     [updateAccounts]
   );
 
   const setActiveAccount = useCallback(
     async (accountId: AccountId) => {
-      updateAccounts(await window.claudeUsage.setActiveAccount(accountId));
+      await updateAccounts(await window.claudeUsage.setActiveAccount(accountId));
     },
     [updateAccounts]
   );
 
   const saveClaudeCredentials = useCallback(
     async (accountId: AccountId, sessionKey: string, orgId: string) => {
-      updateAccounts(await window.claudeUsage.saveClaudeCredentials(accountId, sessionKey, orgId));
+      await updateAccounts(await window.claudeUsage.saveClaudeCredentials(accountId, sessionKey, orgId));
     },
     [updateAccounts]
   );
@@ -143,20 +176,27 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
     }
 
     return window.claudeUsage.subscribeUsageUpdated((usageState) => {
-      setState((current) =>
-        current.status === "ready"
-          ? {
-              status: "ready",
-              snapshot: {
-                ...current.snapshot,
-                usageState
-              },
-              error: null
-            }
-          : current
-      );
+      let accounts: readonly AccountSummary[] = [];
+      setState((current) => {
+        if (current.status !== "ready") {
+          return current;
+        }
+
+        accounts = current.snapshot.accounts;
+        return {
+          status: "ready",
+          snapshot: {
+            ...current.snapshot,
+            usageState
+          },
+          error: null
+        };
+      });
+      void reloadUsageHistory(accounts).catch((error) => {
+        setState({ status: "error", snapshot: null, error: getErrorMessage(error) });
+      });
     });
-  }, [options.subscribeToUsage]);
+  }, [options.subscribeToUsage, reloadUsageHistory]);
 
   return useMemo(
     () => ({
@@ -249,16 +289,23 @@ export function WarningBanner({ warning }: { readonly warning: string | null }):
 
 export function ProviderList({
   providers,
-  activeAccount
+  activeAccount,
+  usageHistory
 }: {
   readonly providers: readonly ProviderCard[];
   readonly activeAccount?: AccountSummary | null;
+  readonly usageHistory: UsageHistoryResult;
 }): React.JSX.Element {
   return (
     <section className="provider-list" aria-label="Providers">
       {providers.map((provider) =>
         provider.providerId === "claude" ? (
-          <ClaudeUsageCard activeAccount={activeAccount ?? null} key={provider.providerId} provider={provider} />
+          <ClaudeUsageCard
+            activeAccount={activeAccount ?? null}
+            key={provider.providerId}
+            provider={provider}
+            usageHistory={usageHistory}
+          />
         ) : (
           <ProviderPlaceholderCard key={provider.providerId} provider={provider} />
         )
@@ -270,10 +317,12 @@ export function ProviderList({
 export function ClaudeUsageCard({
   provider,
   activeAccount,
+  usageHistory,
   compact = false
 }: {
   readonly provider: ProviderCard;
   readonly activeAccount?: AccountSummary | null;
+  readonly usageHistory: UsageHistoryResult;
   readonly compact?: boolean;
 }): React.JSX.Element {
   return (
@@ -293,6 +342,7 @@ export function ClaudeUsageCard({
         <UsageMeter label="Five-hour usage" value={provider.sessionUtilization} />
         <UsageMeter label="Weekly usage" value={provider.weeklyUtilization} />
       </div>
+      <UsageHistoryPanel history={usageHistory} />
       <div className="summary-grid">
         <Metric label="Reset" value={formatDateTime(provider.resetAt)} />
         <Metric label="Updated" value={formatDateTime(provider.lastUpdatedAt)} />
@@ -624,6 +674,56 @@ function UsageMeter({ label, value }: { readonly label: string; readonly value: 
   );
 }
 
+function UsageHistoryPanel({ history }: { readonly history: UsageHistoryResult }): React.JSX.Element {
+  const latestPoint = history.points.at(-1) ?? null;
+
+  return (
+    <section className="usage-history" aria-label="Usage history">
+      <div className="usage-history-header">
+        <h3>History</h3>
+        <span>{latestPoint ? `Updated ${formatDateTime(latestPoint.capturedAt)}` : "Waiting for history"}</span>
+      </div>
+      {history.points.length > 0 ? (
+        <div className="sparkline-grid">
+          <UsageSparkline label="Session" points={history.points} valueKey="sessionUtilization" />
+          <UsageSparkline label="Weekly" points={history.points} valueKey="weeklyUtilization" />
+        </div>
+      ) : (
+        <p className="muted">History starts after Claude refreshes.</p>
+      )}
+    </section>
+  );
+}
+
+function UsageSparkline({
+  label,
+  points,
+  valueKey
+}: {
+  readonly label: string;
+  readonly points: readonly UsageHistoryPoint[];
+  readonly valueKey: "sessionUtilization" | "weeklyUtilization";
+}): React.JSX.Element {
+  const values = points
+    .map((point) => point[valueKey])
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  const latestValue = values.at(-1) ?? null;
+  const polylinePoints = formatSparklinePoints(values);
+
+  return (
+    <div className="sparkline" aria-label={`${label} history`}>
+      <div className="sparkline-label">
+        <span>{label}</span>
+        <strong>{formatPercent(latestValue)}</strong>
+      </div>
+      <svg aria-hidden="true" focusable="false" preserveAspectRatio="none" viewBox="0 0 100 36">
+        <line className="sparkline-baseline" x1="0" x2="100" y1="35" y2="35" />
+        {polylinePoints ? <polyline className="sparkline-line" points={polylinePoints} /> : null}
+      </svg>
+    </div>
+  );
+}
+
 function Metric({ label, value }: { readonly label: string; readonly value: string }): React.JSX.Element {
   return (
     <div className="metric">
@@ -676,6 +776,32 @@ function formatMeterWidth(value: number | null): string {
   }
 
   return `${Math.max(0, Math.min(100, Math.round(value * 100)))}%`;
+}
+
+function formatSparklinePoints(values: readonly number[]): string {
+  if (values.length === 0) {
+    return "";
+  }
+
+  if (values.length === 1) {
+    const y = formatSparklineY(values[0]);
+    return `0,${y} 100,${y}`;
+  }
+
+  return values
+    .map((value, index) => {
+      const x = (index / (values.length - 1)) * 100;
+      return `${roundSparklineCoordinate(x)},${formatSparklineY(value)}`;
+    })
+    .join(" ");
+}
+
+function formatSparklineY(value: number): string {
+  return roundSparklineCoordinate(35 - Math.max(0, Math.min(1, value)) * 34);
+}
+
+function roundSparklineCoordinate(value: number): string {
+  return value.toFixed(2).replace(/\.?0+$/u, "");
 }
 
 function formatDateTime(value: string | null): string {

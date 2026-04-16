@@ -199,6 +199,7 @@ function createMockPreloadApi() {
     getAccounts: vi.fn(async () => mockAccounts),
     getProviderDiagnostics: vi.fn(),
     getSettings: vi.fn(async () => mockSettings),
+    getUsageHistory: vi.fn(async () => mockUsageHistory),
     getUsageState: vi.fn(async () => mockUsageState),
     refreshNow: vi.fn(async () => ({
       ...mockUsageState,
@@ -286,4 +287,26 @@ const mockUsageState: UsageState = {
     }
   ],
   warning: null
+};
+
+const mockUsageHistory = {
+  generatedAt: "2026-04-15T12:00:00.000Z",
+  points: [
+    {
+      accountId: "local-placeholder",
+      capturedAt: "2026-04-15T11:00:00.000Z",
+      providerId: "claude",
+      resetAt: "2026-04-15T14:00:00.000Z",
+      sessionUtilization: 0.3,
+      weeklyUtilization: 0.15
+    },
+    {
+      accountId: "local-placeholder",
+      capturedAt: "2026-04-15T12:00:00.000Z",
+      providerId: "claude",
+      resetAt: "2026-04-15T14:00:00.000Z",
+      sessionUtilization: 0.42,
+      weeklyUtilization: 0.19
+    }
+  ]
 };
