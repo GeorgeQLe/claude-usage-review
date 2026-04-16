@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-16 — Step 2.6: Electron Claude Renderer UI
+
+Implemented the Electron renderer-facing Claude account and exact-usage experience. The renderer snapshot hook now exposes account mutations, credential saves, connection tests, refreshes, and usage-update subscription handling through the typed preload API. Popover, Settings, Onboarding, and Overlay now render Claude-aware usage state with five-hour and weekly utilization bars, reset/updated/account/auth metadata, write-only credential entry, sanitized connection-test feedback, and account create/rename/remove/switch controls. Codex and Gemini remain compact later-phase cards.
+
+Validation: `npm run typecheck` passed from `electron-app/`. `npm test -- --run src/foundation-renderer.test.tsx src/foundation-schemas.test.ts src/main/ipc.test.ts src/main/storage/secrets.test.ts src/shared/schemas/claudeUsage.test.ts` passed with 5 files and 17 tests. `npm run build:renderer` passed from `electron-app/`. `npm run build` was not run because it executes the full Phase 2 suite, which remains intentionally red for history snapshot work until Step 2.7 and the green gate in Step 2.8.
+
 ## 2026-04-16 — Step 2.5: Electron Claude IPC Wiring
 
 Wired the Electron IPC boundary for Phase 2 Claude account and usage commands. `registerIpcHandlers(dependencies?)` now supports injected account, credential, Claude client, and usage-state adapters while preserving the default placeholder path. Account commands route through injected services, credential saves write account-scoped Claude session keys through the secret store, connection tests call the Claude usage client and return sanitized statuses, and usage refresh broadcasts continue to validate renderer-visible state. Added the shared Claude usage schema and account auth-status persistence support needed by the IPC contract.

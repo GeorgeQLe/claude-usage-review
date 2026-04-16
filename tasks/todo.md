@@ -85,7 +85,18 @@
   - `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts` passes with 3 files and 11 tests.
   - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in account tests.
   - `npm run build` was not run because the build script executes the full Phase 2 test suite, which is still expected to remain red for renderer UI and history snapshot work until Steps 2.6-2.8.
-- [ ] Step 2.6: [automated] Implement Claude-aware tray/popover/settings/onboarding UI in `electron-app/src/renderer/`, including write-only credential fields, account picker, auth status, exact usage bars, refresh actions, and basic error states.
+- [x] Step 2.6: [automated] Implement Claude-aware tray/popover/settings/onboarding UI in `electron-app/src/renderer/`, including write-only credential fields, account picker, auth status, exact usage bars, refresh actions, and basic error states.
+
+  **Step 2.6 Review:**
+  - Expanded `useRendererSnapshot` with renderer-safe account mutations, credential save, connection test, refresh, and usage-update subscription helpers.
+  - Replaced placeholder Claude renderer views with exact Claude usage cards, five-hour and weekly utilization bars, reset/updated/account/auth summaries, and compact later-phase cards for Codex/Gemini.
+  - Added reusable account controls for create/rename/remove/switch flows in Settings and Onboarding.
+  - Upgraded the credential flow to write-only session-key inputs with sanitized connection-test feedback; session keys are cleared after save/test and never rendered back into the DOM.
+  - Updated Popover, Settings, Onboarding, and Overlay routes to use the Claude-aware UI and sanitized preload API state.
+  - `npm run typecheck` passes from `electron-app/`.
+  - `npm test -- --run src/foundation-renderer.test.tsx src/foundation-schemas.test.ts src/main/ipc.test.ts src/main/storage/secrets.test.ts src/shared/schemas/claudeUsage.test.ts` passes with 5 files and 17 tests.
+  - `npm run build:renderer` passes from `electron-app/`.
+  - `npm run build` was not run because it executes the full Phase 2 test suite, which is still expected to remain red for history snapshot work until Step 2.7 and the green gate in Step 2.8.
 - [ ] Step 2.7: [automated] Persist Claude usage snapshots in SQLite through `electron-app/src/main/storage/history.ts`, but keep advanced history visualization for Phase 3.
 
 ## Green
@@ -100,21 +111,22 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 2.6
+## Next Step Plan: Step 2.7
 
-Implement the renderer-facing Claude account and exact-usage experience across the existing React routes without changing main-process storage semantics. The current renderer files are `electron-app/src/renderer/app/index.tsx`, `electron-app/src/renderer/components/index.tsx`, `electron-app/src/renderer/settings/index.tsx`, `electron-app/src/renderer/onboarding/index.tsx`, `electron-app/src/renderer/overlay/index.tsx`, and `electron-app/src/renderer/styles/app.css`.
+Persist Claude usage snapshots in SQLite while keeping Phase 3 history visualization out of scope. The existing migration already creates `usage_snapshots`, so this step should add the storage adapter and focused coverage without changing renderer history UI.
 
 Implementation outline:
-- Expand `useRendererSnapshot` and shared renderer components so account changes, credential saves, connection tests, manual refreshes, and `usage:updated` subscriptions update local state without full window reloads where a small state update is enough.
-- Replace the generic provider cards with Claude-aware usage cards that render exact session and weekly utilization bars from `ProviderCard.sessionUtilization`, `ProviderCard.weeklyUtilization`, `resetAt`, `lastUpdatedAt`, and status/confidence fields. Keep Codex/Gemini as compact placeholder cards for later phases.
-- Add account controls in Settings and/or the popover: create account, rename account, remove account, switch active account, and render `authStatus`/`orgId` without ever rendering a session key.
-- Upgrade the credential form into a write-only Claude credential workflow with session key and org ID inputs, sanitized connection-test feedback via `testClaudeConnection`, save behavior via `saveClaudeCredentials`, and cleared password state after save/test.
-- Update Onboarding so a new user can create/select an account, enter credentials through the same write-only component, and see whether Claude is configured or expired.
-- Update Overlay to show the active Claude usage headline, utilization, reset text, and degraded/auth-expired messaging from the sanitized usage state.
-- Keep copy user-facing only. Do not expose implementation details or secret values. Avoid direct Electron/Node imports in renderer/shared code.
+- Add `electron-app/src/main/storage/history.test.ts` if no existing red test covers this step. Cover writing a Claude snapshot, reading recent snapshots by account/provider, preserving the normalized metrics (`session_utilization`, `weekly_utilization`, `reset_at`, `captured_at`), retaining the raw Claude payload in `payload_json`, and deleting account rows without losing historical snapshots because `account_id` should become `NULL`.
+- Add `electron-app/src/main/storage/history.ts` with `createUsageHistoryStore({ database, idFactory?, now? })`.
+- Keep the API intentionally small for Phase 2:
+  - `recordClaudeUsageSnapshot(input)` stores one snapshot for an account/provider using the current `claudeUsageDataSchema` shape.
+  - `listRecentSnapshots({ accountId?, providerId?, limit? })` returns sanitized snapshot summaries for tests and later UI work.
+- Store only usage data and account/provider identifiers. Do not store session keys, cookies, request headers, or credential test payloads.
+- Export the history store from `electron-app/src/main/storage/index.ts`.
+- If polling/IPC already has a clean injection point for snapshot persistence, wire the store there only if it can stay small and testable. Otherwise keep this step storage-only and leave end-to-end integration for Step 2.8.
 
-Validation for Step 2.6:
+Validation for Step 2.7:
 - Run `npm run typecheck` from `electron-app/`.
-- Run focused renderer tests if existing red-phase renderer tests target this work. If none exist yet, run `npm test -- --run src/foundation-renderer.test.tsx src/foundation-schemas.test.ts`.
-- Run the Step 2.5 IPC/schema regression tests: `npm test -- --run src/main/ipc.test.ts src/main/storage/secrets.test.ts src/shared/schemas/claudeUsage.test.ts`.
-- The broader Phase 2 suite may remain red for history snapshots until Step 2.7 and the green gate in Step 2.8.
+- Run focused storage tests: `npm test -- --run src/main/storage/history.test.ts src/main/storage/accounts.test.ts src/foundation-storage.test.ts`.
+- Run Claude usage/polling regressions if the history store is wired into polling: `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts`.
+- The broader Phase 2 suite should be ready for the Step 2.8 green gate after this step, but do not force advanced history visualization into Step 2.7.
