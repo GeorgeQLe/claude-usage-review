@@ -20,6 +20,7 @@ export interface UsagePollingSchedulerOptions {
   readonly accountStore: UsagePollingAccountStore;
   readonly claudeClient: ClaudeUsageClient;
   readonly emitUsageUpdated: (state: UsagePollingState) => void;
+  readonly recordUsageSnapshot?: (snapshot: UsagePollingSnapshot) => void;
   readonly saveRotatedSessionKey: (accountId: string, sessionKey: string) => void;
   readonly now?: () => number;
 }
@@ -40,6 +41,12 @@ export interface UsagePollingState {
   readonly lastUpdatedAt: string | null;
   readonly nextRefreshAt: string | null;
   readonly error: string | null;
+}
+
+export interface UsagePollingSnapshot {
+  readonly accountId: string;
+  readonly usage: ClaudeUsageResult["data"];
+  readonly capturedAt: string;
 }
 
 type PollingTimer = ReturnType<typeof setTimeout>;
@@ -122,6 +129,11 @@ export function createUsagePollingScheduler(options: UsagePollingSchedulerOption
       }
 
       const fetchedAt = new Date(now()).toISOString();
+      options.recordUsageSnapshot?.({
+        accountId,
+        usage: result.data,
+        capturedAt: fetchedAt
+      });
       emit(createState(accountId, "updated", result.data, fetchedAt, toIso(now() + DEFAULT_POLL_INTERVAL_MS), null));
       scheduleRegularFetch(DEFAULT_POLL_INTERVAL_MS, fetchGeneration);
       scheduleResetFetch(result.data.fiveHour.resetsAt, fetchGeneration);

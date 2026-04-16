@@ -112,7 +112,20 @@
   - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in storage tests.
 
 ## Green
-- [ ] Step 2.8: [automated] Make all Phase 2 tests pass and add integration coverage proving renderer state omits secrets while main-process state can fetch/update Claude usage.
+- [x] Step 2.8: [automated] Make all Phase 2 tests pass and add integration coverage proving renderer state omits secrets while main-process state can fetch/update Claude usage.
+
+  **Step 2.8 Review:**
+  - Added main-process integration coverage in `electron-app/src/main/services/usageIntegration.test.ts`.
+  - The integration test composes the real account store, account-scoped Claude credential store, Claude usage client, polling scheduler, and usage history store with mocked safeStorage and Claude network responses.
+  - Verified active account metadata plus a secret-backed session key can fetch Claude usage, save a rotated session key through the credential store, emit updated renderer-visible usage state, and persist a sanitized history snapshot.
+  - Added an injected `recordUsageSnapshot` callback to `createUsagePollingScheduler` so successful Claude fetches can persist sanitized usage snapshots at the main-process service boundary.
+  - Added assertions that emitted renderer-visible state and persisted history snapshots do not contain submitted or rotated session keys.
+  - Baseline `npm test -- --run` passed before changes with 19 files and 66 tests.
+  - `npm test -- --run src/main/services/usageIntegration.test.ts src/main/services/polling.test.ts` passes with 2 files and 5 tests.
+  - `npm run typecheck` passes from `electron-app/`.
+  - `npm test -- --run` passes with 20 files and 67 tests.
+  - `npm run build` passes from `electron-app/`.
+  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening in-memory SQLite databases in storage/integration tests.
 - [ ] Step 2.9: [automated] Run Phase 2 verification: `npm run typecheck`, `npm test`, `npm run build`, and an Electron smoke launch using mocked Claude responses.
 
 ## Milestone
@@ -123,20 +136,19 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 2.8
+## Next Step Plan: Step 2.9
 
-Add integration coverage proving renderer state omits secrets while main-process state can fetch/update Claude usage, then keep the full Phase 2 suite green. The current full suite passes after Step 2.7, so Step 2.8 should focus on closing the remaining end-to-end confidence gap rather than broadening into Phase 3 UI.
+Run the final Phase 2 verification gate and add the mocked Electron smoke launch. Step 2.8 already proved the main-process Claude/account/secret/history path with integration coverage, so Step 2.9 should focus on repeatable release-gate validation and a bounded app startup smoke without live Claude credentials.
 
 Implementation outline:
-- Run `npm test -- --run` from `electron-app/` first and treat any failure as a regression to fix before adding new coverage.
-- Add or update integration coverage for the main-process flow: account metadata + account-scoped session key secret + Claude usage client + polling scheduler + history snapshot persistence. Use mocked Claude responses and fake timers; do not call the live Claude API.
-- Wire snapshot recording into the polling/update path only at the main-process service boundary. On successful Claude fetch, persist the sanitized usage payload through `createUsageHistoryStore`; do not persist session keys, cookies, request headers, or connection-test payloads.
-- Ensure renderer-visible state and preload responses remain secret-free. Add assertions that `getUsageState`, usage-updated events, account summaries, and connection-test responses never include submitted or rotated session keys.
-- Preserve existing renderer behavior from Step 2.6 and storage behavior from Step 2.7; do not add Phase 3 history visualization.
-- Fix any remaining Phase 2 test failures, including stale placeholder defaults, schema gaps, or IPC injection edges revealed by the full suite.
+- Reuse the already-green Step 2.8 validation results where still current: `npm run typecheck`, `npm test -- --run`, and `npm run build` all pass from `electron-app/`.
+- Add or run a bounded Electron smoke launch using mocked Claude responses. Prefer an existing script/test seam if present; otherwise add the smallest testable launch seam needed to start Electron without a real Claude API call or real credentials.
+- Confirm the smoke does not require GitHub Actions, production deploys, or live Claude credentials.
+- Inspect smoke output for startup errors, renderer/preload failures, and Electron security regressions.
+- If the smoke requires a new script or test fixture, keep it under `electron-app/` and avoid changing Phase 3 product UI behavior.
 
-Validation for Step 2.8:
-- Run `npm run typecheck` from `electron-app/`.
-- Run the focused integration tests added or changed for this step.
-- Run `npm test -- --run` from `electron-app/` and keep the full Phase 2 suite passing.
-- Run `npm run build` unless it is reserved for Step 2.9's Electron smoke/build gate.
+Validation for Step 2.9:
+- `npm run typecheck` from `electron-app/`.
+- `npm test -- --run` from `electron-app/`.
+- `npm run build` from `electron-app/`.
+- Bounded Electron smoke launch with mocked Claude responses; record the exact command and result.

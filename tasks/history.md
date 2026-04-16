@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-16 — Step 2.8: Electron Claude Main-Process Integration
+
+Closed the Phase 2 green coverage gap for Electron Claude usage. Added an integration test that composes the real account metadata store, account-scoped encrypted credential store, Claude usage client, polling scheduler, and usage history store with mocked safeStorage and mocked Claude responses. The test proves the main process can fetch usage from secret-backed credentials, save a rotated session key through the credential store, persist a sanitized usage snapshot, emit renderer-visible updated state, and keep submitted/rotated session keys out of emitted state and history payloads. Added an injected `recordUsageSnapshot` callback to the polling scheduler so successful Claude fetches can persist sanitized snapshots at the service boundary.
+
+Validation: baseline `npm test -- --run` passed before changes with 19 files and 66 tests. `npm test -- --run src/main/services/usageIntegration.test.ts src/main/services/polling.test.ts` passed with 2 files and 5 tests. `npm run typecheck` passed from `electron-app/`. `npm test -- --run` passed with 20 files and 67 tests. `npm run build` passed from `electron-app/`. Accepted warning: Node's experimental SQLite warning during storage/integration tests.
+
 ## 2026-04-16 — Step 2.7: Electron Claude Usage History Storage
 
 Implemented SQLite persistence for Claude usage snapshots in the Electron app. Added `createUsageHistoryStore` over the existing `usage_snapshots` table, with support for recording sanitized Claude usage payloads, listing recent snapshots by account/provider, preserving normalized session/weekly/reset metrics, and retaining historical snapshots when account rows are deleted. The store validates usage payloads through the shared Claude usage schema and does not store session keys, cookies, request headers, or credential test payloads.
