@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { appSettingsSchema, overlaySettingsSchema } from "./settings.js";
+import { appSettingsPatchSchema } from "./settings.js";
 
 export const addAccountPayloadSchema = z.object({
   label: z.string().min(1)
@@ -33,9 +33,7 @@ export const getUsageHistoryPayloadSchema = z
   .optional();
 
 export const updateSettingsPayloadSchema = z.object({
-  patch: appSettingsSchema.partial().extend({
-    overlay: overlaySettingsSchema.partial().optional()
-  })
+  patch: appSettingsPatchSchema
 });
 
 export const providerCommandPayloadSchema = z.object({

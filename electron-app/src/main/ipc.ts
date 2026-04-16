@@ -347,6 +347,34 @@ function createPlaceholderIpcState() {
       enabled: false,
       layout: "compact",
       opacity: 0.9
+    },
+    providers: {
+      codex: {
+        enabled: false,
+        setupPromptDismissed: false
+      },
+      gemini: {
+        enabled: false,
+        setupPromptDismissed: false
+      }
+    },
+    migration: {
+      swiftAppImport: true,
+      providerImport: true
+    },
+    notifications: {
+      enabled: true,
+      sessionReset: true,
+      weeklyReset: true,
+      authExpired: true,
+      providerDegraded: false,
+      thresholdWarnings: true,
+      sessionWarningPercent: 80,
+      weeklyWarningPercent: 80
+    },
+    onboarding: {
+      completed: false,
+      skipped: false
     }
   });
   let hasGitHubToken = false;
@@ -428,7 +456,26 @@ function createPlaceholderIpcState() {
       settings = validateSettings({
         ...settings,
         ...payload.patch,
-        overlay: payload.patch.overlay ? { ...settings.overlay, ...payload.patch.overlay } : settings.overlay
+        overlay: payload.patch.overlay ? { ...settings.overlay, ...payload.patch.overlay } : settings.overlay,
+        providers: payload.patch.providers
+          ? {
+              codex: payload.patch.providers.codex
+                ? { ...settings.providers.codex, ...payload.patch.providers.codex }
+                : settings.providers.codex,
+              gemini: payload.patch.providers.gemini
+                ? { ...settings.providers.gemini, ...payload.patch.providers.gemini }
+                : settings.providers.gemini
+            }
+          : settings.providers,
+        migration: payload.patch.migration
+          ? { ...settings.migration, ...payload.patch.migration }
+          : settings.migration,
+        notifications: payload.patch.notifications
+          ? { ...settings.notifications, ...payload.patch.notifications }
+          : settings.notifications,
+        onboarding: payload.patch.onboarding
+          ? { ...settings.onboarding, ...payload.patch.onboarding }
+          : settings.onboarding
       });
       return settings;
     },
