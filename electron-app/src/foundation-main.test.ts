@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ProviderCard } from "./shared/types/provider.js";
 
 const electronMock = vi.hoisted(() => {
   class MockBrowserWindow {
@@ -72,7 +73,9 @@ const electronMock = vi.hoisted(() => {
 
     readonly destroy = vi.fn();
     readonly on = vi.fn();
+    readonly setImage = vi.fn();
     readonly setContextMenu = vi.fn();
+    readonly setTitle = vi.fn();
     readonly setToolTip = vi.fn();
 
     constructor(readonly image: unknown) {
@@ -243,14 +246,18 @@ describe("foundation tray routing", () => {
       readonly click?: () => void;
     }>;
 
-    template.find((item) => item.label === "Show Usage")?.click?.();
+    template.find((item) => item.label === "Show Claude Usage")?.click?.();
     template.find((item) => item.label === "Open Settings")?.click?.();
     template.find((item) => item.label === "Toggle Overlay")?.click?.();
     template.find((item) => item.label === "Onboarding")?.click?.();
     template.find((item) => item.label === "Quit")?.click?.();
 
     expect(status).toEqual({ available: true, reason: null, warning: null });
-    expect(electronMock.Tray.instances[0]?.setToolTip).toHaveBeenCalledWith("ClaudeUsage");
+    expect(electronMock.Tray.instances[0]?.setToolTip).toHaveBeenCalledWith(
+      expect.stringContaining("Claude: Waiting for provider state")
+    );
+    expect(electronMock.Tray.instances[0]?.setImage).toHaveBeenCalled();
+    expect(electronMock.Tray.instances[0]?.setTitle).toHaveBeenCalledWith("Claude");
     expect(electronMock.Tray.instances[0]?.setContextMenu).toHaveBeenCalled();
     expect(showPopover).toHaveBeenCalledTimes(1);
     expect(openSettings).toHaveBeenCalledTimes(1);
@@ -258,4 +265,121 @@ describe("foundation tray routing", () => {
     expect(openOnboarding).toHaveBeenCalledTimes(1);
     expect(quit).toHaveBeenCalledTimes(1);
   });
+
+  it("derives exact tray countdown text and overlay checked state from sanitized usage", async () => {
+    const { deriveTrayPresentationState } = await import("./main/tray.js");
+    const { createDefaultAppSettings } = await import("./shared/settings/defaults.js");
+
+    const settings = createDefaultAppSettings();
+    const presentation = deriveTrayPresentationState({
+      isRefreshing: false,
+      now: new Date("2026-04-15T12:00:00.000Z"),
+      settings: {
+        ...settings,
+        overlay: {
+          ...settings.overlay,
+          enabled: true,
+          visible: true
+        }
+      },
+      usageState: {
+        activeProviderId: "claude",
+        lastUpdatedAt: "2026-04-15T11:59:00.000Z",
+        providers: [
+          providerCard({
+            resetAt: "2026-04-15T13:00:00.000Z",
+            sessionUtilization: 0.7,
+            weeklyUtilization: 0.62
+          })
+        ],
+        warning: null
+      }
+    });
+
+    expect(presentation).toMatchObject({
+      activeProviderLabel: "Claude",
+      iconState: "normal",
+      overlayChecked: true,
+      resetText: "Resets in 1:00:00",
+      sessionText: "70%",
+      title: "70% 1:00:00",
+      weeklyText: "62%"
+    });
+    expect(presentation.tooltip).toContain("Session 70% | Weekly 62%");
+  });
+
+  it("routes refresh-now through the tray and rebuilds the disabled refreshing menu", async () => {
+    const { TrayController } = await import("./main/tray.js");
+    const refreshNow = vi.fn(async () => ({
+      activeProviderId: "claude",
+      lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+      providers: [providerCard({ lastUpdatedAt: "2026-04-15T12:00:00.000Z" })],
+      warning: null
+    }));
+    const controller = new TrayController({
+      openOnboarding: vi.fn(),
+      openSettings: vi.fn(),
+      quit: vi.fn(),
+      refreshNow,
+      showPopover: vi.fn(),
+      toggleOverlay: vi.fn()
+    });
+
+    controller.create();
+    const template = electronMock.Menu.buildFromTemplate.mock.calls[0]?.[0] as Array<{
+      readonly enabled?: boolean;
+      readonly label?: string;
+      readonly click?: () => void;
+    }>;
+
+    expect(template.find((item) => item.label === "Refresh Now")?.enabled).toBe(true);
+    template.find((item) => item.label === "Refresh Now")?.click?.();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(refreshNow).toHaveBeenCalledTimes(1);
+    expect(electronMock.Menu.buildFromTemplate).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ enabled: false, label: "Refreshing..." })])
+    );
+  });
+
+  it("syncs launch-at-login idempotently through Electron app APIs", async () => {
+    const { syncLaunchAtLogin } = await import("./main/tray.js");
+    const appApi = {
+      getLoginItemSettings: vi.fn(() => ({ openAtLogin: false })),
+      setLoginItemSettings: vi.fn()
+    };
+
+    expect(syncLaunchAtLogin(appApi, true)).toBe(true);
+    expect(appApi.setLoginItemSettings).toHaveBeenCalledWith({
+      openAtLogin: true,
+      openAsHidden: true
+    });
+
+    appApi.getLoginItemSettings.mockReturnValue({ openAtLogin: true });
+    expect(syncLaunchAtLogin(appApi, true)).toBe(false);
+    expect(appApi.setLoginItemSettings).toHaveBeenCalledTimes(1);
+  });
 });
+
+function providerCard(overrides: Partial<ProviderCard> = {}): ProviderCard {
+  return {
+    providerId: "claude",
+    displayName: "Claude",
+    enabled: true,
+    status: "configured",
+    confidence: "exact",
+    headline: "Claude usage ready",
+    detailText: null,
+    sessionUtilization: null,
+    weeklyUtilization: null,
+    dailyRequestCount: null,
+    requestsPerMinute: null,
+    resetAt: null,
+    lastUpdatedAt: null,
+    adapterMode: "passive",
+    confidenceExplanation: "Exact Claude usage.",
+    actions: [],
+    ...overrides
+  };
+}

@@ -1,11 +1,15 @@
 import { app } from "electron";
 import { AppWindowManager } from "./windows.js";
-import { TrayController, type TrayFallbackStatus } from "./tray.js";
+import { syncLaunchAtLogin, TrayController, type TrayFallbackStatus } from "./tray.js";
 import { registerIpcHandlers, type IpcRegistration } from "./ipc.js";
 import { createLocalNotificationService, type LocalNotificationService } from "./services/notifications.js";
+import { getSecretStorageStatus } from "./storage/secrets.js";
 import { createDefaultAppSettings, mergeAppSettings } from "../shared/settings/defaults.js";
 import { appSettingsSchema } from "../shared/schemas/settings.js";
+import { usageStateSchema } from "../shared/schemas/usage.js";
+import type { ProviderId } from "../shared/types/provider.js";
 import type { AppSettings, AppSettingsPatch } from "../shared/types/settings.js";
+import type { UsageState } from "../shared/types/usage.js";
 
 const isSmokeMode = process.env.CLAUDE_USAGE_ELECTRON_SMOKE === "1";
 const isDevelopment = !app.isPackaged && !isSmokeMode;
@@ -17,6 +21,7 @@ let ipcRegistration: IpcRegistration | null = null;
 let notificationService: LocalNotificationService | null = null;
 let isQuitting = false;
 let settings = appSettingsSchema.parse(createDefaultAppSettings());
+let usageState = createPlaceholderUsageState();
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
@@ -63,6 +68,10 @@ async function startApp(): Promise<void> {
   });
 
   ipcRegistration = registerIpcHandlers({
+    usageState: {
+      getUsageState: () => usageState,
+      refreshNow: refreshUsageState
+    },
     notifications: {
       evaluateUsageState: (usageState) => {
         notificationService?.evaluateUsageState({
@@ -89,6 +98,7 @@ async function startApp(): Promise<void> {
     showPopover: () => {
       void windowManager?.showPopover();
     },
+    refreshNow: refreshUsageState,
     openSettings: () => {
       void windowManager?.openSettings();
     },
@@ -101,11 +111,16 @@ async function startApp(): Promise<void> {
     quit: () => {
       isQuitting = true;
       app.quit();
+    },
+    initialState: {
+      settings,
+      usageState
     }
   });
 
   const trayStatus = trayController.create();
   reportTrayFallback(trayStatus);
+  syncLaunchAtLogin(app, settings.launchAtLogin);
   await windowManager.showPopover();
 
   if (isSmokeMode) {
@@ -118,12 +133,19 @@ async function startApp(): Promise<void> {
 }
 
 function updateSettings(patch: AppSettingsPatch): AppSettings {
+  const previousLaunchAtLogin = settings.launchAtLogin;
   const overlayPatchKeys = patch.overlay ? Object.keys(patch.overlay) : [];
   settings = appSettingsSchema.parse(mergeAppSettings(settings, patch));
 
   if (overlayPatchKeys.length === 0 || overlayPatchKeys.some((key) => key !== "bounds")) {
     windowManager?.applyOverlaySettings(settings.overlay);
   }
+
+  if (settings.launchAtLogin !== previousLaunchAtLogin) {
+    syncLaunchAtLogin(app, settings.launchAtLogin);
+  }
+
+  trayController?.updateState({ settings });
 
   return settings;
 }
@@ -134,4 +156,52 @@ function reportTrayFallback(status: TrayFallbackStatus): void {
   }
 
   console.warn(status.warning, status.reason);
+}
+
+function refreshUsageState(): UsageState {
+  const refreshedAt = new Date().toISOString();
+  usageState = usageStateSchema.parse({
+    ...usageState,
+    providers: usageState.providers.map((provider) => ({
+      ...provider,
+      lastUpdatedAt: refreshedAt
+    })),
+    lastUpdatedAt: refreshedAt
+  });
+  trayController?.updateState({ usageState });
+  return usageState;
+}
+
+function createPlaceholderUsageState(): UsageState {
+  return usageStateSchema.parse({
+    activeProviderId: "claude",
+    providers: [
+      createPlaceholderProviderCard("claude", "Claude"),
+      createPlaceholderProviderCard("codex", "Codex"),
+      createPlaceholderProviderCard("gemini", "Gemini")
+    ],
+    lastUpdatedAt: null,
+    warning: getSecretStorageStatus().warning
+  });
+}
+
+function createPlaceholderProviderCard(providerId: ProviderId, displayName: string): UsageState["providers"][number] {
+  return {
+    providerId,
+    displayName,
+    enabled: providerId === "claude",
+    status: "missing_configuration",
+    confidence: "observed_only",
+    headline: `${displayName} not configured`,
+    detailText: "Connect storage and provider services in a later phase.",
+    sessionUtilization: null,
+    weeklyUtilization: null,
+    dailyRequestCount: null,
+    requestsPerMinute: null,
+    resetAt: null,
+    lastUpdatedAt: null,
+    adapterMode: "passive",
+    confidenceExplanation: "Foundation placeholder state only.",
+    actions: []
+  };
 }
