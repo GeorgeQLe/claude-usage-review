@@ -198,6 +198,7 @@ function createMockPreloadApi() {
     generateWrapper: vi.fn(),
     getAccounts: vi.fn(async () => mockAccounts),
     getProviderDiagnostics: vi.fn(),
+    getGitHubHeatmap: vi.fn(async () => mockGitHubHeatmap),
     getSettings: vi.fn(async () => mockSettings),
     getUsageHistory: vi.fn(async () => mockUsageHistory),
     getUsageState: vi.fn(async () => mockUsageState),
@@ -205,6 +206,7 @@ function createMockPreloadApi() {
       ...mockUsageState,
       lastUpdatedAt: "2026-04-15T12:00:00.000Z"
     })),
+    refreshGitHubHeatmap: vi.fn(async () => mockGitHubHeatmap),
     removeAccount: vi.fn(async () => mockAccounts),
     renameAccount: vi.fn(async () => mockAccounts),
     runProviderDetection: vi.fn(),
@@ -217,6 +219,7 @@ function createMockPreloadApi() {
       mockAccounts[1]
     ]),
     setActiveAccount: vi.fn(async () => mockAccounts),
+    saveGitHubSettings: vi.fn(async () => mockGitHubHeatmap),
     subscribeUsageUpdated: vi.fn(() => () => undefined),
     testClaudeConnection: vi.fn(async () => ({
       ok: true,
@@ -310,3 +313,15 @@ const mockUsageHistory = {
     }
   ]
 };
+
+const mockGitHubHeatmap = {
+  configured: false,
+  enabled: false,
+  error: null,
+  lastFetchedAt: null,
+  nextRefreshAt: null,
+  status: "disabled",
+  totalContributions: 0,
+  username: null,
+  weeks: []
+} as const;

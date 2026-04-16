@@ -20,7 +20,7 @@ export function OnboardingRoute(): React.JSX.Element {
     return <ErrorState message={resource.error} onRetry={() => void resource.reload()} />;
   }
 
-  const { accounts, settings, usageHistory, usageState } = resource.snapshot;
+  const { accounts, githubHeatmap, settings, usageHistory, usageState } = resource.snapshot;
   const activeAccount = accounts.find((account) => account.isActive) ?? null;
 
   return (
@@ -55,7 +55,12 @@ export function OnboardingRoute(): React.JSX.Element {
           <span className="step-number">3</span>
           <div>
             <h2>Review provider status</h2>
-            <ProviderList activeAccount={activeAccount} providers={usageState.providers} usageHistory={usageHistory} />
+            <ProviderList
+              activeAccount={activeAccount}
+              githubHeatmap={githubHeatmap}
+              providers={usageState.providers}
+              usageHistory={usageHistory}
+            />
           </div>
         </article>
       </section>

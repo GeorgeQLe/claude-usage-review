@@ -2,6 +2,7 @@ import {
   AccountManager,
   ClaudeCredentialForm,
   ErrorState,
+  GitHubSettingsForm,
   LoadingState,
   SettingsSummary,
   WarningBanner,
@@ -20,7 +21,7 @@ export function SettingsRoute(): React.JSX.Element {
     return <ErrorState message={resource.error} onRetry={() => void resource.reload()} />;
   }
 
-  const { accounts, settings, usageState } = resource.snapshot;
+  const { accounts, githubHeatmap, settings, usageState } = resource.snapshot;
   const activeAccount = accounts.find((account) => account.isActive) ?? null;
 
   return (
@@ -37,6 +38,14 @@ export function SettingsRoute(): React.JSX.Element {
             activeAccount={activeAccount}
             onSaveCredentials={resource.saveClaudeCredentials}
             onTestConnection={resource.testClaudeConnection}
+          />
+        </div>
+        <div className="panel">
+          <h2>GitHub heatmap</h2>
+          <GitHubSettingsForm
+            heatmap={githubHeatmap}
+            onRefresh={resource.refreshGitHubHeatmap}
+            onSave={resource.saveGitHubSettings}
           />
         </div>
       </section>

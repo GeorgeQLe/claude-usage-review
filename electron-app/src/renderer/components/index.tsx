@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import type { AccountId, AccountSummary } from "../../shared/types/accounts.js";
-import type { ClaudeConnectionTestResult, UsageHistoryPoint, UsageHistoryResult } from "../../shared/types/ipc.js";
+import type {
+  ClaudeConnectionTestResult,
+  GitHubContributionDay,
+  GitHubHeatmapResult,
+  SaveGitHubSettingsPayload,
+  UsageHistoryPoint,
+  UsageHistoryResult
+} from "../../shared/types/ipc.js";
 import type { ProviderCard } from "../../shared/types/provider.js";
 import type { AppSettings } from "../../shared/types/settings.js";
 import type { UsageState } from "../../shared/types/usage.js";
@@ -10,6 +17,7 @@ export interface RendererSnapshot {
   readonly settings: AppSettings;
   readonly accounts: readonly AccountSummary[];
   readonly usageHistory: UsageHistoryResult;
+  readonly githubHeatmap: GitHubHeatmapResult;
 }
 
 type SnapshotState =
@@ -26,6 +34,8 @@ export type RendererSnapshotResource = SnapshotState & {
   readonly setActiveAccount: (accountId: AccountId) => Promise<void>;
   readonly saveClaudeCredentials: (accountId: AccountId, sessionKey: string, orgId: string) => Promise<void>;
   readonly testClaudeConnection: (sessionKey: string, orgId: string) => Promise<ClaudeConnectionTestResult>;
+  readonly saveGitHubSettings: (payload: SaveGitHubSettingsPayload) => Promise<void>;
+  readonly refreshGitHubHeatmap: () => Promise<void>;
   readonly isRefreshing: boolean;
 };
 
@@ -45,14 +55,15 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
   }, []);
 
   const loadSnapshot = useCallback(async () => {
-    const [usageState, settings, accounts] = await Promise.all([
+    const [usageState, settings, accounts, githubHeatmap] = await Promise.all([
       window.claudeUsage.getUsageState(),
       window.claudeUsage.getSettings(),
-      window.claudeUsage.getAccounts()
+      window.claudeUsage.getAccounts(),
+      window.claudeUsage.getGitHubHeatmap()
     ]);
     const usageHistory = await loadUsageHistory(accounts);
 
-    return { usageState, settings, accounts, usageHistory };
+    return { usageState, settings, accounts, usageHistory, githubHeatmap };
   }, [loadUsageHistory]);
 
   const updateAccounts = useCallback(async (accounts: readonly AccountSummary[]) => {
@@ -166,6 +177,38 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
     []
   );
 
+  const saveGitHubSettings = useCallback(async (payload: SaveGitHubSettingsPayload) => {
+    const githubHeatmap = await window.claudeUsage.saveGitHubSettings(payload);
+    setState((current) =>
+      current.status === "ready"
+        ? {
+            status: "ready",
+            snapshot: {
+              ...current.snapshot,
+              githubHeatmap
+            },
+            error: null
+          }
+        : current
+    );
+  }, []);
+
+  const refreshGitHubHeatmap = useCallback(async () => {
+    const githubHeatmap = await window.claudeUsage.refreshGitHubHeatmap();
+    setState((current) =>
+      current.status === "ready"
+        ? {
+            status: "ready",
+            snapshot: {
+              ...current.snapshot,
+              githubHeatmap
+            },
+            error: null
+          }
+        : current
+    );
+  }, []);
+
   useEffect(() => {
     void reload();
   }, [reload]);
@@ -209,6 +252,8 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
       setActiveAccount,
       saveClaudeCredentials,
       testClaudeConnection,
+      saveGitHubSettings,
+      refreshGitHubHeatmap,
       isRefreshing
     }),
     [
@@ -218,7 +263,9 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
       reload,
       removeAccount,
       renameAccount,
+      refreshGitHubHeatmap,
       saveClaudeCredentials,
+      saveGitHubSettings,
       setActiveAccount,
       state,
       testClaudeConnection
@@ -290,11 +337,13 @@ export function WarningBanner({ warning }: { readonly warning: string | null }):
 export function ProviderList({
   providers,
   activeAccount,
-  usageHistory
+  usageHistory,
+  githubHeatmap
 }: {
   readonly providers: readonly ProviderCard[];
   readonly activeAccount?: AccountSummary | null;
   readonly usageHistory: UsageHistoryResult;
+  readonly githubHeatmap: GitHubHeatmapResult;
 }): React.JSX.Element {
   return (
     <section className="provider-list" aria-label="Providers">
@@ -310,6 +359,7 @@ export function ProviderList({
           <ProviderPlaceholderCard key={provider.providerId} provider={provider} />
         )
       )}
+      <GitHubHeatmapPanel heatmap={githubHeatmap} />
     </section>
   );
 }
@@ -644,6 +694,138 @@ export function CredentialPlaceholder({
   return <ClaudeCredentialForm activeAccount={activeAccount} onSaved={onSaved} />;
 }
 
+export function GitHubSettingsForm({
+  heatmap,
+  onRefresh,
+  onSave
+}: {
+  readonly heatmap: GitHubHeatmapResult;
+  readonly onRefresh: () => Promise<void>;
+  readonly onSave: (payload: SaveGitHubSettingsPayload) => Promise<void>;
+}): React.JSX.Element {
+  const [enabled, setEnabled] = useState(heatmap.enabled);
+  const [username, setUsername] = useState(heatmap.username ?? "");
+  const [token, setToken] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    setEnabled(heatmap.enabled);
+    setUsername(heatmap.username ?? "");
+    setToken("");
+  }, [heatmap.enabled, heatmap.username]);
+
+  const saveSettings = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    try {
+      setIsSaving(true);
+      await onSave({
+        enabled,
+        username: username.trim() ? username.trim() : null,
+        token: token.trim() ? token.trim() : undefined
+      });
+      setToken("");
+      setStatus("GitHub settings saved.");
+    } catch (error) {
+      setStatus(getErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const refreshHeatmap = async () => {
+    try {
+      setIsRefreshing(true);
+      await onRefresh();
+      setStatus("GitHub contributions refreshed.");
+    } catch (error) {
+      setStatus(getErrorMessage(error));
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  return (
+    <form className="credential-form" onSubmit={saveSettings}>
+      <label className="checkbox-label">
+        <input checked={enabled} onChange={(event) => setEnabled(event.target.checked)} type="checkbox" />
+        Enable GitHub heatmap
+      </label>
+      <label>
+        GitHub username
+        <input
+          autoComplete="off"
+          name="github-username"
+          onChange={(event) => setUsername(event.target.value)}
+          placeholder="octocat"
+          type="text"
+          value={username}
+        />
+      </label>
+      <label>
+        GitHub token
+        <input
+          autoComplete="off"
+          name="github-token"
+          onChange={(event) => setToken(event.target.value)}
+          placeholder={heatmap.configured ? "Saved token" : "ghp_..."}
+          type="password"
+          value={token}
+        />
+      </label>
+      <p className="muted">Tokens are write-only and never rendered after saving.</p>
+      <div className="button-row">
+        <button disabled={isSaving || isRefreshing || (enabled && !username.trim())} type="submit">
+          {isSaving ? "Saving" : "Save GitHub"}
+        </button>
+        <button disabled={isSaving || isRefreshing || !heatmap.configured} onClick={() => void refreshHeatmap()} type="button">
+          {isRefreshing ? "Refreshing" : "Refresh GitHub"}
+        </button>
+      </div>
+      <GitHubHeatmapStatusText heatmap={heatmap} />
+      {status ? <p className="form-status">{status}</p> : null}
+    </form>
+  );
+}
+
+export function GitHubHeatmapPanel({ heatmap }: { readonly heatmap: GitHubHeatmapResult }): React.JSX.Element {
+  const latestDay = heatmap.weeks.flatMap((week) => week.contributionDays).at(-1) ?? null;
+
+  return (
+    <article className="provider-card github-card">
+      <div className="provider-title-row">
+        <div>
+          <h2>GitHub Contributions</h2>
+          <p className="muted">{formatGitHubStatus(heatmap)}</p>
+        </div>
+        <StatusPill tone={heatmap.status === "ready" ? "active" : heatmap.status === "error" || heatmap.status === "auth_expired" ? "warning" : "muted"}>
+          {formatToken(heatmap.status)}
+        </StatusPill>
+      </div>
+      {heatmap.status === "ready" && heatmap.weeks.length > 0 ? (
+        <>
+          <div className="github-heatmap" aria-label="GitHub contribution heatmap">
+            {heatmap.weeks.map((week, weekIndex) => (
+              <div className="github-week" key={`${weekIndex}-${week.contributionDays[0]?.date ?? "empty"}`}>
+                {week.contributionDays.map((day) => (
+                  <GitHubHeatmapCell day={day} key={day.date} />
+                ))}
+              </div>
+            ))}
+          </div>
+          <p className="muted">
+            {heatmap.totalContributions} contributions{latestDay ? ` · Last day ${latestDay.date}` : ""}
+          </p>
+        </>
+      ) : (
+        <p className="muted">{getGitHubEmptyState(heatmap)}</p>
+      )}
+    </article>
+  );
+}
+
 export function StatusPill({
   children,
   tone
@@ -724,6 +906,20 @@ function UsageSparkline({
   );
 }
 
+function GitHubHeatmapStatusText({ heatmap }: { readonly heatmap: GitHubHeatmapResult }): React.JSX.Element {
+  return <p className="muted">{formatGitHubStatus(heatmap)}</p>;
+}
+
+function GitHubHeatmapCell({ day }: { readonly day: GitHubContributionDay }): React.JSX.Element {
+  return (
+    <span
+      aria-label={`${day.date}: ${day.contributionCount} contributions`}
+      className={`github-day github-day-${getContributionLevel(day.contributionCount)}`}
+      title={`${day.date}: ${day.contributionCount} contributions`}
+    />
+  );
+}
+
 function Metric({ label, value }: { readonly label: string; readonly value: string }): React.JSX.Element {
   return (
     <div className="metric">
@@ -759,6 +955,70 @@ function formatProviderPill(provider: ProviderCard): string {
 
 function formatProviderStatus(provider: ProviderCard): string {
   return `${formatToken(provider.status)} · ${formatToken(provider.confidence)}`;
+}
+
+function formatGitHubStatus(heatmap: GitHubHeatmapResult): string {
+  if (!heatmap.enabled) {
+    return "Disabled";
+  }
+
+  if (!heatmap.configured) {
+    return "Username and token needed";
+  }
+
+  if (heatmap.status === "auth_expired") {
+    return "GitHub token needs attention";
+  }
+
+  if (heatmap.error) {
+    return heatmap.error;
+  }
+
+  if (heatmap.lastFetchedAt) {
+    return `Updated ${formatDateTime(heatmap.lastFetchedAt)}`;
+  }
+
+  return "Ready to refresh";
+}
+
+function getGitHubEmptyState(heatmap: GitHubHeatmapResult): string {
+  if (!heatmap.enabled) {
+    return "Enable GitHub in Settings to show contribution activity.";
+  }
+
+  if (!heatmap.configured) {
+    return "Add a GitHub username and token in Settings.";
+  }
+
+  if (heatmap.status === "auth_expired") {
+    return "Saved GitHub token is invalid or expired.";
+  }
+
+  if (heatmap.error) {
+    return heatmap.error;
+  }
+
+  return "Refresh GitHub to load the last 12 weeks.";
+}
+
+function getContributionLevel(count: number): 0 | 1 | 2 | 3 | 4 {
+  if (count <= 0) {
+    return 0;
+  }
+
+  if (count <= 3) {
+    return 1;
+  }
+
+  if (count <= 6) {
+    return 2;
+  }
+
+  if (count <= 9) {
+    return 3;
+  }
+
+  return 4;
 }
 
 function formatAccountStatus(account: AccountSummary): string {
