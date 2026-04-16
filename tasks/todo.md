@@ -55,7 +55,7 @@
   - No Electron smoke is required for this pure shared module step unless runtime wiring is added unexpectedly.
 
 - [x] Step 3.2: [automated] Expand history storage and visualization with `electron-app/src/main/storage/history.ts` and renderer components under `electron-app/src/renderer/components/`: 24-hour snapshots, 24h-to-7d hourly compaction, session/weekly sparklines, and last-updated text.
-- [ ] Step 3.3: [automated] Implement GitHub contribution heatmap support in `electron-app/src/main/services/github.ts`, secret GitHub token storage, settings controls, hourly refresh behavior, GraphQL variables, and renderer heatmap components.
+- [x] Step 3.3: [automated] Implement GitHub contribution heatmap support in `electron-app/src/main/services/github.ts`, secret GitHub token storage, settings controls, hourly refresh behavior, GraphQL variables, and renderer heatmap components.
 - [ ] Step 3.4: [automated] Implement the complete settings/onboarding experience in `electron-app/src/renderer/settings/` and `electron-app/src/renderer/onboarding/`: time display, pace theme, weekly color mode, launch at login, provider enablement placeholders, migration prompt placeholders, and notification preferences.
 - [ ] Step 3.5: [automated] Implement overlay behavior in `electron-app/src/main/windows.ts` and `electron-app/src/renderer/overlay/`: compact/minimal/sidebar layouts, always-on-top behavior, opacity, drag-to-move, position persistence, double-click popover, and context hide/disable action.
 - [ ] Step 3.6: [automated] Implement local notifications in `electron-app/src/main/services/notifications.ts`: session reset, auth expired, provider degraded placeholder, and user-configurable threshold warnings.
@@ -72,34 +72,30 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 3.3
+## Next Step Plan: Step 3.4
 
-Implement GitHub contribution heatmap support without exposing tokens to renderer code.
+Implement the complete settings and onboarding experience for the Phase 3 Claude product controls.
 
-**What Step 3.3 requires:**
-- Add a main-process GitHub service that can build and execute contribution-calendar GraphQL requests with variables, not string interpolation.
-- Store the GitHub token through the existing secret-storage boundary; never return the token, request headers, or raw credential payloads to renderer code.
-- Add settings controls for disabled/configured GitHub states and a write-only token entry flow.
-- Add hourly refresh behavior for contribution data and renderer-safe state updates.
-- Render a GitHub-style contribution heatmap with disabled, configured, loading, and error states.
+**What Step 3.4 requires:**
+- Replace the current settings summary-only preferences with editable controls for time display, pace theme, weekly color mode, launch at login, overlay defaults, provider enablement placeholders, migration prompt placeholders, and notification preferences.
+- Expand onboarding from a simple account/credential checklist into a guided flow that covers Claude setup, optional GitHub setup, provider placeholders, migration prompts, and display defaults.
+- Keep stored secrets write-only and keep renderer state limited to sanitized settings/status values.
+- Preserve the existing secure preload API boundary and avoid implementing provider adapters, overlay behavior, or notification delivery in this step; those belong to Steps 3.5 and 3.6.
 
 **Files to create or modify:**
-- `electron-app/src/main/services/github.ts`: GitHub GraphQL request construction, response parsing, refresh result typing, and failure classification.
-- `electron-app/src/main/storage/secrets.ts`: add account- or app-scoped GitHub token helpers if the current generic secret key API is insufficient.
-- `electron-app/src/main/ipc.ts`: add typed handlers for saving/testing GitHub token state and reading sanitized heatmap data.
-- `electron-app/src/preload/api.ts`, `electron-app/src/shared/types/ipc.ts`, and `electron-app/src/shared/schemas/ipc.ts`: expose only validated, token-free GitHub commands/results.
-- `electron-app/src/renderer/settings/index.tsx`: add GitHub disabled/configured controls and write-only token entry.
-- `electron-app/src/renderer/components/index.tsx`: add reusable heatmap components and wire them into the Claude/product overview surface.
-- `electron-app/src/renderer/styles/app.css`: add stable heatmap grid sizing and readable empty/error states.
+- `electron-app/src/shared/types/settings.ts` and `electron-app/src/shared/schemas/settings.ts`: add notification, provider placeholder, migration prompt, and any onboarding/settings fields needed by the UI.
+- `electron-app/src/main/ipc.ts`: extend placeholder settings update/merge behavior for the new settings fields while preserving validation.
+- `electron-app/src/preload/api.ts` and shared IPC types only if settings save helpers need narrower command wrappers.
+- `electron-app/src/renderer/settings/index.tsx`: add editable settings sections for display, overlay defaults, launch at login, providers, migration, notifications, Claude credentials, GitHub heatmap, and accounts.
+- `electron-app/src/renderer/onboarding/index.tsx`: add a guided setup flow that can be completed or skipped without requiring secrets.
+- `electron-app/src/renderer/components/index.tsx` and `electron-app/src/renderer/styles/app.css`: factor reusable controls and stable responsive layouts.
 
 **Approach and trade-offs:**
-- Keep token persistence in the main process and reuse the existing `safeStorage`-backed secret envelope pattern.
-- Prefer a pure request-construction helper in `github.ts` so Step 3.8 can test GraphQL variables directly.
-- Treat GitHub as optional: default renderer state should be disabled/empty unless configured.
-- Use simple DOM grid cells for the heatmap instead of canvas so it remains accessible and easy to test.
-- Do not expand provider enablement or onboarding beyond the GitHub controls required for this step; broader settings/onboarding polish belongs to Step 3.4.
+- Reuse `window.claudeUsage.updateSettings` for settings persistence instead of adding one-off IPC channels unless a write path needs special validation.
+- Keep provider enablement, migration, and notification controls as explicit placeholders with persisted user preferences; do not implement actual Codex/Gemini adapters, migration import, or notification dispatch here.
+- Keep forms layout-stable and mobile-safe with simple DOM controls; avoid broad visual refactors outside the settings/onboarding surfaces.
 
-**Validation for Step 3.3:**
+**Validation for Step 3.4:**
 - `npm run typecheck` from `electron-app/`.
 - `npm test -- --run` from `electron-app/`.
-- `npm run build` from `electron-app/` because renderer, preload, and shared contracts will change.
+- `npm run build` from `electron-app/` because renderer and shared settings contracts will change.

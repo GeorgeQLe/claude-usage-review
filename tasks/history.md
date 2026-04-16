@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-16 — Step 3.3: Electron GitHub Contribution Heatmap
+
+Added the Electron GitHub heatmap path with a token-free renderer contract. The main process now has `github:get-heatmap`, `github:save-settings`, and `github:refresh-heatmap` IPC/preload commands with Zod validation, plus a GitHub service that builds GraphQL requests with variables, parses contribution calendars, normalizes to the last 12 weeks, classifies auth/network/response failures, and enforces hourly refresh metadata. Added an app-scoped GitHub token helper to the existing `safeStorage` secret envelope pattern. The renderer now loads sanitized GitHub heatmap state, renders a DOM-grid contribution heatmap in the product overview, and exposes write-only GitHub username/token controls in Settings.
+
+Validation: `npm run typecheck` passed from `electron-app/`. `npm test -- --run` passed with 21 files and 68 tests. `npm run build` passed from `electron-app/`. Accepted warning: Node's experimental SQLite warning during existing storage/integration tests.
+
 ## 2026-04-16 — Step 3.2: Electron History Storage and Sparklines
 
 Expanded the Electron usage history path around the existing `usage_snapshots` table. Added a sanitized history view that keeps every snapshot from the most recent 24 hours, compacts older 24h-to-7d history into hourly buckets by highest session utilization, and excludes older points from renderer history. Added a typed `usage:get-history` IPC/preload contract with Zod validation and an empty placeholder result when no main-process history dependency is wired. The renderer snapshot hook now loads active-account Claude history, refreshes it after usage refreshes/account changes/usage-update events, and renders session plus weekly SVG sparklines with last-updated text in the Claude card across popover, onboarding, and overlay routes.
