@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-16 — Step 2.7: Electron Claude Usage History Storage
+
+Implemented SQLite persistence for Claude usage snapshots in the Electron app. Added `createUsageHistoryStore` over the existing `usage_snapshots` table, with support for recording sanitized Claude usage payloads, listing recent snapshots by account/provider, preserving normalized session/weekly/reset metrics, and retaining historical snapshots when account rows are deleted. The store validates usage payloads through the shared Claude usage schema and does not store session keys, cookies, request headers, or credential test payloads.
+
+Validation: `npm run typecheck` passed from `electron-app/`. `npm test -- --run src/main/storage/history.test.ts src/main/storage/accounts.test.ts src/foundation-storage.test.ts` passed with 3 files and 13 tests. `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts` passed with 2 files and 8 tests. `npm test -- --run` passed with 12 files and 44 tests. `npm run build` passed from `electron-app/`. Accepted warning: Node's experimental SQLite warning during storage tests.
+
 ## 2026-04-16 — Step 2.6: Electron Claude Renderer UI
 
 Implemented the Electron renderer-facing Claude account and exact-usage experience. The renderer snapshot hook now exposes account mutations, credential saves, connection tests, refreshes, and usage-update subscription handling through the typed preload API. Popover, Settings, Onboarding, and Overlay now render Claude-aware usage state with five-hour and weekly utilization bars, reset/updated/account/auth metadata, write-only credential entry, sanitized connection-test feedback, and account create/rename/remove/switch controls. Codex and Gemini remain compact later-phase cards.

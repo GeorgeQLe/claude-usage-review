@@ -97,7 +97,19 @@
   - `npm test -- --run src/foundation-renderer.test.tsx src/foundation-schemas.test.ts src/main/ipc.test.ts src/main/storage/secrets.test.ts src/shared/schemas/claudeUsage.test.ts` passes with 5 files and 17 tests.
   - `npm run build:renderer` passes from `electron-app/`.
   - `npm run build` was not run because it executes the full Phase 2 test suite, which is still expected to remain red for history snapshot work until Step 2.7 and the green gate in Step 2.8.
-- [ ] Step 2.7: [automated] Persist Claude usage snapshots in SQLite through `electron-app/src/main/storage/history.ts`, but keep advanced history visualization for Phase 3.
+- [x] Step 2.7: [automated] Persist Claude usage snapshots in SQLite through `electron-app/src/main/storage/history.ts`, but keep advanced history visualization for Phase 3.
+
+  **Step 2.7 Review:**
+  - Added `createUsageHistoryStore` in `electron-app/src/main/storage/history.ts` over the existing `usage_snapshots` SQLite table.
+  - Added focused history coverage for recording Claude snapshots, listing recent snapshots by account/provider newest-first with limits, preserving normalized metrics and raw `payload_json`, and keeping historical snapshots after account deletion via `account_id = NULL`.
+  - The history store validates payloads through `claudeUsageDataSchema`, stores only usage/account/provider data, and does not persist session keys, cookies, request headers, or credential test payloads.
+  - Exported the history store through `electron-app/src/main/storage/index.ts` and exported Claude usage schema types for shared storage typing.
+  - `npm run typecheck` passes from `electron-app/`.
+  - `npm test -- --run src/main/storage/history.test.ts src/main/storage/accounts.test.ts src/foundation-storage.test.ts` passes with 3 files and 13 tests.
+  - `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts` passes with 2 files and 8 tests.
+  - `npm test -- --run` passes with 12 files and 44 tests.
+  - `npm run build` passes from `electron-app/`.
+  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in storage tests.
 
 ## Green
 - [ ] Step 2.8: [automated] Make all Phase 2 tests pass and add integration coverage proving renderer state omits secrets while main-process state can fetch/update Claude usage.
@@ -111,22 +123,20 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 2.7
+## Next Step Plan: Step 2.8
 
-Persist Claude usage snapshots in SQLite while keeping Phase 3 history visualization out of scope. The existing migration already creates `usage_snapshots`, so this step should add the storage adapter and focused coverage without changing renderer history UI.
+Add integration coverage proving renderer state omits secrets while main-process state can fetch/update Claude usage, then keep the full Phase 2 suite green. The current full suite passes after Step 2.7, so Step 2.8 should focus on closing the remaining end-to-end confidence gap rather than broadening into Phase 3 UI.
 
 Implementation outline:
-- Add `electron-app/src/main/storage/history.test.ts` if no existing red test covers this step. Cover writing a Claude snapshot, reading recent snapshots by account/provider, preserving the normalized metrics (`session_utilization`, `weekly_utilization`, `reset_at`, `captured_at`), retaining the raw Claude payload in `payload_json`, and deleting account rows without losing historical snapshots because `account_id` should become `NULL`.
-- Add `electron-app/src/main/storage/history.ts` with `createUsageHistoryStore({ database, idFactory?, now? })`.
-- Keep the API intentionally small for Phase 2:
-  - `recordClaudeUsageSnapshot(input)` stores one snapshot for an account/provider using the current `claudeUsageDataSchema` shape.
-  - `listRecentSnapshots({ accountId?, providerId?, limit? })` returns sanitized snapshot summaries for tests and later UI work.
-- Store only usage data and account/provider identifiers. Do not store session keys, cookies, request headers, or credential test payloads.
-- Export the history store from `electron-app/src/main/storage/index.ts`.
-- If polling/IPC already has a clean injection point for snapshot persistence, wire the store there only if it can stay small and testable. Otherwise keep this step storage-only and leave end-to-end integration for Step 2.8.
+- Run `npm test -- --run` from `electron-app/` first and treat any failure as a regression to fix before adding new coverage.
+- Add or update integration coverage for the main-process flow: account metadata + account-scoped session key secret + Claude usage client + polling scheduler + history snapshot persistence. Use mocked Claude responses and fake timers; do not call the live Claude API.
+- Wire snapshot recording into the polling/update path only at the main-process service boundary. On successful Claude fetch, persist the sanitized usage payload through `createUsageHistoryStore`; do not persist session keys, cookies, request headers, or connection-test payloads.
+- Ensure renderer-visible state and preload responses remain secret-free. Add assertions that `getUsageState`, usage-updated events, account summaries, and connection-test responses never include submitted or rotated session keys.
+- Preserve existing renderer behavior from Step 2.6 and storage behavior from Step 2.7; do not add Phase 3 history visualization.
+- Fix any remaining Phase 2 test failures, including stale placeholder defaults, schema gaps, or IPC injection edges revealed by the full suite.
 
-Validation for Step 2.7:
+Validation for Step 2.8:
 - Run `npm run typecheck` from `electron-app/`.
-- Run focused storage tests: `npm test -- --run src/main/storage/history.test.ts src/main/storage/accounts.test.ts src/foundation-storage.test.ts`.
-- Run Claude usage/polling regressions if the history store is wired into polling: `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts`.
-- The broader Phase 2 suite should be ready for the Step 2.8 green gate after this step, but do not force advanced history visualization into Step 2.7.
+- Run the focused integration tests added or changed for this step.
+- Run `npm test -- --run` from `electron-app/` and keep the full Phase 2 suite passing.
+- Run `npm run build` unless it is reserved for Step 2.9's Electron smoke/build gate.

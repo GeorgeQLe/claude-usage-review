@@ -5,6 +5,8 @@ export const claudeUsageLimitSchema = z.object({
   resetsAt: z.string().datetime().nullable()
 });
 
+export type ClaudeUsageLimit = z.infer<typeof claudeUsageLimitSchema>;
+
 export const claudeUsageDataSchema = z.object({
   fiveHour: claudeUsageLimitSchema,
   sevenDay: claudeUsageLimitSchema,
@@ -15,3 +17,5 @@ export const claudeUsageDataSchema = z.object({
   other: claudeUsageLimitSchema.nullable(),
   extraUsage: claudeUsageLimitSchema.nullable()
 });
+
+export type ClaudeUsageData = z.infer<typeof claudeUsageDataSchema>;
