@@ -3,7 +3,8 @@ import { AppWindowManager } from "./windows.js";
 import { TrayController, type TrayFallbackStatus } from "./tray.js";
 import { registerIpcHandlers, type IpcRegistration } from "./ipc.js";
 
-const isDevelopment = !app.isPackaged;
+const isSmokeMode = process.env.CLAUDE_USAGE_ELECTRON_SMOKE === "1";
+const isDevelopment = !app.isPackaged && !isSmokeMode;
 const rendererDevServerUrl = process.env.ELECTRON_RENDERER_URL ?? "http://127.0.0.1:5173";
 
 let windowManager: AppWindowManager | null = null;
@@ -73,6 +74,14 @@ async function startApp(): Promise<void> {
   const trayStatus = trayController.create();
   reportTrayFallback(trayStatus);
   await windowManager.showPopover();
+
+  if (isSmokeMode) {
+    console.log("CLAUDE_USAGE_ELECTRON_SMOKE_OK");
+    setTimeout(() => {
+      isQuitting = true;
+      app.quit();
+    }, 50);
+  }
 }
 
 function reportTrayFallback(status: TrayFallbackStatus): void {
