@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-16 — Step 3.1: Electron Pace Formatting Helpers
+
+Ported the Swift pace semantics into a pure Electron shared module. Added `electron-app/src/shared/formatting/pace.ts` with deterministic helpers for session and weekly pace ratios, stability-window guards, pace statuses, weekly pace indicators, today usage deltas, daily budget estimates, guidance copy, countdown/reset-time formatting, and weekly pace detail text. Added `electron-app/src/shared/formatting/index.ts` as the local formatting barrel. The module uses `ClaudeUsageLimit`, accepts explicit `now` values, treats malformed reset timestamps as unknown or empty output, and does not touch main-process storage, IPC, or UI wiring.
+
+Validation: `npm run typecheck` passed from `electron-app/`. `npm test -- --run` passed with 21 files and 68 tests. `npm run build` passed from `electron-app/`. Accepted warning: Node's experimental SQLite warning during existing storage/integration tests.
+
 ## 2026-04-16 — Step 2.9: Electron Phase 2 Verification
 
 Completed the Phase 2 verification gate for the Electron Claude account and exact-usage work. Added a bounded `npm run smoke:electron` command that launches the built Electron app with mocked local usage state, waits for a main-process success marker, and fails on preload loading errors, Electron security warnings, or startup failures. The smoke path uses an env-gated production-load mode so it does not require a Vite dev server. Also added a bundled CommonJS preload build for Electron's sandboxed preload runtime and a renderer Content Security Policy.

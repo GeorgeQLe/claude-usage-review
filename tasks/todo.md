@@ -6,7 +6,7 @@
 > Test strategy: tests-after
 
 ## Implementation
-- [ ] Step 3.1: [automated] Port Swift pace semantics into shared pure functions under `electron-app/src/shared/formatting/pace.ts`: session/weekly pace windows, unknown guards, behind/way-behind/warning/critical/limit-hit status, daily budget, today usage baseline, and time display formatting.
+- [x] Step 3.1: [automated] Port Swift pace semantics into shared pure functions under `electron-app/src/shared/formatting/pace.ts`: session/weekly pace windows, unknown guards, behind/way-behind/warning/critical/limit-hit status, daily budget, today usage baseline, and time display formatting.
 
   **What:** Add the pure, renderer-safe formatting/calculation layer that later Phase 3 UI and tray work can call. Match the Swift `UsageViewModel` pace semantics without introducing main-process storage, IPC, or UI changes in this step.
 
@@ -72,6 +72,32 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 3.1
+## Next Step Plan: Step 3.2
 
-Implement `electron-app/src/shared/formatting/pace.ts` as a pure shared module first, then wire exports only as needed. Use the Swift `UsageViewModel` formulas and thresholds above as the source of truth. Keep this step focused on reusable calculations and formatting; renderer display, settings controls, and broad regression coverage are later Phase 3 steps.
+Expand history storage and renderer visualization around the existing SQLite `usage_snapshots` table.
+
+**What Step 3.2 requires:**
+- Keep every snapshot from the last 24 hours.
+- Compact snapshots older than 24 hours but newer than 7 days into one hourly point, matching Swift's history behavior of keeping the highest session-utilization snapshot in each hour bucket.
+- Drop snapshots older than 7 days from returned history views.
+- Expose renderer-safe history summaries with no secrets and no raw credential material.
+- Render session and weekly sparklines plus last-updated text in the existing Claude UI surfaces.
+
+**Files to create or modify:**
+- `electron-app/src/main/storage/history.ts`: add list/compaction helpers for 24h/7d history windows while preserving existing record/list APIs.
+- `electron-app/src/main/ipc.ts`: add a typed history query handler if renderer state does not already have enough history data.
+- `electron-app/src/preload/api.ts` and `electron-app/src/shared/types/ipc.ts`: expose a narrow preload method for renderer history reads if IPC is required.
+- `electron-app/src/shared/schemas/ipc.ts` or `electron-app/src/shared/types/usage.ts`: add validated, secret-free history summary shapes if IPC is required.
+- `electron-app/src/renderer/components/index.tsx`: add reusable sparkline/last-updated components and wire them into the Claude usage card.
+- `electron-app/src/renderer/styles/app.css`: style the sparklines with stable dimensions and readable empty states.
+
+**Approach and trade-offs:**
+- Prefer a pure compaction helper in `history.ts` so Step 3.8 can test it directly.
+- Reuse the existing `usage_snapshots` table; do not add migrations unless the current columns are insufficient.
+- Use SVG sparklines or simple DOM/CSS paths in renderer code; avoid canvas for this small static visualization.
+- Keep the renderer data contract small: timestamp, session utilization, weekly utilization, reset time, and provider/account metadata only when needed.
+
+**Validation for Step 3.2:**
+- `npm run typecheck` from `electron-app/`.
+- `npm test -- --run` from `electron-app/`.
+- `npm run build` from `electron-app/` because renderer and preload/shared contracts may change.
