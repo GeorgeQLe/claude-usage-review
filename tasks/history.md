@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-16 — Provider Telemetry Roadmap Reconciliation
+
+Reconciled `specs/provider-telemetry-endpoints.md` into the task pipeline. Added Swift Provider Telemetry as Phase 7 in `tasks/roadmap.md`, decomposed the active `tasks/todo.md` into a TDD phase for opt-in Codex and Gemini Code Assist provider quota telemetry, and captured post-verification manual checks in `tasks/manual-todo.md`. The plan keeps Claude ingestion unchanged, defaults telemetry off, requires injected HTTP clients and fixtures for automated tests, and preserves passive/wrapper fallback behavior when provider telemetry is unavailable or degraded.
+
+Validation: documentation/task-only change; `git diff --check` passed.
+
 ## 2026-04-16 — Step 3.6: Electron Local Notifications
 
 Implemented the Electron local notification path in the main process. Added a deterministic notification evaluator with in-memory dedupe for session-reset transitions, auth-expired transitions, provider-degraded transitions, and configurable session/weekly threshold warnings. Added a thin Electron `Notification` presenter and wired sanitized refresh results through IPC to the notification service using the current validated notification settings. Renderer code still only edits preferences through the existing settings contract and never receives secrets.
