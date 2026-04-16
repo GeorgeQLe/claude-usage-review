@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-16 — Step 2.4: Electron Claude Usage Polling Scheduler
+
+Implemented the Electron main-process Claude usage polling scheduler. The scheduler now polls immediately on start, continues on the 5-minute success cadence, schedules reset-time fetches from `fiveHour.resetsAt`, backs off network errors at 600s then 1200s with a 3600s cap, supports manual refresh and account switching, stops on auth expiry, emits sanitized state, and saves rotated session keys through an injected callback.
+
+Validation: `npm run typecheck` passed from `electron-app/`. `npm test -- --run src/main/services/polling.test.ts` passed with 1 file and 4 tests. `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts` passed with 3 files and 11 tests. Accepted warning: Node's experimental SQLite warning during account tests.
+
 ## 2026-04-15 — Step 2.3: Electron Claude Usage Client
 
 Implemented the Electron main-process Claude usage API client. The client now sends Claude web-client usage requests with the `sessionKey` cookie, normalizes all known usage limit fields plus unknown `other` usage, extracts rotated session keys from `Set-Cookie`, and classifies auth expiry, network failures, and malformed responses with distinct plain-object errors. The module remains fetch-only and storage-free so later polling/IPC steps can own credential persistence and renderer updates.

@@ -61,7 +61,17 @@
   - `npm test -- --run src/main/services/claudeUsage.test.ts` passes with 1 file and 4 tests.
   - `npm test -- --run src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts src/foundation-storage.test.ts` passes with 3 files and 14 tests.
   - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in account/storage tests.
-- [ ] Step 2.4: [automated] Implement polling and scheduling in `electron-app/src/main/services/polling.ts`: 5-minute default cadence, exponential network backoff, manual refresh, reset-time fetch, cancellation on account switch, and event emission to renderers.
+- [x] Step 2.4: [automated] Implement polling and scheduling in `electron-app/src/main/services/polling.ts`: 5-minute default cadence, exponential network backoff, manual refresh, reset-time fetch, cancellation on account switch, and event emission to renderers.
+
+  **Step 2.4 Review:**
+  - Added `createUsagePollingScheduler` in `electron-app/src/main/services/polling.ts`.
+  - The scheduler polls immediately on start, resumes the 5-minute success cadence, and schedules future reset-time fetches when Claude returns `fiveHour.resetsAt`.
+  - Network errors now use exponential backoff from the documented 300-second base: 600 seconds, 1200 seconds, capped at 3600 seconds, and reset after a successful fetch.
+  - Manual refresh, account switching, stop/cancellation, auth-expired handling, renderer-safe state emission, and rotated session-key callbacks are implemented through injected main-process services.
+  - `npm run typecheck` passes from `electron-app/`.
+  - `npm test -- --run src/main/services/polling.test.ts` passes with 1 file and 4 tests.
+  - `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts` passes with 3 files and 11 tests.
+  - Accepted warning: Node prints `ExperimentalWarning: SQLite is an experimental feature` while opening the in-memory SQLite database in account tests.
 - [ ] Step 2.5: [automated] Wire account and Claude commands through `electron-app/src/main/ipc.ts` and `electron-app/src/preload/api.ts`, including add/rename/remove/switch account, save credentials, test connection, get usage state, refresh now, and subscribe to usage updates.
 - [ ] Step 2.6: [automated] Implement Claude-aware tray/popover/settings/onboarding UI in `electron-app/src/renderer/`, including write-only credential fields, account picker, auth status, exact usage bars, refresh actions, and basic error states.
 - [ ] Step 2.7: [automated] Persist Claude usage snapshots in SQLite through `electron-app/src/main/storage/history.ts`, but keep advanced history visualization for Phase 3.
@@ -78,24 +88,22 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 2.4
+## Next Step Plan: Step 2.5
 
-Implement the Claude usage polling scheduler in `electron-app/src/main/services/polling.ts`. Match the red-phase contract in `electron-app/src/main/services/polling.test.ts` and the polling behavior documented in `SPEC.md` and `specs/electron-cross-platform-ai-usage-monitor.md`.
+Wire the durable account, credential, Claude client, and polling services into the Electron IPC boundary in `electron-app/src/main/ipc.ts` and keep the preload API contract in `electron-app/src/preload/api.ts` secret-free. Match the red-phase IPC contract in `electron-app/src/main/ipc.test.ts` while preserving Phase 1 placeholder behavior for unrelated settings/provider/diagnostics commands.
 
 Implementation outline:
-- Create `createUsagePollingScheduler(options)` with `start(accountId)`, `refreshNow()`, `switchAccount(accountId)`, and `stop()`.
-- Use injected services only: `accountStore.getActiveClaudeCredentials()`, `accountStore.markAuthExpired(accountId)`, `claudeClient.fetchUsage(...)`, `emitUsageUpdated(state)`, `saveRotatedSessionKey(accountId, sessionKey)`, and optional `now()`.
-- On `start`, schedule an immediate fetch for the selected account and then continue on the default 5-minute cadence after successful fetches.
-- On network errors, schedule exponential backoff from the documented 300-second base: first retry after 600 seconds, then 1200 seconds, then cap later retries at 3600 seconds. Reset the failure count after success.
-- When a fetch result includes `rotatedSessionKey`, call `saveRotatedSessionKey` for the current account.
-- When `data.fiveHour.resetsAt` is a future timestamp, schedule a reset-time fetch at that timestamp in addition to normal cadence.
-- `refreshNow()` should run a fetch immediately for the current account without waiting for the next timer.
-- `switchAccount(accountId)` should cancel pending timers/work for the previous account and begin polling for the new account.
-- On `{ kind: "auth_expired" }`, mark the current account expired, emit degraded/expired state if the implementation has a small internal shape for it, and stop polling until another start/switch/refresh occurs.
-- Keep scheduler state main-process-only. Renderer event fan-out and durable account credential lookup can be expanded in later IPC wiring if the red contract does not require it.
+- Extend `registerIpcHandlers(dependencies?)` so tests and app startup can inject durable services without requiring Electron app bootstrap changes in this step.
+- Add or complete a Claude credential store in `electron-app/src/main/storage/secrets.ts` if needed by the IPC tests: `writeClaudeSessionKey(accountId, sessionKey)`, `readClaudeSessionKey(accountId)`, and `deleteClaudeSessionKey(accountId)` should use the existing safeStorage envelope boundary and never expose decrypted values to renderer responses.
+- Wire account commands to `AccountStore`: `getAccounts`, `addAccount`, `renameAccount`, `removeAccount`, and `setActiveAccount`.
+- Wire `saveClaudeCredentials` so it writes the session key through the credential store, saves the org ID through the account store, marks/returns a configured account summary when appropriate, and never returns the submitted session key.
+- Wire `testClaudeConnection` through `ClaudeUsageClient.fetchUsage({ orgId, sessionKey })`; return a sanitized `{ ok: true, status: "connected", message: "Claude connection succeeded." }` on success and sanitized invalid/auth/network results on failure.
+- Wire `getUsageState`, `refreshNow`, and `usage:updated` to the polling scheduler or a small adapter around it so renderer-visible state validates against `usageStateSchema` and contains no `sessionKey`/`sk-ant` material.
+- Update shared IPC result schemas/types only as required by the real connected/invalid statuses.
+- Keep renderer/preload method names stable. The preload should continue to validate incoming `usage:updated` payloads and expose unsubscribe cleanup.
 
-Validation for Step 2.4:
+Validation for Step 2.5:
 - Run `npm run typecheck` from `electron-app/`.
-- Run `npm test -- --run src/main/services/polling.test.ts`.
-- Optionally run `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts` to confirm the new scheduler does not regress the client/account work.
-- The broader Phase 2 suite may remain red for credential persistence, schema updates, IPC wiring, renderer UI, and history snapshots until later steps.
+- Run `npm test -- --run src/main/ipc.test.ts src/main/storage/secrets.test.ts src/shared/schemas/claudeUsage.test.ts`.
+- Run `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts` to confirm Step 2.2-2.4 service behavior still passes.
+- The broader Phase 2 suite may remain red for renderer UI and history snapshots until later steps.
