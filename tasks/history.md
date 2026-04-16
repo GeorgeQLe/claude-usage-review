@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-16 — Step 2.5: Electron Claude IPC Wiring
+
+Wired the Electron IPC boundary for Phase 2 Claude account and usage commands. `registerIpcHandlers(dependencies?)` now supports injected account, credential, Claude client, and usage-state adapters while preserving the default placeholder path. Account commands route through injected services, credential saves write account-scoped Claude session keys through the secret store, connection tests call the Claude usage client and return sanitized statuses, and usage refresh broadcasts continue to validate renderer-visible state. Added the shared Claude usage schema and account auth-status persistence support needed by the IPC contract.
+
+Validation: `npm run typecheck` passed from `electron-app/`. `npm test -- --run src/main/ipc.test.ts src/main/storage/secrets.test.ts src/shared/schemas/claudeUsage.test.ts` passed with 3 files and 8 tests. `npm test -- --run src/main/services/polling.test.ts src/main/services/claudeUsage.test.ts src/main/storage/accounts.test.ts` passed with 3 files and 11 tests. Accepted warning: Node's experimental SQLite warning during account tests. `npm run build` was not run because it executes the full Phase 2 suite, which remains intentionally red for renderer UI and history work until later steps.
+
 ## 2026-04-16 — Step 2.4: Electron Claude Usage Polling Scheduler
 
 Implemented the Electron main-process Claude usage polling scheduler. The scheduler now polls immediately on start, continues on the 5-minute success cadence, schedules reset-time fetches from `fiveHour.resetsAt`, backs off network errors at 600s then 1200s with a 3600s cap, supports manual refresh and account switching, stops on auth expiry, emits sanitized state, and saves rotated session keys through an injected callback.
