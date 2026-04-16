@@ -58,7 +58,7 @@
 - [x] Step 3.3: [automated] Implement GitHub contribution heatmap support in `electron-app/src/main/services/github.ts`, secret GitHub token storage, settings controls, hourly refresh behavior, GraphQL variables, and renderer heatmap components.
 - [x] Step 3.4: [automated] Implement the complete settings/onboarding experience in `electron-app/src/renderer/settings/` and `electron-app/src/renderer/onboarding/`: time display, pace theme, weekly color mode, launch at login, provider enablement placeholders, migration prompt placeholders, and notification preferences.
 - [x] Step 3.5: [automated] Implement overlay behavior in `electron-app/src/main/windows.ts` and `electron-app/src/renderer/overlay/`: compact/minimal/sidebar layouts, always-on-top behavior, opacity, drag-to-move, position persistence, double-click popover, and context hide/disable action.
-- [ ] Step 3.6: [automated] Implement local notifications in `electron-app/src/main/services/notifications.ts`: session reset, auth expired, provider degraded placeholder, and user-configurable threshold warnings.
+- [x] Step 3.6: [automated] Implement local notifications in `electron-app/src/main/services/notifications.ts`: session reset, auth expired, provider degraded placeholder, and user-configurable threshold warnings.
 - [ ] Step 3.7: [automated] Polish tray/menu behavior in `electron-app/src/main/tray.ts`: exact Claude countdown/reset text, color/icon state, context menu actions, and launch-at-login handling.
 
 ## Green
@@ -72,34 +72,34 @@
 - [ ] All phase tests pass.
 - [ ] No regressions.
 
-## Next Step Plan: Step 3.6
+## Next Step Plan: Step 3.7
 
-Implement local notification behavior for Phase 3 without exposing secrets to renderer code.
+Polish tray/menu behavior for the Electron Phase 3 product UI parity pass.
 
-**What Step 3.6 requires:**
-- Add a main-process notification service that receives sanitized usage/settings/account state and decides whether to display local Electron notifications.
-- Support session reset notifications, auth-expired notifications, provider degraded placeholder notifications, and threshold warnings driven by `settings.notifications`.
-- Keep notification state in the main process; renderer code should only edit validated notification preferences through the existing settings path.
-- Prevent repeated notifications for the same condition by tracking dedupe keys such as provider id, reset timestamp, threshold bucket, or auth status transition.
-- Keep provider adapter implementation out of scope; degraded-provider notifications can be driven by existing placeholder provider card status.
+**What Step 3.7 requires:**
+- Make the tray surface reflect sanitized Claude/provider state instead of the current static skeleton where cross-platform tray APIs allow it.
+- Show exact Claude countdown/reset text using the shared pace/time formatting helpers and the user-selected `settings.timeDisplay` mode.
+- Add color/icon state for normal, warning, critical, expired/degraded, missing configuration, and limit-hit cases without exposing secrets to renderer code.
+- Wire context menu actions that are currently placeholders, especially `Refresh Now`, overlay toggle state, provider selection/pinning placeholders, onboarding/settings, and quit.
+- Apply `settings.launchAtLogin` through Electron app login-item APIs when settings change.
+- Preserve Linux tray fallback behavior and keep window-based controls working when tray creation is unavailable.
 
 **Files to create or modify:**
-- `electron-app/src/main/services/notifications.ts`: new pure-ish service/controller that evaluates usage state against notification preferences and calls Electron `Notification`.
-- `electron-app/src/main/services/notifications.test.ts`: focused tests for threshold warnings, session reset dedupe, auth-expired dedupe, disabled preferences, and provider degraded placeholder behavior.
-- `electron-app/src/main/app.ts`: instantiate the notification service and feed it usage refresh/update events where current app wiring permits.
-- `electron-app/src/main/ipc.ts`: if needed, invoke notification evaluation after `refreshNow` returns sanitized usage state; do not expose secret-bearing data.
-- `electron-app/src/shared/types/settings.ts` and `electron-app/src/shared/schemas/settings.ts`: only adjust notification preference types/schema if the existing fields are insufficient.
-- `electron-app/src/foundation-renderer.test.tsx` or settings-focused tests: update only if notification preference UI behavior changes.
+- `electron-app/src/main/tray.ts`: extend `TrayController` with state updates, dynamic tooltip/title/icon/menu rendering, refresh action enablement, and launch-at-login helper support if it belongs with tray behavior.
+- `electron-app/src/main/app.ts`: pass current usage/settings state and action callbacks into the tray controller; update launch-at-login when settings change.
+- `electron-app/src/main/ipc.ts`: only adjust if refresh/action dependencies need a narrow main-process callback; keep renderer responses sanitized.
+- `electron-app/src/shared/formatting/pace.ts` or `electron-app/src/shared/formatting/index.ts`: reuse existing formatting helpers; only add small pure helpers if tray text needs a missing deterministic formatter.
+- `electron-app/src/main/tray.test.ts` or existing foundation main tests: cover menu actions, fallback behavior, tray state text/icon decisions, and launch-at-login calls with mocked Electron APIs.
 
 **Approach and trade-offs:**
-- Prefer a deterministic `evaluateNotifications(...)` core that can be tested without Electron, with a thin adapter that constructs and shows `Notification`.
-- Reuse existing notification preference fields from Step 3.4: `enabled`, `sessionReset`, `weeklyReset`, `authExpired`, `providerDegraded`, `thresholdWarnings`, `sessionWarningPercent`, and `weeklyWarningPercent`.
-- Treat missing reset timestamps and unknown utilization as non-notifiable instead of errors.
-- Keep dedupe state in memory for now; durable notification history is not part of Phase 3 unless a later step requires it.
-- Do not add renderer notification APIs unless tests reveal a real need.
+- Keep tray rendering deterministic by deriving a small `TrayPresentationState` from sanitized usage/settings state, then applying it to Electron `Tray`/`Menu`.
+- Prefer existing formatting helpers for reset/countdown text instead of duplicating time math in the tray controller.
+- Do not implement full provider adapter rotation in this step; provider selection can remain a placeholder menu structure unless existing state already supports it cleanly.
+- Keep launch-at-login updates idempotent and guarded for unsupported platforms or test mocks.
+- Avoid creating a renderer-facing tray API; the main process already owns tray and settings state.
 
-**Validation for Step 3.6:**
+**Validation for Step 3.7:**
 - `npm run typecheck` from `electron-app/`.
 - `npm test -- --run` from `electron-app/`.
 - `npm run build` from `electron-app/`.
-- Add focused tests for notification evaluation/dedupe before running the full suite.
+- Add focused tray tests before running the full suite.
