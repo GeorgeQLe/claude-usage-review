@@ -5,6 +5,11 @@
 > Scope: Port the Swift app's non-provider Claude product experience into Electron where cross-platform APIs allow it: pace semantics, history visualization, GitHub heatmap, complete settings/onboarding, overlay behavior, notifications, and polished tray/menu behavior. Preserve the secure Electron boundary: renderer code only receives validated, secret-free state through the preload API.
 > Test strategy: tests-after
 
+## Priority Task Queue
+
+- [ ] `$roadmap --existing specs/provider-telemetry-endpoints.md` - reconcile the provider telemetry add-on into `tasks/roadmap.md` because `specs/provider-telemetry-endpoints.md` was modified at 2026-04-16 14:14:00 -0400, after `tasks/roadmap.md` at 2026-04-16 12:02:39 -0400, and the current roadmap only contains Electron phases with no Provider Telemetry phase.
+- [ ] `$plan-interview --ideas` - triage unspecced ideas because `tasks/ideas.md` was last modified at 2026-03-23 09:07:26 -0400 and still contains idea entries without corresponding specs under `specs/`.
+
 ## Implementation
 - [x] Step 3.1: [automated] Port Swift pace semantics into shared pure functions under `electron-app/src/shared/formatting/pace.ts`: session/weekly pace windows, unknown guards, behind/way-behind/warning/critical/limit-hit status, daily budget, today usage baseline, and time display formatting.
 
