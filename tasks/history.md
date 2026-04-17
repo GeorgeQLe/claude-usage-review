@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 3.7: Electron Tray/Menu Polish
+
+Polished the Electron tray presentation path for Product UI Parity. The tray title now preserves the configured reset phrase (`Resets in ...` or `Resets at ...`) instead of stripping and truncating the countdown/reset signal. Added focused tray regression coverage for countdown and reset-time title/tooltip text, overlay checkbox state, warning/critical/limit-hit/expired/degraded/missing-configuration icon states, refresh disabled behavior, provider rotation placeholders, menu action routing, and launch-at-login idempotency through a fake Electron app API.
+
+Validation: `npm test -- --run src/foundation-main.test.ts` passed with 19 tests. `npm run typecheck` passed from `electron-app/`. `npm test -- --run` passed with 23 files and 95 tests. `npm run build` passed from `electron-app/`. Accepted warning: Node's experimental SQLite warning during existing storage/integration tests.
+
 ## 2026-04-17 — Step 7.8: Swift Provider Telemetry Verification
 
 Completed the Phase 7 verification gate for Swift Provider Telemetry. The full Swift test suite passed, confirming the existing Claude usage tests still pass unchanged alongside the Provider Telemetry contract coverage. The Provider Telemetry HTTP injection contract tests explicitly exercised fake HTTP clients and no-live-request behavior for Codex and Gemini; no automated test output indicated live Codex, ChatGPT, Gemini, Google, Cloud Code, or Vertex requests.
