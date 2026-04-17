@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 7.7: Swift Provider Telemetry Green Suite
+
+Completed the Phase 7 green-suite step without production code changes. The focused Provider Telemetry contract suite already covered the Step 7.7 regression list: endpoint-shape drift, three-failure degradation, manual refresh bypassing backoff, no raw response persistence, no prompt/response persistence, diagnostics redaction, injected HTTP clients, and passive fallback behavior. Because that coverage was present and green, no tests or implementation needed tightening.
+
+Validation: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/ProviderTelemetrySettingsContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryPayloadContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryPresentationContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryHTTPInjectionContractTests -only-testing:ClaudeUsageTests/CodexTelemetryContractTests -only-testing:ClaudeUsageTests/GeminiTelemetryContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryRefreshContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryPrivacyContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryAdapterFallbackContractTests` passed with 32 tests, 0 failures. Full `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` passed with 151 tests, 0 failures, confirming existing Claude usage tests still pass. Accepted warnings/output: Xcode selected the first of multiple matching macOS destinations, and the test runner emitted the known detached-signatures logging-persist message. No automated test performs live Codex, ChatGPT, Gemini, Google, Cloud Code, or Vertex requests.
+
 ## 2026-04-17 — Step 7.6: Swift Provider Telemetry UI And Docs
 
 Wired Provider Telemetry into the Swift macOS UI and docs. `ProviderCard` now carries normalized telemetry presentation rows for Codex rate limits and Gemini Code Assist quota buckets, including account labels, provider-specific details, last/next refresh text, degraded/unavailable reasons, and manual refresh capability. `ProviderCardView` renders those details and exposes a refresh action through `ProviderShellViewModel.refreshProviderTelemetry(_:)`, while preserving passive Codex/Gemini card state and the existing 15-second passive scan cadence.

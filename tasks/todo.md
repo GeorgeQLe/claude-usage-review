@@ -57,7 +57,7 @@
   - Run focused UI/view-model/provider telemetry tests, then `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`. Document accepted Xcode toolchain warnings explicitly and confirm no automated test performs live Codex, ChatGPT, Gemini, Google, Cloud Code, or Vertex requests.
 
 ## Green
-- [ ] Step 7.7: [automated] Make the Phase 7 test suite pass and add any missing regression coverage for endpoint-shape drift, three-failure degradation, manual refresh bypassing backoff, no raw response persistence, no prompt/response persistence, and diagnostics redaction.
+- [x] Step 7.7: [automated] Make the Phase 7 test suite pass and add any missing regression coverage for endpoint-shape drift, three-failure degradation, manual refresh bypassing backoff, no raw response persistence, no prompt/response persistence, and diagnostics redaction.
 
   **Implementation plan for Step 7.7:**
   - Run the full Phase 7-focused suite first: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/ProviderTelemetrySettingsContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryPayloadContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryPresentationContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryHTTPInjectionContractTests -only-testing:ClaudeUsageTests/CodexTelemetryContractTests -only-testing:ClaudeUsageTests/GeminiTelemetryContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryRefreshContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryPrivacyContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryAdapterFallbackContractTests`.
@@ -66,6 +66,13 @@
   - Re-run the focused failing test classes until green, then run `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`.
   - If validation emits only known Xcode toolchain warnings, document them as accepted. If new Swift warnings appear, fix them before marking the step complete.
 - [ ] Step 7.8: [automated] Run Phase 7 verification: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`, confirm existing Claude usage tests still pass unchanged, confirm no automated test performs a live provider request, and update `tasks/history.md` with the implementation result.
+
+  **Implementation plan for Step 7.8:**
+  - Run the full verification command: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`.
+  - Inspect the output even on success. Confirm all existing Claude usage tests still pass, Provider Telemetry contract tests remain green, and no output indicates live Codex, ChatGPT, Gemini, Google, Cloud Code, or Vertex requests.
+  - If any Swift warnings or test failures appear, fix them before marking Step 7.8 complete. The known acceptable environment output is Xcode selecting the first of multiple matching macOS destinations and the local detached-signatures logging-persist message from the test runner.
+  - Update `tasks/history.md` with the final Phase 7 verification result, including test counts, accepted warnings, confirmation that no automated live provider requests ran, and the manual post-Step 7.8 tasks still pending.
+  - After validation passes, check off Step 7.8 and the milestone criteria that the full Phase 7 verification proves. Leave the three real-account manual validation tasks in `tasks/manual-todo.md` for human follow-up because they are marked `_(after: Step 7.8)_`.
 
 ## Milestone
 - [ ] Provider Telemetry is off by default and opt-in per provider.
