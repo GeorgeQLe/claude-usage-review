@@ -158,6 +158,39 @@ protocol ProviderTelemetryHTTPClient {
     func send(_ request: URLRequest) async throws -> ProviderTelemetryHTTPResponse
 }
 
+final class URLSessionProviderTelemetryHTTPClient: ProviderTelemetryHTTPClient {
+    private let session: URLSession
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
+
+    func send(_ request: URLRequest) async throws -> ProviderTelemetryHTTPResponse {
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw ProviderTelemetryError.network("Non-HTTP telemetry response")
+            }
+
+            var headers: [String: String] = [:]
+            for (key, value) in httpResponse.allHeaderFields {
+                guard let key = key as? String else { continue }
+                headers[key] = String(describing: value)
+            }
+
+            return ProviderTelemetryHTTPResponse(
+                statusCode: httpResponse.statusCode,
+                headers: headers,
+                body: data
+            )
+        } catch let telemetryError as ProviderTelemetryError {
+            throw telemetryError
+        } catch {
+            throw ProviderTelemetryError.network(error.localizedDescription)
+        }
+    }
+}
+
 protocol ProviderTelemetryClient {
     func refresh() async throws -> ProviderTelemetrySnapshot
 }
@@ -270,9 +303,14 @@ enum ProviderTelemetryDiagnostics {
             "(?i)Authorization:\\s*Bearer\\s+[^\\n\\r]+",
             "(?i)Cookie:\\s*[^\\n\\r]+",
             "(?i)x-openai-account-id:\\s*[^\\n\\r]+",
+            "(?i)\"OPENAI_API_KEY\"\\s*:\\s*\"[^\"]+\"",
+            "(?i)\"api_key\"\\s*:\\s*\"[^\"]+\"",
+            "(?i)\"access_token\"\\s*:\\s*\"[^\"]+\"",
+            "(?i)\"refresh_token\"\\s*:\\s*\"[^\"]+\"",
             "(?i)access_token=[^\\s&\\n\\r]+",
             "(?i)refresh_token=[^\\s&\\n\\r]+",
             "(?i)acct_[A-Za-z0-9_\\-]+",
+            "(?i)sk-[A-Za-z0-9_\\-]+",
         ]
 
         for pattern in patterns {
@@ -292,6 +330,18 @@ enum ProviderTelemetryDiagnostics {
         }
         if pattern.contains("refresh_token") {
             return "refresh_token=[redacted]"
+        }
+        if pattern.contains("\"OPENAI_API_KEY\"") {
+            return "\"OPENAI_API_KEY\":\"[redacted]\""
+        }
+        if pattern.contains("\"api_key\"") {
+            return "\"api_key\":\"[redacted]\""
+        }
+        if pattern.contains("\"access_token\"") {
+            return "\"access_token\":\"[redacted]\""
+        }
+        if pattern.contains("\"refresh_token\"") {
+            return "\"refresh_token\":\"[redacted]\""
         }
         if pattern.contains("Cookie") {
             return "Cookie: [redacted]"

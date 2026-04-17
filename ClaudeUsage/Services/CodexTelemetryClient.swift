@@ -36,7 +36,22 @@ final class CodexTelemetryClient: ProviderTelemetryClient {
             throw ProviderTelemetryError.httpStatus(response.statusCode)
         }
 
-        let payload = try decoder.decode(CodexTelemetryPayload.self, from: response.body)
+        let payload: CodexTelemetryPayload
+        do {
+            payload = try decoder.decode(CodexTelemetryPayload.self, from: response.body)
+        } catch {
+            let reason = ProviderTelemetryDiagnostics.redact(
+                "Codex usage response shape changed: \(error.localizedDescription)"
+            )
+            throw ProviderTelemetryError.endpointShapeChanged(reason)
+        }
+
+        guard !payload.rateLimits.isEmpty else {
+            throw ProviderTelemetryError.endpointShapeChanged(
+                "Codex usage response shape changed: missing rate limits"
+            )
+        }
+
         let refreshTime = now()
         return ProviderTelemetrySnapshot(
             providerId: .codex,
@@ -47,7 +62,7 @@ final class CodexTelemetryClient: ProviderTelemetryClient {
             nextRefreshAt: refreshTime.addingTimeInterval(300),
             failureCount: 0,
             degradedReason: nil,
-            rawSourceVersion: "codex-wham-usage",
+            rawSourceVersion: sourceVersion(for: auth),
             providerPayload: .codex(payload)
         )
     }
@@ -58,6 +73,15 @@ final class CodexTelemetryClient: ProviderTelemetryClient {
             return URL(string: "https://chatgpt.com/backend-api/wham/usage")!
         case let .codexAPI(baseURL, _, _):
             return baseURL.appendingPathComponent("api/codex/usage")
+        }
+    }
+
+    private func sourceVersion(for auth: CodexTelemetryAuth) -> String {
+        switch auth {
+        case .chatGPT:
+            return "codex-wham-usage"
+        case .codexAPI:
+            return "codex-api-usage"
         }
     }
 }

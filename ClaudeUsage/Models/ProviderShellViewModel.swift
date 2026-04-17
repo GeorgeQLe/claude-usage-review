@@ -39,8 +39,14 @@ class ProviderShellViewModel: ObservableObject {
         self.geminiSnapshotProvider = { geminiAdapter.toProviderSnapshot(isEnabled: $0) }
         self.codexLastRefreshTimeProvider = { codexAdapter.lastRefreshTime }
         self.geminiLastRefreshTimeProvider = { geminiAdapter.lastRefreshTime }
+        let telemetryHTTPClient = URLSessionProviderTelemetryHTTPClient()
         self.providerTelemetryCoordinator = ProviderTelemetryCoordinator(
-            clients: [:],
+            clients: [
+                .codex: CodexTelemetryClient(
+                    authProvider: CodexTelemetryAuthProvider(),
+                    httpClient: telemetryHTTPClient
+                ),
+            ],
             store: UserDefaultsProviderTelemetryStore()
         )
         self.nowProvider = Date.init
