@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { providerSettingsSchema } from "./provider.js";
+import { providerSettingsPatchSchema, providerSettingsSchema } from "./provider.js";
 
 export const overlayBoundsSchema = z.object({
   x: z.number().int(),
@@ -61,8 +61,8 @@ export const appSettingsPatchSchema = appSettingsSchema.partial().extend({
   providers: providerPlaceholderMapSchema
     .partial()
     .extend({
-      codex: providerPlaceholderSettingsSchema.partial().optional(),
-      gemini: providerPlaceholderSettingsSchema.partial().optional()
+      codex: providerSettingsPatchSchema.optional(),
+      gemini: providerSettingsPatchSchema.optional()
     })
     .optional(),
   migration: migrationPromptSettingsSchema.partial().optional(),

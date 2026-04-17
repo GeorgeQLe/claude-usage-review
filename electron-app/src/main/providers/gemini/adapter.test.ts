@@ -49,6 +49,34 @@ describe("Phase 4 Gemini adapter red tests", () => {
     expect(JSON.stringify(snapshot)).not.toContain("access_token");
     expect(JSON.stringify(snapshot)).not.toContain("apiKey");
   });
+
+  it("uses reliable /stats summaries without losing passive fallback behavior", async () => {
+    const adapter = await loadAdapter();
+    const snapshot = await adapter.refreshGeminiProviderSnapshot({
+      detector: async () => ({ detected: true }),
+      now: new Date("2026-04-17T15:00:00.000Z"),
+      sessionReader: async () => ({ summary: { dailyRequestCount: 3, tokenCount: 12 } }),
+      statsReader: async () => ({
+        confidence: "high_confidence",
+        dailyLimit: 1000,
+        dailyRequestCount: 42,
+        model: "gemini-2.5-pro",
+        resetAt: "2026-04-18T00:00:00.000Z",
+        tokenCount: 123456
+      }),
+      staleAfterMs: 15 * 60 * 1000
+    });
+
+    expect(snapshot.card).toMatchObject({
+      adapterMode: "accuracy",
+      confidence: "high_confidence",
+      dailyRequestCount: 42,
+      resetAt: "2026-04-18T00:00:00.000Z",
+      status: "configured"
+    });
+    expect(snapshot.card.confidenceExplanation).toContain("/stats");
+    expect(snapshot.dailyHeadroom).toBe(958);
+  });
 });
 
 async function loadAdapter(): Promise<Record<string, any>> {

@@ -53,6 +53,17 @@ export const providerSettingsSchema = z.object({
   staleAfterMinutes: z.number().int().min(1).max(24 * 60).default(30)
 });
 
+export const providerSettingsPatchSchema = z.object({
+  enabled: z.boolean().optional(),
+  setupPromptDismissed: z.boolean().optional(),
+  adapterMode: providerAdapterModeSchema.optional(),
+  authMode: providerAuthModeSchema.optional(),
+  plan: providerPlanSchema.optional(),
+  profileLabel: z.string().trim().min(1).nullable().optional(),
+  lastRefreshAt: z.string().datetime().nullable().optional(),
+  staleAfterMinutes: z.number().int().min(1).max(24 * 60).optional()
+});
+
 const unsafeDiagnosticsPattern = /(access[_-]?token|api[_-]?key|authorization|bearer|cookie|session[_-]?key|prompt|response|chat body|oauth[_-]?creds)=?/iu;
 
 export const providerDiagnosticsSchema = z

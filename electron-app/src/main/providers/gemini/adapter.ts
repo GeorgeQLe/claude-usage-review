@@ -4,6 +4,8 @@ import { detectGeminiInstall } from "./detector.js";
 import type { GeminiInstallDetection } from "./detector.js";
 import { parseGeminiSessionTree } from "./sessions.js";
 import type { GeminiDerivedEvent, GeminiSessionSummary, ParseGeminiSessionTreeResult } from "./sessions.js";
+import { readGeminiStatsSummary, redactGeminiStatsDiagnostics } from "./stats.js";
+import type { GeminiStatsCommandRunner, GeminiStatsSummary } from "./stats.js";
 
 export interface GeminiProviderProfile {
   readonly dailyRequestLimit?: number | null;
@@ -15,6 +17,8 @@ export interface RefreshGeminiProviderSnapshotInput {
   readonly sessionReader?: () => Promise<Partial<ParseGeminiSessionTreeResult>>;
   readonly now?: Date;
   readonly profile?: GeminiProviderProfile;
+  readonly statsReader?: () => Promise<Partial<GeminiStatsSummary> | null>;
+  readonly statsRunner?: GeminiStatsCommandRunner;
   readonly staleAfterMs?: number;
   readonly env?: NodeJS.ProcessEnv | Record<string, string | undefined>;
   readonly homeDir?: string;
@@ -36,10 +40,18 @@ export async function refreshGeminiProviderSnapshot(
   const staleAfterMs = input.staleAfterMs ?? defaultStaleAfterMs;
   const detection = await readDetection(input);
   const sessions = await readSessions(input, detection, now);
-  const summary = normalizeSummary(sessions.summary);
+  const sessionSummary = normalizeSummary(sessions.summary);
+  const stats = normalizeStatsSummary(await readStats(input));
+  const summary = mergeSummaries(sessionSummary, stats);
   const events = sanitizeEvents(sessions.events ?? []);
-  const diagnostics = sanitizeDiagnostics([...(detection.diagnostics ?? []), ...(sessions.diagnostics ?? [])]);
-  const latestEventAt = summary.lastObservedAt ?? latestOccurredAt(events);
+  const diagnostics = sanitizeDiagnostics([
+    ...(detection.diagnostics ?? []),
+    ...(sessions.diagnostics ?? []),
+    ...stats.diagnostics
+  ]);
+  const hasReliableStatsSummary = stats.confidence === "high_confidence";
+  const latestEventAt =
+    summary.lastObservedAt ?? latestOccurredAt(events) ?? (hasReliableStatsSummary ? now.toISOString() : null);
   const status = deriveStatus({
     degraded: detection.degraded === true,
     detected: detection.detected === true,
@@ -47,18 +59,22 @@ export async function refreshGeminiProviderSnapshot(
     now,
     staleAfterMs
   });
-  const confidence = deriveConfidence(status, summary);
+  const confidence = deriveConfidence(status, summary, hasReliableStatsSummary);
   const dailyHeadroom =
-    typeof input.profile?.dailyRequestLimit === "number"
-      ? Math.max(0, input.profile.dailyRequestLimit - summary.dailyRequestCount)
-      : null;
+    typeof stats.dailyLimit === "number"
+      ? Math.max(0, stats.dailyLimit - summary.dailyRequestCount)
+      : typeof input.profile?.dailyRequestLimit === "number"
+        ? Math.max(0, input.profile.dailyRequestLimit - summary.dailyRequestCount)
+        : null;
 
   return {
     card: createGeminiCard({
       confidence,
+      hasReliableStatsSummary,
       latestEventAt,
       now,
       profileLabel: input.profile?.label ?? null,
+      resetAt: stats.resetAt,
       status,
       summary
     }),
@@ -92,11 +108,47 @@ async function readSessions(
   return parseGeminiSessionTree({ rootDir: detection.installPath, now });
 }
 
+async function readStats(input: RefreshGeminiProviderSnapshotInput): Promise<Partial<GeminiStatsSummary> | null> {
+  if (input.statsReader) {
+    return input.statsReader();
+  }
+
+  if (input.statsRunner) {
+    return readGeminiStatsSummary({ runner: input.statsRunner });
+  }
+
+  return null;
+}
+
+function mergeSummaries(sessions: GeminiSessionSummary, stats: GeminiStatsSummary): GeminiSessionSummary {
+  return {
+    dailyRequestCount: stats.dailyRequestCount ?? sessions.dailyRequestCount,
+    lastObservedAt: sessions.lastObservedAt,
+    model: stats.model ?? sessions.model,
+    requestsPerMinute: sessions.requestsPerMinute,
+    tokenCount: stats.tokenCount ?? sessions.tokenCount
+  };
+}
+
+function normalizeStatsSummary(summary: Partial<GeminiStatsSummary> | null | undefined): GeminiStatsSummary {
+  return {
+    confidence: summary?.confidence === "high_confidence" ? "high_confidence" : "observed_only",
+    dailyLimit: readNonNegativeNumber(summary?.dailyLimit),
+    dailyRequestCount: readNonNegativeNumber(summary?.dailyRequestCount),
+    diagnostics: Array.isArray(summary?.diagnostics) ? summary.diagnostics.filter(isNonEmptyString) : [],
+    model: typeof summary?.model === "string" && summary.model.trim() ? summary.model.trim() : null,
+    resetAt: readIsoDate(summary?.resetAt),
+    tokenCount: readNonNegativeNumber(summary?.tokenCount)
+  };
+}
+
 function createGeminiCard(input: {
   readonly confidence: ProviderCard["confidence"];
+  readonly hasReliableStatsSummary: boolean;
   readonly latestEventAt: string | null;
   readonly now: Date;
   readonly profileLabel: string | null;
+  readonly resetAt: string | null;
   readonly status: ProviderCard["status"];
   readonly summary: GeminiSessionSummary;
 }): ProviderCard {
@@ -107,21 +159,25 @@ function createGeminiCard(input: {
     status: input.status,
     confidence: input.confidence,
     headline: headlineForStatus(input.status, input.profileLabel),
-    detailText: detailForStatus(input.status, input.summary),
+    detailText: detailForStatus(input.status, input.summary, input.hasReliableStatsSummary),
     sessionUtilization: null,
     weeklyUtilization: null,
     dailyRequestCount: input.summary.dailyRequestCount,
     requestsPerMinute: input.summary.requestsPerMinute,
-    resetAt: null,
+    resetAt: input.resetAt,
     lastUpdatedAt: input.latestEventAt ?? input.now.toISOString(),
-    adapterMode: "passive",
+    adapterMode: input.hasReliableStatsSummary ? "accuracy" : "passive",
     confidenceExplanation: explainProviderConfidence({
       providerId: "gemini",
       confidence: input.confidence,
-      source: "local-sessions"
+      source: input.hasReliableStatsSummary ? "stats-summary" : "local-sessions"
     }),
     actions: ["refresh", "diagnostics"]
   };
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 function deriveStatus(input: {
@@ -151,9 +207,17 @@ function deriveStatus(input: {
   return input.now.getTime() - latestMs > input.staleAfterMs ? "stale" : "configured";
 }
 
-function deriveConfidence(status: ProviderCard["status"], summary: GeminiSessionSummary): ProviderCard["confidence"] {
+function deriveConfidence(
+  status: ProviderCard["status"],
+  summary: GeminiSessionSummary,
+  hasReliableStatsSummary: boolean
+): ProviderCard["confidence"] {
   if (status === "degraded" || status === "missing_configuration") {
     return "observed_only";
+  }
+
+  if (hasReliableStatsSummary) {
+    return "high_confidence";
   }
 
   if (summary.dailyRequestCount === 0 && summary.tokenCount === 0) {
@@ -183,7 +247,11 @@ function headlineForStatus(status: ProviderCard["status"], profileLabel: string 
   return profileLabel ? `Gemini ready for ${profileLabel}` : "Gemini ready";
 }
 
-function detailForStatus(status: ProviderCard["status"], summary: GeminiSessionSummary): string {
+function detailForStatus(
+  status: ProviderCard["status"],
+  summary: GeminiSessionSummary,
+  hasReliableStatsSummary: boolean
+): string {
   if (status === "missing_configuration") {
     return "Gemini local configuration was not found.";
   }
@@ -197,7 +265,7 @@ function detailForStatus(status: ProviderCard["status"], summary: GeminiSessionS
   }
 
   const modelText = summary.model ? ` Latest model: ${summary.model}.` : "";
-  return `Estimated from local Gemini activity.${modelText}`;
+  return `${hasReliableStatsSummary ? "High confidence from Gemini /stats." : "Estimated from local Gemini activity."}${modelText}`;
 }
 
 function normalizeSummary(summary: Partial<GeminiSessionSummary> | undefined): GeminiSessionSummary {
@@ -244,9 +312,11 @@ function sanitizeEvents(events: readonly GeminiDerivedEvent[]): readonly GeminiD
 
 function sanitizeDiagnostics(messages: readonly string[]): readonly string[] {
   return messages.map((message) =>
-    message.replace(
-      /(access[_-]?token|refresh[_-]?token|api[_-]?key|authorization|bearer|cookie|session[_-]?key|prompt|response|chat body|oauth[_-]?creds)(?:\s*[=:]\s*\S+)?/giu,
-      "redacted"
+    redactGeminiStatsDiagnostics(
+      message.replace(
+        /(prompt|response|chat body|oauth[_-]?creds)(?:\s*[=:]\s*\S+)?/giu,
+        "redacted"
+      )
     )
   );
 }
