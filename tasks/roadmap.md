@@ -8,11 +8,11 @@ Also add the Swift macOS Provider Telemetry add-on from `specs/provider-telemetr
 | --- | --- | --- |
 | 1 | Electron runtime foundation | Complete: secure Electron/React app shell with typed IPC, storage skeleton, tray/windows, and baseline UI |
 | 2 | Claude exact usage and accounts | Complete: Claude account workflows, exact API polling, backoff, reset fetch, secret storage, and live tray/popover state |
-| 3 | Product UI parity | Active: Pace, history, GitHub heatmap, overlay, notifications, and polished settings/onboarding |
+| 3 | Product UI parity | Active: tray/menu polish, then Phase 3 green and verification gates |
 | 4 | Provider shell and passive adapters | Shared provider model plus Codex/Gemini passive monitoring, Gemini `/stats`, confidence, stale/degraded handling |
 | 5 | Accuracy Mode wrappers | Explicit opt-in Codex/Gemini wrappers, setup verification, event ledgers, and privacy guarantees |
 | 6 | Migration, diagnostics, packaging | Non-secret migration, diagnostics export, Windows/Linux packages, and final regression gates |
-| 7 | Swift provider telemetry endpoints | Opt-in Codex and Gemini Code Assist provider quota telemetry in the macOS app |
+| 7 | Swift provider telemetry endpoints | Complete: opt-in Codex and Gemini Code Assist provider quota telemetry in the macOS app |
 
 ## Phase 1: Electron Runtime Foundation
 > Test strategy: tests-after
@@ -69,15 +69,15 @@ Also add the Swift macOS Provider Telemetry add-on from `specs/provider-telemetr
 
 ## Phase 3: Product UI Parity
 > Test strategy: tests-after
-> Status: active as of 2026-04-16
+> Status: active as of 2026-04-17
 
 ### Implementation
-- [ ] Step 3.1: [automated] Port Swift pace semantics into shared pure functions under `electron-app/src/shared/formatting/pace.ts`: session/weekly pace windows, unknown guards, behind/way-behind/warning/critical/limit-hit status, daily budget, today usage baseline, and time display formatting.
-- [ ] Step 3.2: [automated] Expand history storage and visualization with `electron-app/src/main/storage/history.ts` and renderer components under `electron-app/src/renderer/components/`: 24-hour snapshots, 24h-to-7d hourly compaction, session/weekly sparklines, and last-updated text.
-- [ ] Step 3.3: [automated] Implement GitHub contribution heatmap support in `electron-app/src/main/services/github.ts`, secret GitHub token storage, settings controls, hourly refresh behavior, GraphQL variables, and renderer heatmap components.
-- [ ] Step 3.4: [automated] Implement the complete settings/onboarding experience in `electron-app/src/renderer/settings/` and `electron-app/src/renderer/onboarding/`: time display, pace theme, weekly color mode, launch at login, provider enablement placeholders, migration prompt placeholders, and notification preferences.
-- [ ] Step 3.5: [automated] Implement overlay behavior in `electron-app/src/main/windows.ts` and `electron-app/src/renderer/overlay/`: compact/minimal/sidebar layouts, always-on-top behavior, opacity, drag-to-move, position persistence, double-click popover, and context hide/disable action.
-- [ ] Step 3.6: [automated] Implement local notifications in `electron-app/src/main/services/notifications.ts`: session reset, auth expired, provider degraded placeholder, and user-configurable threshold warnings.
+- [x] Step 3.1: [automated] Port Swift pace semantics into shared pure functions under `electron-app/src/shared/formatting/pace.ts`: session/weekly pace windows, unknown guards, behind/way-behind/warning/critical/limit-hit status, daily budget, today usage baseline, and time display formatting.
+- [x] Step 3.2: [automated] Expand history storage and visualization with `electron-app/src/main/storage/history.ts` and renderer components under `electron-app/src/renderer/components/`: 24-hour snapshots, 24h-to-7d hourly compaction, session/weekly sparklines, and last-updated text.
+- [x] Step 3.3: [automated] Implement GitHub contribution heatmap support in `electron-app/src/main/services/github.ts`, secret GitHub token storage, settings controls, hourly refresh behavior, GraphQL variables, and renderer heatmap components.
+- [x] Step 3.4: [automated] Implement the complete settings/onboarding experience in `electron-app/src/renderer/settings/` and `electron-app/src/renderer/onboarding/`: time display, pace theme, weekly color mode, launch at login, provider enablement placeholders, migration prompt placeholders, and notification preferences.
+- [x] Step 3.5: [automated] Implement overlay behavior in `electron-app/src/main/windows.ts` and `electron-app/src/renderer/overlay/`: compact/minimal/sidebar layouts, always-on-top behavior, opacity, drag-to-move, position persistence, double-click popover, and context hide/disable action.
+- [x] Step 3.6: [automated] Implement local notifications in `electron-app/src/main/services/notifications.ts`: session reset, auth expired, provider degraded placeholder, and user-configurable threshold warnings.
 - [ ] Step 3.7: [automated] Polish tray/menu behavior in `electron-app/src/main/tray.ts`: exact Claude countdown/reset text, color/icon state, context menu actions, and launch-at-login handling.
 
 ### Green
@@ -176,35 +176,40 @@ Also add the Swift macOS Provider Telemetry add-on from `specs/provider-telemetr
 ## Phase 7: Swift Provider Telemetry Endpoints
 > Source: `specs/provider-telemetry-endpoints.md`
 > Test strategy: tdd
-> Status: planned
+> Status: complete on 2026-04-17
 
 ### Tests First
-- Step 7.1: [automated] Add failing tests for the Swift Provider Telemetry contract under `ClaudeUsageTests/`: provider telemetry settings default off, Codex/Gemini telemetry model decoding, injected HTTP client behavior, confidence transitions from passive to provider-supplied and back, refresh/backoff state, redaction, and adapter fallback. Tests must use fixtures and fake clients only; no live Codex, ChatGPT, Gemini, Google, or Vertex requests.
+- [x] Step 7.1: [automated] Add failing tests for the Swift Provider Telemetry contract under `ClaudeUsageTests/`: provider telemetry settings default off, Codex/Gemini telemetry model decoding, injected HTTP client behavior, confidence transitions from passive to provider-supplied and back, refresh/backoff state, redaction, and adapter fallback. Tests must use fixtures and fake clients only; no live Codex, ChatGPT, Gemini, Google, or Vertex requests.
 
 ### Implementation
-- Step 7.2: [automated] Add shared telemetry models and settings in `ClaudeUsage/Models/ProviderTelemetryTypes.swift`, `ClaudeUsage/Models/ProviderSettingsStore.swift`, `ClaudeUsage/Models/ProviderTypes.swift`, and related tests: per-provider Provider Telemetry toggles, normalized telemetry snapshots, provider-specific Codex/Gemini payloads, degraded/unavailable states, account labels, and failure metadata.
-- Step 7.3: [automated] Add the refresh/backoff orchestration and snapshot persistence in `ClaudeUsage/Services/ProviderTelemetryCoordinator.swift` and `ClaudeUsage/Services/ProviderTelemetryStore.swift`, integrating with `ProviderShellViewModel` without changing Claude polling or Claude API ingestion.
-- Step 7.4: [automated] Implement Codex provider telemetry in `ClaudeUsage/Services/CodexTelemetryClient.swift`, `ClaudeUsage/Services/CodexDetector.swift`, `ClaudeUsage/Services/CodexAdapter.swift`, and `ClaudeUsage/Models/CodexTypes.swift`: detect usable existing CLI auth, select `https://chatgpt.com/backend-api/wham/usage` or `{base_url}/api/codex/usage`, parse rate-limit snapshots, map provider-supplied fields, redact auth diagnostics, and fall back to passive Codex state on unsupported auth or endpoint drift.
-- Step 7.5: [automated] Implement Gemini Code Assist provider telemetry in `ClaudeUsage/Services/GeminiTelemetryClient.swift`, `ClaudeUsage/Services/GeminiDetector.swift`, `ClaudeUsage/Services/GeminiAdapter.swift`, and `ClaudeUsage/Models/GeminiTypes.swift`: detect Code Assist auth support, discover the project id, call `POST https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota`, parse quota buckets, handle encrypted/unsupported credentials, redact auth diagnostics, and fall back to passive Gemini state.
-- Step 7.6: [automated] Wire Provider Telemetry into the Swift UI and docs in `ClaudeUsage/Views/SettingsView.swift`, `ClaudeUsage/Views/ProviderCardView.swift`, `ClaudeUsage/Models/ProviderShellViewModel.swift`, `README.md`, and any Xcode project registration needed for new Swift files: show opt-in toggles separate from Accuracy Mode, provider-specific telemetry details, last telemetry refresh time, degraded reasons, manual refresh behavior, and experimental/unofficial endpoint copy.
+- [x] Step 7.2: [automated] Add shared telemetry models and settings in `ClaudeUsage/Models/ProviderTelemetryTypes.swift`, `ClaudeUsage/Models/ProviderSettingsStore.swift`, `ClaudeUsage/Models/ProviderTypes.swift`, and related tests: per-provider Provider Telemetry toggles, normalized telemetry snapshots, provider-specific Codex/Gemini payloads, degraded/unavailable states, account labels, and failure metadata.
+- [x] Step 7.3: [automated] Add the refresh/backoff orchestration and snapshot persistence in `ClaudeUsage/Services/ProviderTelemetryCoordinator.swift` and `ClaudeUsage/Services/ProviderTelemetryStore.swift`, integrating with `ProviderShellViewModel` without changing Claude polling or Claude API ingestion.
+- [x] Step 7.4: [automated] Implement Codex provider telemetry in `ClaudeUsage/Services/CodexTelemetryClient.swift`, `ClaudeUsage/Services/CodexDetector.swift`, `ClaudeUsage/Services/CodexAdapter.swift`, and `ClaudeUsage/Models/CodexTypes.swift`: detect usable existing CLI auth, select `https://chatgpt.com/backend-api/wham/usage` or `{base_url}/api/codex/usage`, parse rate-limit snapshots, map provider-supplied fields, redact auth diagnostics, and fall back to passive Codex state on unsupported auth or endpoint drift.
+- [x] Step 7.5: [automated] Implement Gemini Code Assist provider telemetry in `ClaudeUsage/Services/GeminiTelemetryClient.swift`, `ClaudeUsage/Services/GeminiDetector.swift`, `ClaudeUsage/Services/GeminiAdapter.swift`, and `ClaudeUsage/Models/GeminiTypes.swift`: detect Code Assist auth support, discover the project id, call `POST https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota`, parse quota buckets, handle encrypted/unsupported credentials, redact auth diagnostics, and fall back to passive Gemini state.
+- [x] Step 7.6: [automated] Wire Provider Telemetry into the Swift UI and docs in `ClaudeUsage/Views/SettingsView.swift`, `ClaudeUsage/Views/ProviderCardView.swift`, `ClaudeUsage/Models/ProviderShellViewModel.swift`, `README.md`, and any Xcode project registration needed for new Swift files: show opt-in toggles separate from Accuracy Mode, provider-specific telemetry details, last telemetry refresh time, degraded reasons, manual refresh behavior, and experimental/unofficial endpoint copy.
 
 ### Green
-- Step 7.7: [automated] Make the Phase 7 test suite pass and add any missing regression coverage for endpoint-shape drift, three-failure degradation, manual refresh bypassing backoff, no raw response persistence, no prompt/response persistence, and diagnostics redaction.
-- Step 7.8: [automated] Run Phase 7 verification: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`, confirm existing Claude usage tests still pass unchanged, confirm no automated test performs a live provider request, and update `tasks/history.md` with the implementation result.
+- [x] Step 7.7: [automated] Make the Phase 7 test suite pass and add any missing regression coverage for endpoint-shape drift, three-failure degradation, manual refresh bypassing backoff, no raw response persistence, no prompt/response persistence, and diagnostics redaction.
+- [x] Step 7.8: [automated] Run Phase 7 verification: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`, confirm existing Claude usage tests still pass unchanged, confirm no automated test performs a live provider request, and update `tasks/history.md` with the implementation result.
+
+**Manual Tasks:**
+- [ ] Validate Codex Provider Telemetry with a real ChatGPT-backed Codex CLI account: confirm telemetry is off by default, enable it, refresh manually, verify rate-limit snapshots render, and confirm passive Codex state remains available after disabling telemetry. _(after: Step 7.8)_
+- [ ] Validate Gemini Provider Telemetry with a real Gemini CLI Code Assist account: confirm telemetry is off by default, enable it, refresh manually, verify quota buckets render, and confirm passive Gemini state remains available after disabling telemetry. _(after: Step 7.8)_
+- [ ] Validate failure fallback manually by using missing, expired, encrypted, or intentionally unsupported provider credentials and confirming the UI shows telemetry unavailable/degraded while passive or Accuracy Mode state remains visible. _(after: Step 7.8)_
 
 ### Milestone
-- Provider Telemetry is off by default and opt-in per provider.
-- Provider Telemetry is separate from Accuracy Mode in settings, copy, and behavior.
-- Codex can show provider-supplied rate-limit snapshots when existing Codex CLI auth supports the endpoint.
-- Gemini can show Code Assist quota buckets when existing Gemini CLI/Code Assist auth supports `retrieveUserQuota`.
-- Telemetry refreshes every 5 minutes while active, supports manual refresh, and backs off after repeated failures.
-- Three consecutive telemetry failures mark provider telemetry degraded and preserve passive/wrapper fallback display.
-- Claude behavior and Claude ingestion are unchanged.
-- Automated tests use injected HTTP clients and fixtures; no automated test calls live provider endpoints.
-- Diagnostics redact tokens, cookies, account ids, and auth headers.
-- No raw provider tokens, raw endpoint responses, prompts, or model responses are persisted by default.
-- All phase tests pass.
-- No regressions.
+- [x] Provider Telemetry is off by default and opt-in per provider.
+- [x] Provider Telemetry is separate from Accuracy Mode in settings, copy, and behavior.
+- [x] Codex can show provider-supplied rate-limit snapshots when existing Codex CLI auth supports the endpoint.
+- [x] Gemini can show Code Assist quota buckets when existing Gemini CLI/Code Assist auth supports `retrieveUserQuota`.
+- [x] Telemetry refreshes every 5 minutes while active, supports manual refresh, and backs off after repeated failures.
+- [x] Three consecutive telemetry failures mark provider telemetry degraded and preserve passive/wrapper fallback display.
+- [x] Claude behavior and Claude ingestion are unchanged.
+- [x] Automated tests use injected HTTP clients and fixtures; no automated test calls live provider endpoints.
+- [x] Diagnostics redact tokens, cookies, account ids, and auth headers.
+- [x] No raw provider tokens, raw endpoint responses, prompts, or model responses are persisted by default.
+- [x] All phase tests pass.
+- [x] No regressions.
 
 ## Cross-Phase Concerns
 

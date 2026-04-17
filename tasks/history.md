@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 7.8: Swift Provider Telemetry Verification
+
+Completed the Phase 7 verification gate for Swift Provider Telemetry. The full Swift test suite passed, confirming the existing Claude usage tests still pass unchanged alongside the Provider Telemetry contract coverage. The Provider Telemetry HTTP injection contract tests explicitly exercised fake HTTP clients and no-live-request behavior for Codex and Gemini; no automated test output indicated live Codex, ChatGPT, Gemini, Google, Cloud Code, or Vertex requests.
+
+Validation: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` passed with 151 tests, 0 failures. Accepted warnings/output: Xcode selected the first of multiple matching macOS destinations. The known detached-signatures logging-persist message did not appear in this run. The three real-account Provider Telemetry validation tasks remain incomplete and were archived with Phase 7 as post-verification manual follow-ups.
+
 ## 2026-04-17 — Step 7.7: Swift Provider Telemetry Green Suite
 
 Completed the Phase 7 green-suite step without production code changes. The focused Provider Telemetry contract suite already covered the Step 7.7 regression list: endpoint-shape drift, three-failure degradation, manual refresh bypassing backoff, no raw response persistence, no prompt/response persistence, diagnostics redaction, injected HTTP clients, and passive fallback behavior. Because that coverage was present and green, no tests or implementation needed tightening.

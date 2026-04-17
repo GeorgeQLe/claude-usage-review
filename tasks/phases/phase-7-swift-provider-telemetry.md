@@ -1,0 +1,112 @@
+# Phase 7: Swift Provider Telemetry Endpoints
+
+> Project: ClaudeUsage Swift macOS app
+> Source: `specs/provider-telemetry-endpoints.md`
+> Scope: Add opt-in Provider Telemetry for Codex and Gemini Code Assist using provider-supplied quota endpoints, while preserving Claude ingestion and passive/wrapper fallbacks.
+> Test strategy: tdd
+
+## Tests First
+- [x] Step 7.1: [automated] Add failing tests for the Swift Provider Telemetry contract under `ClaudeUsageTests/`: provider telemetry settings default off, Codex/Gemini telemetry model decoding, injected HTTP client behavior, confidence transitions from passive to provider-supplied and back, refresh/backoff state, redaction, and adapter fallback. Tests must use fixtures and fake clients only; no live Codex, ChatGPT, Gemini, Google, or Vertex requests.
+
+## Implementation
+- [x] Step 7.2: [automated] Add shared telemetry models and settings in `ClaudeUsage/Models/ProviderTelemetryTypes.swift`, `ClaudeUsage/Models/ProviderSettingsStore.swift`, `ClaudeUsage/Models/ProviderTypes.swift`, and related tests: per-provider Provider Telemetry toggles, normalized telemetry snapshots, provider-specific Codex/Gemini payloads, degraded/unavailable states, account labels, and failure metadata.
+
+  **Implementation plan for Step 7.2:**
+  - Create `ClaudeUsage/Models/ProviderTelemetryTypes.swift` and register it in `ClaudeUsage.xcodeproj`. Define the shared telemetry surface used by the red contract tests: `ProviderTelemetryStatus` with exact/unavailable/degraded states, `ProviderTelemetryConfidence`, `ProviderTelemetrySnapshot`, `ProviderTelemetryProviderPayload`, `ProviderTelemetryError`, `ProviderTelemetryHTTPResponse`, `ProviderTelemetryHTTPClient`, `ProviderTelemetryClient`, and lightweight store abstractions such as `ProviderTelemetryStore` / `InMemoryProviderTelemetryStore`.
+  - Add provider-specific payload and auth models expected by `ProviderTelemetryContractTests`: `CodexTelemetryPayload`, `CodexTelemetryAuth`, `CodexTelemetryAuthProviding`, `GeminiTelemetryPayload`, `GeminiTelemetryAuth`, and `GeminiTelemetryAuthProviding`. Keep Codex percent/window fields and Gemini remaining quota fields provider-specific rather than forcing one shape.
+  - Update `ProviderSettingsStore` to accept an injected `UserDefaults` while preserving the current default initializer. Add `providerTelemetryEnabled(for:)` and `setProviderTelemetryEnabled(_:for:)`; Codex and Gemini must default off, and these toggles must not affect `codexAccuracyMode()` or `geminiAccuracyMode()`.
+  - Extend `ProviderTypes.swift` only where the shared models need to bridge to current provider IDs/statuses. Add the minimum compile-time hooks referenced by the red tests, such as provider telemetry attachment on snapshots and `ProviderTelemetryAdapterBridge`; behavior can remain red until the relevant implementation step. Do not change Claude ingestion or existing Claude provider snapshots.
+  - Add compile-safe placeholders for later-step service names referenced by the contract tests (`ProviderTelemetryCoordinator`, `CodexTelemetryClient`, `GeminiTelemetryClient`, and `ProviderTelemetryDiagnostics`) so the test target can run and expose assertion failures instead of stopping at missing-symbol errors. Keep real orchestration/client behavior scoped to Steps 7.3-7.5.
+  - Run `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`. For Step 7.2, the settings/defaults and payload decoding contract tests should pass; client/coordinator/adapter behavior may remain red for later steps if the failures are explicitly tied to Step 7.3+ APIs.
+- [x] Step 7.3: [automated] Add the refresh/backoff orchestration and snapshot persistence in `ClaudeUsage/Services/ProviderTelemetryCoordinator.swift` and `ClaudeUsage/Services/ProviderTelemetryStore.swift`, integrating with `ProviderShellViewModel` without changing Claude polling or Claude API ingestion.
+
+  **Implementation plan for Step 7.3:**
+  - Move the temporary telemetry store abstractions out of `ClaudeUsage/Models/ProviderTelemetryTypes.swift` into a dedicated `ClaudeUsage/Services/ProviderTelemetryStore.swift` and register it in `ClaudeUsage.xcodeproj`. Preserve the current privacy contract: saved snapshots must drop `rawResponseData` and must not persist prompt/response diagnostic text.
+  - Expand `ProviderTelemetryStore` beyond the current in-memory test store with app-owned persistence for normalized telemetry snapshots only. Persist provider id, account label, status, confidence, last/next refresh times, failure count, degraded reason, raw source version, and provider-specific parsed payload. Do not persist provider auth, raw endpoint responses, request headers, prompts, or model responses.
+  - Harden `ProviderTelemetryCoordinator` into the real orchestration layer: one active client per provider, 5-minute scheduled refresh cadence, manual refresh bypassing backoff, exponential backoff capped at 30 minutes after three consecutive failures, successful refresh clearing failure state, and unavailable/degraded fallback snapshots carrying the passive provider snapshot.
+  - Integrate the coordinator with `ProviderShellViewModel` without changing Claude polling or Claude API ingestion. Codex/Gemini passive adapters should keep their existing 15-second local scan cadence; Provider Telemetry should be opt-in through `ProviderSettingsStore.providerTelemetryEnabled(for:)` and should attach normalized telemetry to provider snapshots only when enabled.
+  - Keep test isolation: all coordinator tests must use fake `ProviderTelemetryClient` or fake HTTP clients, no live Codex, ChatGPT, Gemini, Google, or Vertex calls. Add focused tests for scheduled backoff skip, manual bypass, persistence sanitization, disabled-provider no-op behavior, and passive fallback preservation through the shell view model.
+  - Run `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` and confirm the existing 132 tests still pass with the new coordinator/store coverage.
+- [x] Step 7.4: [automated] Implement Codex provider telemetry in `ClaudeUsage/Services/CodexTelemetryClient.swift`, `ClaudeUsage/Services/CodexDetector.swift`, `ClaudeUsage/Services/CodexAdapter.swift`, and `ClaudeUsage/Models/CodexTypes.swift`: detect usable existing CLI auth, select `https://chatgpt.com/backend-api/wham/usage` or `{base_url}/api/codex/usage`, parse rate-limit snapshots, map provider-supplied fields, redact auth diagnostics, and fall back to passive Codex state on unsupported auth or endpoint drift.
+
+  **Implementation plan for Step 7.4:**
+  - Extend `CodexDetector` with privacy-safe auth inspection for the existing Codex CLI files only. Detect ChatGPT-backed Codex CLI credentials and Codex API credentials without persisting tokens into app storage; classify missing, encrypted, expired, malformed, or unsupported credentials as telemetry-unavailable reasons.
+  - Add concrete `CodexTelemetryAuthProviding` support near the Codex service boundary. It should read usable auth at request time, return `CodexTelemetryAuth.chatGPT(accessToken:accountLabel:)` or `.codexAPI(baseURL:apiKey:accountLabel:)`, and redact account ids, bearer tokens, API keys, cookies, and raw auth file details in diagnostics.
+  - Harden `CodexTelemetryClient` endpoint selection and request construction. ChatGPT auth should call `https://chatgpt.com/backend-api/wham/usage`; Codex API auth should call `{base_url}/api/codex/usage`. Keep all HTTP access behind injected `ProviderTelemetryHTTPClient` so tests never perform live requests.
+  - Map Codex provider payloads into normalized telemetry snapshots without changing passive Codex estimates. Provider-supplied telemetry should attach through the coordinator/store path only when `ProviderSettingsStore.providerTelemetryEnabled(for: .codex)` is true; unsupported auth or endpoint drift should return unavailable/degraded telemetry while preserving `CodexAdapter.toProviderSnapshot`.
+  - Add fixture-driven tests for ChatGPT auth detection, Codex API base URL selection, unsupported/encrypted/expired auth fallback, endpoint shape drift, redacted diagnostics, no token/raw response persistence, and passive Codex snapshot preservation.
+  - Run `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`. Confirm no Codex telemetry test uses live Codex, ChatGPT, OpenAI, or provider network calls.
+- [x] Step 7.5: [automated] Implement Gemini Code Assist provider telemetry in `ClaudeUsage/Services/GeminiTelemetryClient.swift`, `ClaudeUsage/Services/GeminiDetector.swift`, `ClaudeUsage/Services/GeminiAdapter.swift`, and `ClaudeUsage/Models/GeminiTypes.swift`: detect Code Assist auth support, discover the project id, call `POST https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota`, parse quota buckets, handle encrypted/unsupported credentials, redact auth diagnostics, and fall back to passive Gemini state.
+
+  **Implementation plan for Step 7.5:**
+  - Extend `GeminiDetector` with privacy-safe Gemini CLI/Code Assist auth inspection for existing local credentials only. Detect supported Code Assist OAuth credentials, missing credentials, expired credentials, encrypted or OS-managed credentials the app cannot read, malformed JSON, API-key-only modes, and non-Code-Assist configurations. Do not persist tokens, refresh tokens, Google account ids, project ids from raw files beyond normalized telemetry fields, or raw credential file content.
+  - Add a concrete `GeminiTelemetryAuthProviding` implementation near the Gemini service boundary. It should read usable auth at request time, discover or derive the Code Assist project id, and return `.codeAssistOAuth(accessToken:projectId:accountLabel:)` with a safe account label when available. Any diagnostics must pass through `ProviderTelemetryDiagnostics.redact(_:)` and must not include bearer tokens, refresh tokens, cookies, account ids, project credential blobs, prompts, or model responses.
+  - Harden `GeminiTelemetryClient` request construction and failure behavior. It should call `POST https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota`, send JSON body `{ "project": "<project id>" }`, keep all HTTP behind injected `ProviderTelemetryHTTPClient`, decode quota buckets into `GeminiTelemetryPayload`, and convert endpoint-shape drift into structured telemetry failures rather than crashing or persisting raw responses.
+  - Wire the live Gemini telemetry client into `ProviderShellViewModel` alongside Codex, gated by `ProviderSettingsStore.providerTelemetryEnabled(for: .gemini)` and existing provider enablement. Do not change Claude polling, Claude API ingestion, Codex telemetry, or Gemini's passive 15-second local scan cadence.
+  - Add fixture-driven tests in `ProviderTelemetryContractTests.swift` or `GeminiAdapterTests.swift` for supported Code Assist auth detection, project id discovery, encrypted/unsupported/expired/malformed credential fallback, request body and endpoint selection, endpoint shape drift, diagnostics redaction, no raw token/raw response persistence, and passive Gemini snapshot preservation. Tests must use fake HTTP clients and temp credential fixtures only; no live Gemini, Google, Cloud Code, or Vertex requests.
+  - Run focused Gemini/provider telemetry tests first, then `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`. Confirm no automated test performs live provider requests and document any accepted Xcode toolchain warnings explicitly.
+- [x] Step 7.6: [automated] Wire Provider Telemetry into the Swift UI and docs in `ClaudeUsage/Views/SettingsView.swift`, `ClaudeUsage/Views/ProviderCardView.swift`, `ClaudeUsage/Models/ProviderShellViewModel.swift`, `README.md`, and any Xcode project registration needed for new Swift files: show opt-in toggles separate from Accuracy Mode, provider-specific telemetry details, last telemetry refresh time, degraded reasons, manual refresh behavior, and experimental/unofficial endpoint copy.
+
+  **Implementation plan for Step 7.6:**
+  - Add UI tests or focused view-model tests first for Provider Telemetry presentation: Codex/Gemini opt-in toggles default off and remain separate from Accuracy Mode, provider cards surface provider-supplied quota/rate-limit details when telemetry is attached, degraded/unavailable reasons render without hiding passive fallback state, and manual refresh triggers the telemetry coordinator without changing passive scan cadence.
+  - Extend `ProviderShellViewModel` only as needed to expose explicit manual Provider Telemetry refresh behavior and any read-only presentation helpers for provider telemetry snapshots. Preserve Claude polling and Claude API ingestion unchanged, keep telemetry gated by `settingsStore.isEnabled(providerId)` plus `providerTelemetryEnabled(for:)`, and keep Codex/Gemini passive local scan timers at 15 seconds.
+  - Update `SettingsView` to show per-provider Provider Telemetry toggles near provider settings, separate from Accuracy Mode copy and controls. The copy must state that telemetry is experimental/unofficial, opt-in, reads existing CLI/provider auth only when enabled, and falls back to passive/wrapper state when unavailable.
+  - Update `ProviderCardView` to display normalized telemetry details from `ProviderSnapshot.providerTelemetry`: Codex rate-limit rows with plan/window/used/reset details, Gemini quota bucket rows with model/token type/remaining/reset details, last telemetry refresh, next refresh or degraded reason, and a manual refresh affordance if supported by the view-model boundary.
+  - Update `README.md` with the Provider Telemetry privacy contract: off by default, separate from Accuracy Mode, uses provider-supplied endpoints when existing Codex/Gemini Code Assist auth supports them, no automated live provider requests in tests, no raw tokens/raw responses/prompts/model responses persisted, and passive fallback remains available.
+  - Register any new Swift files in `ClaudeUsage.xcodeproj` if helpers or focused views are added.
+  - Run focused UI/view-model/provider telemetry tests, then `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`. Document accepted Xcode toolchain warnings explicitly and confirm no automated test performs live Codex, ChatGPT, Gemini, Google, Cloud Code, or Vertex requests.
+
+## Green
+- [x] Step 7.7: [automated] Make the Phase 7 test suite pass and add any missing regression coverage for endpoint-shape drift, three-failure degradation, manual refresh bypassing backoff, no raw response persistence, no prompt/response persistence, and diagnostics redaction.
+
+  **Implementation plan for Step 7.7:**
+  - Run the full Phase 7-focused suite first: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/ProviderTelemetrySettingsContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryPayloadContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryPresentationContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryHTTPInjectionContractTests -only-testing:ClaudeUsageTests/CodexTelemetryContractTests -only-testing:ClaudeUsageTests/GeminiTelemetryContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryRefreshContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryPrivacyContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryAdapterFallbackContractTests`.
+  - Inspect failures against the Step 7.7 coverage list. Add or tighten regression coverage only where a behavior is missing: endpoint-shape drift, three-failure degradation, manual refresh bypassing backoff, no raw response persistence, no prompt/response persistence, and diagnostics redaction.
+  - Fix any failing Provider Telemetry implementation or test-isolation issue using fake clients, fixtures, and temp credential files only. Do not introduce live Codex, ChatGPT, Gemini, Google, Cloud Code, or Vertex requests.
+  - Re-run the focused failing test classes until green, then run `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`.
+  - If validation emits only known Xcode toolchain warnings, document them as accepted. If new Swift warnings appear, fix them before marking the step complete.
+- [x] Step 7.8: [automated] Run Phase 7 verification: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`, confirm existing Claude usage tests still pass unchanged, confirm no automated test performs a live provider request, and update `tasks/history.md` with the implementation result.
+
+  **Implementation plan for Step 7.8:**
+  - Run the full verification command: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`.
+  - Inspect the output even on success. Confirm all existing Claude usage tests still pass, Provider Telemetry contract tests remain green, and no output indicates live Codex, ChatGPT, Gemini, Google, Cloud Code, or Vertex requests.
+  - If any Swift warnings or test failures appear, fix them before marking Step 7.8 complete. The known acceptable environment output is Xcode selecting the first of multiple matching macOS destinations and the local detached-signatures logging-persist message from the test runner.
+  - Update `tasks/history.md` with the final Phase 7 verification result, including test counts, accepted warnings, confirmation that no automated live provider requests ran, and the manual post-Step 7.8 tasks still pending.
+  - After validation passes, check off Step 7.8 and the milestone criteria that the full Phase 7 verification proves. Leave the three real-account manual validation tasks in `tasks/manual-todo.md` for human follow-up because they are marked `_(after: Step 7.8)_`.
+
+## Milestone
+- [x] Provider Telemetry is off by default and opt-in per provider.
+- [x] Provider Telemetry is separate from Accuracy Mode in settings, copy, and behavior.
+- [x] Codex can show provider-supplied rate-limit snapshots when existing Codex CLI auth supports the endpoint.
+- [x] Gemini can show Code Assist quota buckets when existing Gemini CLI/Code Assist auth supports `retrieveUserQuota`.
+- [x] Telemetry refreshes every 5 minutes while active, supports manual refresh, and backs off after repeated failures.
+- [x] Three consecutive telemetry failures mark provider telemetry degraded and preserve passive/wrapper fallback display.
+- [x] Claude behavior and Claude ingestion are unchanged.
+- [x] Automated tests use injected HTTP clients and fixtures; no automated test calls live provider endpoints.
+- [x] Diagnostics redact tokens, cookies, account ids, and auth headers.
+- [x] No raw provider tokens, raw endpoint responses, prompts, or model responses are persisted by default.
+- [x] All phase tests pass.
+- [x] No regressions.
+
+## Manual Follow-Ups
+
+- [ ] Validate Codex Provider Telemetry with a real ChatGPT-backed Codex CLI account: confirm telemetry is off by default, enable it, refresh manually, verify rate-limit snapshots render, and confirm passive Codex state remains available after disabling telemetry. _(after: Step 7.8)_
+- [ ] Validate Gemini Provider Telemetry with a real Gemini CLI Code Assist account: confirm telemetry is off by default, enable it, refresh manually, verify quota buckets render, and confirm passive Gemini state remains available after disabling telemetry. _(after: Step 7.8)_
+- [ ] Validate failure fallback manually by using missing, expired, encrypted, or intentionally unsupported provider credentials and confirming the UI shows telemetry unavailable/degraded while passive or Accuracy Mode state remains visible. _(after: Step 7.8)_
+
+## Next Step Plan
+
+Phase 7 is complete. Resume Electron Phase 3 with Step 3.7: tray/menu polish.
+
+## On Completion
+
+Completed on 2026-04-17.
+
+Validation completed:
+- `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` passed with 151 tests, 0 failures.
+
+Accepted warnings/output:
+- Xcode selected the first of multiple matching macOS destinations.
+- The known detached-signatures logging-persist message did not appear in this run.
+
+Deploy skipped: no explicit manual deploy contract (`deploy.md` or `tasks/deploy.md`).
