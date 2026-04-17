@@ -47,7 +47,7 @@
   - Return provider cards compatible with the Step 4.2 coordinator/settings contracts: passive adapter mode, estimated confidence, useful stale/degraded detail text, and privacy-safe diagnostics.
   - Validate with focused Gemini passive adapter tests first, then `npm run typecheck` from `electron-app/`. Full Phase 4 tests may still fail on Gemini `/stats` and later UI/tray wiring until Steps 4.5-4.8.
 
-- [ ] Step 4.5: [automated] Implement Gemini `/stats` support under `electron-app/src/main/providers/gemini/stats.ts`, using a deliberate helper path and confidence labeling based on the reliability of command-derived summaries.
+- [x] Step 4.5: [automated] Implement Gemini `/stats` support under `electron-app/src/main/providers/gemini/stats.ts`, using a deliberate helper path and confidence labeling based on the reliability of command-derived summaries.
 
   **Implementation plan for Step 4.5:**
   - Start from the red suite in `electron-app/src/main/providers/gemini/stats.test.ts`. Keep settings UI, IPC, tray, popover, overlay, and diagnostics export wiring out of scope until Steps 4.6-4.7.
@@ -60,9 +60,12 @@
 - [ ] Step 4.6: [automated] Implement provider settings UI and IPC for Codex/Gemini enablement, plan/auth confirmation, confidence explanations, last refresh, stale/degraded diagnostics, and provider refresh actions.
 
   **Implementation plan for Step 4.6:**
-  - Extend `electron-app/src/shared/types/settings.ts`, `electron-app/src/shared/schemas/settings.ts`, `electron-app/src/shared/settings/defaults.ts`, `electron-app/src/main/ipc.ts`, and `electron-app/src/preload/api.ts` for provider settings and refresh/diagnostics actions.
-  - Update `electron-app/src/renderer/settings/` and onboarding provider setup to show Codex/Gemini enablement, plan/auth/profile confirmation, confidence explanations, last refresh, stale/degraded diagnostics, and provider refresh actions.
-  - Keep provider secrets write-only or presence-only. Do not add live Codex, ChatGPT, Gemini, Google, or Vertex network calls.
+  - Start from the existing red settings/IPC/renderer tests in `electron-app/src/shared/schemas/provider.test.ts`, `electron-app/src/main/ipc.test.ts`, and `electron-app/src/foundation-renderer.test.tsx`. Keep tray rotation, popover cards, overlay summaries, and diagnostics export wiring out of scope until Step 4.7 unless a small shared type is unavoidable.
+  - Extend `electron-app/src/shared/types/settings.ts`, `electron-app/src/shared/schemas/settings.ts`, `electron-app/src/shared/settings/defaults.ts`, and any provider settings schemas so Codex/Gemini enablement, plan/auth/profile confirmation, adapter mode, manual override/pin fields, last refresh, and stale thresholds round-trip through validated settings state.
+  - Extend `electron-app/src/main/ipc.ts`, `electron-app/src/preload/api.ts`, and the renderer-facing API contract for provider refresh and provider diagnostics actions. These actions should return derived provider status and diagnostics only; they must not expose raw Codex/Gemini file contents, OAuth credentials, API keys, prompts, responses, or command output.
+  - Update `electron-app/src/renderer/settings/` and onboarding provider setup to show Codex/Gemini enablement, plan/auth/profile confirmation, confidence explanations, last refresh timestamps, stale/degraded diagnostics, and provider refresh actions. Reuse the Step 4.2 provider confidence text and Step 4.5 Gemini `/stats` high-confidence explanation where available.
+  - Preserve the Step 4.3-4.5 adapter contracts: passive Codex and Gemini local parsing still works without network calls; Gemini `/stats` command execution remains injectable/fakeable; no live Codex, ChatGPT, Gemini, Google, Vertex, or provider API requests are introduced.
+  - Validate with focused settings/IPC/renderer tests first, then `npm run typecheck` from `electron-app/`. Full Phase 4 tests may still fail on tray/popover/overlay/diagnostics wiring until Steps 4.7-4.8.
 
 - [ ] Step 4.7: [automated] Wire provider state into tray rotation, popover provider cards, settings provider rows, overlay summaries, and diagnostics placeholders.
 

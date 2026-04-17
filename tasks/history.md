@@ -947,3 +947,16 @@ Validation:
 - `npm run build` in `electron-app/`: typecheck, full Vitest suite, main build, preload build, and renderer build passed.
 - `npm run smoke:electron` in `electron-app/`: passed with route markers for popover GitHub disabled/configured/ready states, settings, onboarding, all overlay layouts, and settings error retry.
 - Accepted existing environment warning: Node emitted `ExperimentalWarning: SQLite is an experimental feature` during SQLite-backed storage and integration tests.
+
+## 2026-04-17 — Step 4.5: Electron Gemini Stats Support
+
+Implemented Gemini `/stats` support for the Electron provider shell. The new stats helper parses reliable command-derived summaries for daily requests, daily limits, tokens, model, and reset time, reports unsupported or missing `/stats` output as observed-only diagnostics, and redacts OAuth/API/token-looking text before diagnostics leave the helper. The Gemini adapter now accepts an injected stats reader or command runner, upgrades reliable `/stats` summaries to high-confidence provider cards, uses stats daily limits for headroom, and preserves the passive local-session fallback when stats are unavailable.
+
+Full-build validation also found and fixed a partial settings schema mismatch: provider settings patch validation now preserves sparse provider patches instead of expanding missing fields with defaults.
+
+Validation:
+- `npm test -- --run src/main/providers/gemini/stats.test.ts src/main/providers/gemini/adapter.test.ts` in `electron-app/`: 5 tests passed.
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm test -- --run src/foundation-schemas.test.ts src/main/providers/gemini/stats.test.ts src/main/providers/gemini/adapter.test.ts` in `electron-app/`: 10 tests passed.
+- `npm run build` in `electron-app/`: typecheck, full Vitest suite, main build, preload build, and renderer build passed.
+- Accepted existing environment warning: Node emitted `ExperimentalWarning: SQLite is an experimental feature` during SQLite-backed storage and integration tests.
