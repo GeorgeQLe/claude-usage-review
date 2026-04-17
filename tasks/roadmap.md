@@ -9,8 +9,8 @@ Also add the Swift macOS Provider Telemetry add-on from `specs/provider-telemetr
 | 1 | Electron runtime foundation | Complete: secure Electron/React app shell with typed IPC, storage skeleton, tray/windows, and baseline UI |
 | 2 | Claude exact usage and accounts | Complete: Claude account workflows, exact API polling, backoff, reset fetch, secret storage, and live tray/popover state |
 | 3 | Product UI parity | Complete: Electron matches Swift non-provider UI behavior where cross-platform APIs allow it |
-| 4 | Provider shell and passive adapters | Active: shared provider model plus Codex/Gemini passive monitoring, Gemini `/stats`, confidence, stale/degraded handling |
-| 5 | Accuracy Mode wrappers | Explicit opt-in Codex/Gemini wrappers, setup verification, event ledgers, and privacy guarantees |
+| 4 | Provider shell and passive adapters | Complete: shared provider model plus Codex/Gemini passive monitoring, Gemini `/stats`, confidence, stale/degraded handling |
+| 5 | Accuracy Mode wrappers | Active: explicit opt-in Codex/Gemini wrappers, setup verification, event ledgers, and privacy guarantees |
 | 6 | Migration, diagnostics, packaging | Non-secret migration, diagnostics export, Windows/Linux packages, and final regression gates |
 | 7 | Swift provider telemetry endpoints | Complete: opt-in Codex and Gemini Code Assist provider quota telemetry in the macOS app |
 
@@ -93,10 +93,10 @@ Also add the Swift macOS Provider Telemetry add-on from `specs/provider-telemetr
 
 ## Phase 4: Provider Shell and Passive Adapters
 > Test strategy: tdd
-> Status: active as of 2026-04-17
+> Status: complete on 2026-04-17
 
 ### Tests First
-- [ ] Step 4.1: [automated] Add failing tests for shared provider normalization, tray rotation/manual override/pinning, stale/degraded card mapping, Codex detection and parsing, Codex bookmarks, Gemini detection and parsing, Gemini `/stats` summary parsing, confidence engines, and provider settings persistence.
+- [x] Step 4.1: [automated] Add failing tests for shared provider normalization, tray rotation/manual override/pinning, stale/degraded card mapping, Codex detection and parsing, Codex bookmarks, Gemini detection and parsing, Gemini `/stats` summary parsing, confidence engines, and provider settings persistence.
 
   **Implementation plan for Step 4.1:**
   - Add shared provider-shell tests first. Cover normalized provider cards, provider-specific confidence explanations, stale/degraded state mapping, tray rotation order, degraded-provider skipping when alternatives exist, manual override behavior, pinning behavior, and clear fallback text for missing/low-confidence providers. Expected files: `electron-app/src/main/providers/providerCoordinator.test.ts`, `electron-app/src/shared/confidence/providerConfidence.test.ts`, and focused additions to `electron-app/src/foundation-main.test.ts` or `electron-app/src/main/tray.test.ts` if a dedicated tray test file exists by then.
@@ -107,7 +107,7 @@ Also add the Swift macOS Provider Telemetry add-on from `specs/provider-telemetr
   - Keep these tests red for missing production modules and behaviors. Run focused tests to confirm the red state, then run `npm run typecheck` if the red tests are written in a way that should still typecheck through intentional runtime failures. Do not implement provider modules in this step.
 
 ### Implementation
-- [ ] Step 4.2: [automated] Implement shared provider models and coordinator logic under `electron-app/src/shared/types/provider.ts`, `electron-app/src/shared/schemas/provider.ts`, `electron-app/src/shared/confidence/`, and `electron-app/src/main/providers/providerCoordinator.ts`.
+- [x] Step 4.2: [automated] Implement shared provider models and coordinator logic under `electron-app/src/shared/types/provider.ts`, `electron-app/src/shared/schemas/provider.ts`, `electron-app/src/shared/confidence/`, and `electron-app/src/main/providers/providerCoordinator.ts`.
 
   **Implementation plan for Step 4.2:**
   - Extend provider settings beyond placeholders to include enablement, plan/profile, auth mode, adapter mode, manual tray override, pinning, and stale thresholds while keeping current defaults backward-compatible.
@@ -115,35 +115,35 @@ Also add the Swift macOS Provider Telemetry add-on from `specs/provider-telemetr
   - Add a coordinator that merges Claude, Codex, and Gemini provider snapshots into `UsageState`, derives stale/degraded/missing cards, orders tray rotation candidates, skips degraded providers when healthy alternatives exist, and preserves manual override/pin state.
   - Keep Claude exact usage behavior unchanged and avoid moving Claude credentials or polling into the new provider shell.
 
-- [ ] Step 4.3: [automated] Implement Codex passive adapter under `electron-app/src/main/providers/codex/`: `CODEX_HOME` resolution, install/auth presence detection, `history.jsonl` incremental bookmarks, recursive `sessions/YYYY/MM/DD/rollout-*.jsonl` parsing, local log limit-hit detection, cooldown state, and privacy-safe derived events.
+- [x] Step 4.3: [automated] Implement Codex passive adapter under `electron-app/src/main/providers/codex/`: `CODEX_HOME` resolution, install/auth presence detection, `history.jsonl` incremental bookmarks, recursive `sessions/YYYY/MM/DD/rollout-*.jsonl` parsing, local log limit-hit detection, cooldown state, and privacy-safe derived events.
 
   **Implementation plan for Step 4.3:**
   - Create Codex detector, parsers, bookmark persistence, adapter state, and fixtures under `electron-app/src/main/providers/codex/`.
   - Read `auth.json` only for auth presence and safe account labels; never emit raw auth JSON, tokens, cookies, prompts, stdout, or raw session payloads.
   - Persist only derived parse bookmarks and sanitized event summaries needed for confidence and stale/degraded state.
 
-- [ ] Step 4.4: [automated] Implement Gemini passive adapter under `electron-app/src/main/providers/gemini/`: `GEMINI_HOME`/`~/.gemini` resolution, settings/auth-mode detection, `oauth_creds.json` presence, `tmp/**/chats/session-*.json` parsing, token/model extraction, rate pressure, and local request windows.
+- [x] Step 4.4: [automated] Implement Gemini passive adapter under `electron-app/src/main/providers/gemini/`: `GEMINI_HOME`/`~/.gemini` resolution, settings/auth-mode detection, `oauth_creds.json` presence, `tmp/**/chats/session-*.json` parsing, token/model extraction, rate pressure, and local request windows.
 
   **Implementation plan for Step 4.4:**
   - Create Gemini detector, session parsers, adapter state, and fixtures under `electron-app/src/main/providers/gemini/`.
   - Treat OAuth/API credentials as presence-only inputs; never persist or render provider tokens, API keys, prompts, responses, or raw chat bodies.
   - Derive request-per-minute, daily request count, token totals where available, profile-aware daily headroom, confidence, stale state, and degraded state.
 
-- [ ] Step 4.5: [automated] Implement Gemini `/stats` support under `electron-app/src/main/providers/gemini/stats.ts`, using a deliberate helper path and confidence labeling based on the reliability of command-derived summaries.
+- [x] Step 4.5: [automated] Implement Gemini `/stats` support under `electron-app/src/main/providers/gemini/stats.ts`, using a deliberate helper path and confidence labeling based on the reliability of command-derived summaries.
 
   **Implementation plan for Step 4.5:**
   - Add a parser for known `/stats` summary shapes and a helper interface that can be faked in tests.
   - Keep real command execution behind an explicit adapter method, avoid running interactive CLI commands from tests, and redact diagnostics.
   - Merge reliable `/stats` summaries into Gemini confidence and rate/headroom state without weakening passive-only fallback behavior.
 
-- [ ] Step 4.6: [automated] Implement provider settings UI and IPC for Codex/Gemini enablement, plan/auth confirmation, confidence explanations, last refresh, stale/degraded diagnostics, and provider refresh actions.
+- [x] Step 4.6: [automated] Implement provider settings UI and IPC for Codex/Gemini enablement, plan/auth confirmation, confidence explanations, last refresh, stale/degraded diagnostics, and provider refresh actions.
 
   **Implementation plan for Step 4.6:**
   - Extend `electron-app/src/shared/types/settings.ts`, `electron-app/src/shared/schemas/settings.ts`, `electron-app/src/shared/settings/defaults.ts`, `electron-app/src/main/ipc.ts`, and `electron-app/src/preload/api.ts` for provider settings and refresh/diagnostics actions.
   - Update `electron-app/src/renderer/settings/` and onboarding provider setup to show Codex/Gemini enablement, plan/auth/profile confirmation, confidence explanations, last refresh, stale/degraded diagnostics, and provider refresh actions.
   - Keep provider secrets write-only or presence-only. Do not add live Codex, ChatGPT, Gemini, Google, or Vertex network calls.
 
-- [ ] Step 4.7: [automated] Wire provider state into tray rotation, popover provider cards, settings provider rows, overlay summaries, and diagnostics placeholders.
+- [x] Step 4.7: [automated] Wire provider state into tray rotation, popover provider cards, settings provider rows, overlay summaries, and diagnostics placeholders.
 
   **Implementation plan for Step 4.7:**
   - Update `electron-app/src/main/tray.ts` to use coordinator-derived rotation, manual override, pinning, provider-specific compact text, and stale/degraded/missing icon states.
@@ -151,14 +151,14 @@ Also add the Swift macOS Provider Telemetry add-on from `specs/provider-telemetr
   - Add diagnostics export placeholders for provider detection, parse bookmarks, stale/degraded reasons, and confidence explanations, with redaction checks.
 
 ### Green
-- [ ] Step 4.8: [automated] Make all Phase 4 tests pass and add fixture coverage for malformed provider files, missing CLIs, unknown auth modes, stale refresh timestamps, degraded adapters, and confidence downgrade paths.
+- [x] Step 4.8: [automated] Make all Phase 4 tests pass and add fixture coverage for malformed provider files, missing CLIs, unknown auth modes, stale refresh timestamps, degraded adapters, and confidence downgrade paths.
 
   **Implementation plan for Step 4.8:**
   - Run the focused Phase 4 suites first, fix implementation gaps, then run `npm run typecheck` and `npm test -- --run` from `electron-app/`.
   - Add any missing regression fixtures discovered while making tests pass, especially malformed JSONL/session files and redaction edge cases.
   - Accepted warning remains Node's experimental SQLite warning during storage/integration tests.
 
-- [ ] Step 4.9: [automated] Run Phase 4 verification: `npm run typecheck`, `npm test`, `npm run build`, and provider-card renderer smoke tests.
+- [x] Step 4.9: [automated] Run Phase 4 verification: `npm run typecheck`, `npm test`, `npm run build`, and provider-card renderer smoke tests.
 
   **Implementation plan for Step 4.9:**
   - Run `npm run typecheck`, `npm test -- --run`, `npm run build`, and `npm run smoke:electron` from `electron-app/`.
@@ -166,40 +166,110 @@ Also add the Swift macOS Provider Telemetry add-on from `specs/provider-telemetr
   - If verification passes, archive Phase 4, update `tasks/roadmap.md`, and prepare Phase 5.
 
 ### Milestone
-- [ ] Claude, Codex, and Gemini are first-class provider cards in Electron.
-- [ ] Codex and Gemini passive monitoring is useful, confidence-labeled, stale-aware, and degraded-aware.
-- [ ] Gemini can incorporate `/stats` summaries where available.
-- [ ] Codex never claims exact remaining quota without a defensible source.
-- [ ] All phase tests pass.
-- [ ] No regressions.
+- [x] Claude, Codex, and Gemini are first-class provider cards in Electron.
+- [x] Codex and Gemini passive monitoring is useful, confidence-labeled, stale-aware, and degraded-aware.
+- [x] Gemini can incorporate `/stats` summaries where available.
+- [x] Codex never claims exact remaining quota without a defensible source.
+- [x] All phase tests pass.
+- [x] No regressions.
 
 ## Phase 5: Accuracy Mode Wrappers
 > Test strategy: tdd
+> Status: active as of 2026-04-17
+
+### Execution Profile
+**Parallel mode:** serial
+**Integration owner:** main agent
+**Conflict risk:** high
+**Review gates:** correctness, tests, security, privacy, UX
+
+**Subagent lanes:** none
 
 ### Tests First
-- Step 5.1: [automated] Add failing tests for wrapper script generation, setup-command rendering, setup verification, wrapper event ledgers, stderr limit-hit scanning, confidence upgrades from wrapper events, and privacy constraints proving no prompts/stdout/secrets are persisted.
+- [ ] Step 5.1: [automated] Add failing tests for wrapper script generation, setup-command rendering, setup verification, wrapper event ledgers, stderr limit-hit scanning, confidence upgrades from wrapper events, and privacy constraints proving no prompts/stdout/secrets are persisted.
+
+  **Implementation plan for Step 5.1:**
+  - Add wrapper generation red tests under `electron-app/src/main/wrappers/`, likely `generator.test.ts`, `verification.test.ts`, and `events.test.ts`. Cover Codex and Gemini wrapper metadata, deterministic wrapper paths in an injected app user data directory, versioned generated scripts, shell-safe setup commands, removal instructions, and the explicit guarantee that the app never mutates shell profiles, PowerShell profiles, or PATH automatically.
+  - Add wrapper verification red tests around injectable filesystem/process helpers. Cover resolving `codex` and `gemini` command paths, detecting when each command points at the generated wrapper, detecting native CLI targets, running only harmless version/status probes through a fake runner, classifying missing commands, and returning sanitized verification messages through IPC.
+  - Add SQLite wrapper event ledger red tests under `electron-app/src/main/storage/` or `electron-app/src/main/wrappers/`. Cover inserting invocation start/end records into the existing `wrapper_events` table, provider/invocation uniqueness, duration calculation, command mode/model/exit status capture, limit-hit flagging, provider/time queries, trimming or bounded reads, and diagnostics summaries that never include prompt text, stdout, tokens, cookies, or raw stderr.
+  - Add wrapper stderr scanner tests with in-memory strings only. Cover Codex and Gemini usage-limit, rate-limit, lockout, cooldown, and reset hints while asserting stdout is ignored and redacted diagnostics do not preserve raw command output.
+  - Add provider confidence integration red tests in `electron-app/src/main/providers/codex/adapter.test.ts`, `electron-app/src/main/providers/gemini/adapter.test.ts`, and/or `electron-app/src/shared/confidence/providerConfidence.test.ts`. Cover wrapper events upgrading passive provider cards to `estimated` or `high_confidence` only where justified, preserving passive fallback when wrappers are disabled or unverifiable, and keeping Codex from claiming `exact`.
+  - Add IPC/preload/renderer red tests in `electron-app/src/main/ipc.test.ts`, `electron-app/src/foundation-renderer.test.tsx`, and shared schema tests. Cover `wrappers:generate`, `wrappers:verify`, Accuracy Mode settings toggles, setup instructions in settings/onboarding, verification status, troubleshooting/removal copy, and secret-free renderer state.
+  - Keep the tests red for missing wrapper modules and wiring. Validate the red phase with focused `npm test -- --run` paths, then run `npm run typecheck` if the test imports are written to typecheck through intentional runtime failures. Do not implement wrapper production modules in this step.
 
 ### Implementation
-- Step 5.2: [automated] Implement wrapper generation under `electron-app/src/main/wrappers/`: per-provider wrapper scripts/binaries in the app user data directory, versioning, safe removal instructions, and no automatic shell/PATH mutation.
-- Step 5.3: [automated] Implement setup verification for Codex and Gemini wrappers: resolve command paths, detect whether `codex`/`gemini` points at the wrapper, run harmless version/status probes where safe, and report status through IPC.
-- Step 5.4: [automated] Implement wrapper event ledgers in SQLite for Codex and Gemini: invocation ID, start/end, duration, command mode, model, exit status, limit-hit flag, wrapper version, and source provider.
-- Step 5.5: [automated] Merge wrapper events into Codex/Gemini confidence engines and provider cards without weakening passive-only support.
-- Step 5.6: [automated] Add Accuracy Mode UI in settings/onboarding: opt-in toggles, setup commands, verification status, privacy copy, troubleshooting, and removal instructions.
+- [ ] Step 5.2: [automated] Implement wrapper generation under `electron-app/src/main/wrappers/`: per-provider wrapper scripts/binaries in the app user data directory, versioning, safe removal instructions, and no automatic shell/PATH mutation.
+
+  **Implementation plan for Step 5.2:**
+  - Create wrapper generator modules under `electron-app/src/main/wrappers/`, including provider metadata, generated script templates, setup command builders, removal instruction builders, and filesystem helpers with injectable app user data paths for tests.
+  - Generate Codex and Gemini wrappers into app-owned support storage, not into user shell/profile directories. Scripts should call through to the resolved native CLI target, append only derived invocation metadata through the app-owned event path, and avoid capturing stdout or prompt arguments beyond safe command-mode/model hints.
+  - Keep shell/PATH changes manual: return commands/instructions that the user can run, but never edit `.zshrc`, `.bashrc`, PowerShell profiles, system PATH, or symlink locations automatically.
+  - Wire `wrappers:generate` through `electron-app/src/main/ipc.ts`, `electron-app/src/preload/api.ts`, shared IPC schemas/types, and placeholder runtime dependencies so renderer calls receive validated setup instructions.
+  - Validate with focused wrapper generation and IPC tests, then `npm run typecheck` from `electron-app/`.
+
+- [ ] Step 5.3: [automated] Implement setup verification for Codex and Gemini wrappers: resolve command paths, detect whether `codex`/`gemini` points at the wrapper, run harmless version/status probes where safe, and report status through IPC.
+
+  **Implementation plan for Step 5.3:**
+  - Add verification modules under `electron-app/src/main/wrappers/` with injectable process execution and filesystem lookup boundaries. Do not run interactive provider commands in tests.
+  - Detect missing native CLIs, direct native CLI usage, generated wrapper usage, wrapper version mismatch, and ambiguous command resolution. Return provider-specific, user-actionable status without exposing shell environment dumps or command output.
+  - Limit live probes to harmless version/status checks behind the injected runner, with timeout/error classification and redacted messages.
+  - Wire verification results into `wrappers:verify` IPC/preload contracts and settings/onboarding-facing renderer state.
+  - Validate with focused verification/IPC/renderer tests, then `npm run typecheck` from `electron-app/`.
+
+- [ ] Step 5.4: [automated] Implement wrapper event ledgers in SQLite for Codex and Gemini: invocation ID, start/end, duration, command mode, model, exit status, limit-hit flag, wrapper version, and source provider.
+
+  **Implementation plan for Step 5.4:**
+  - Add a storage module, likely `electron-app/src/main/storage/wrapperEvents.ts`, over the existing `wrapper_events` table from `electron-app/src/main/storage/migrations.ts`.
+  - Implement append/start/finish/query helpers with provider and time-window filters, provider/invocation uniqueness, duration derivation, bounded reads for UI/provider adapters, and privacy-safe diagnostics summaries.
+  - Add wrapper event parsing helpers that accept only derived wrapper metadata and stderr limit signals. Do not persist prompts, stdout, raw stderr, provider tokens, session keys, GitHub tokens, OAuth credentials, API keys, cookies, or raw chat/session bodies.
+  - Add enough fixture coverage for duplicate invocation IDs, malformed wrapper payloads, missing finish records, nonzero exit codes, and limit-hit classification.
+  - Validate with focused storage/wrapper event tests and `npm run typecheck` from `electron-app/`.
+
+- [ ] Step 5.5: [automated] Merge wrapper events into Codex/Gemini confidence engines and provider cards without weakening passive-only support.
+
+  **Implementation plan for Step 5.5:**
+  - Extend Codex and Gemini adapters to accept recent wrapper event summaries from the ledger alongside the existing passive adapter snapshots.
+  - For Codex, use wrapper events to improve activity/limit-hit/reset evidence but keep `exact` unavailable without a future defensible provider source. Wrapper-derived Codex confidence should top out at `high_confidence` when repeated limit/reset patterns and configured plan/profile justify it.
+  - For Gemini, merge wrapper events with auth/profile and `/stats` data. Wrapper-counted requests against a known published quota profile may improve confidence, but provider cards must clearly distinguish wrapper-derived estimates from provider-supplied exact current usage.
+  - Preserve passive fallback when wrappers are disabled, missing, stale, degraded, or unverifiable. Existing passive cards should remain useful and confidence-labeled.
+  - Update diagnostics export placeholders to include wrapper status and derived event summaries only, with redaction tests for unsafe terms.
+  - Validate with focused Codex/Gemini adapter, confidence, diagnostics, and IPC tests, then `npm run typecheck` from `electron-app/`.
+
+- [ ] Step 5.6: [automated] Add Accuracy Mode UI in settings/onboarding: opt-in toggles, setup commands, verification status, privacy copy, troubleshooting, and removal instructions.
+
+  **Implementation plan for Step 5.6:**
+  - Extend provider settings types/defaults/schemas to persist Accuracy Mode enablement separately from passive provider enablement and any future Provider Telemetry settings.
+  - Update `electron-app/src/renderer/settings/` and `electron-app/src/renderer/onboarding/` to show Codex/Gemini Accuracy Mode opt-in toggles, generated setup commands, verification status, troubleshooting copy, and removal instructions.
+  - Keep copy explicit: wrappers are optional, reversible, manually installed, and capture invocation timing/derived limit signals only. Do not claim the app edits shell profiles automatically.
+  - Ensure renderer state remains secret-free and prompt-free. Settings may show commands/instructions but not raw provider auth, stdout, stderr, prompts, responses, or session contents.
+  - Validate with focused renderer/settings/onboarding tests, then `npm run typecheck` from `electron-app/`.
 
 ### Green
-- Step 5.7: [automated] Make all Phase 5 tests pass and add integration coverage for wrapper setup flows, ledger trimming, confidence upgrades, and redacted diagnostics.
-- Step 5.8: [automated] Run Phase 5 verification: `npm run typecheck`, `npm test`, `npm run build`, and wrapper setup renderer smoke tests.
+- [ ] Step 5.7: [automated] Make all Phase 5 tests pass and add integration coverage for wrapper setup flows, ledger trimming, confidence upgrades, and redacted diagnostics.
+
+  **Implementation plan for Step 5.7:**
+  - Run focused Phase 5 suites first: wrappers, wrapper storage, IPC/preload schemas, Codex/Gemini adapter confidence, diagnostics, settings, onboarding, and renderer smoke coverage.
+  - Fix missing integration edges, then add regressions for wrapper setup instructions, wrapper version mismatch, ledger trimming/bounded reads, confidence upgrades/downgrades, disabled-wrapper fallback, and diagnostics redaction.
+  - Run `npm run typecheck` and `npm test -- --run` from `electron-app/`. Accepted warning remains Node's experimental SQLite warning during storage/integration tests if no new warnings appear.
+
+- [ ] Step 5.8: [automated] Run Phase 5 verification: `npm run typecheck`, `npm test`, `npm run build`, and wrapper setup renderer smoke tests.
+
+  **Implementation plan for Step 5.8:**
+  - Run `npm run typecheck`, `npm test -- --run`, `npm run build`, and `npm run smoke:electron` from `electron-app/`.
+  - Confirm wrapper setup renderer smoke coverage includes Codex and Gemini Accuracy Mode disabled, setup-generated, verified, unverifiable, and removal-instruction states.
+  - Inspect all warnings. Accept only the known Node experimental SQLite warning if it appears during storage/integration tests; fix or report any new Electron startup/preload/security, wrapper process, renderer, or diagnostics warnings.
+  - If verification passes, archive Phase 5 into `tasks/phases/`, check off the Phase 5 milestone in `tasks/roadmap.md`, advance `tasks/todo.md` to Phase 6, and extract Phase 6 manual tasks into `tasks/manual-todo.md`.
 
 **Manual Tasks:**
 - [ ] Validate generated Codex wrapper setup instructions in a real user shell without allowing the app to edit shell profiles automatically. _(after: Step 5.6)_
 - [ ] Validate generated Gemini wrapper setup instructions in a real user shell without allowing the app to edit shell profiles automatically. _(after: Step 5.6)_
 
 ### Milestone
-- Accuracy Mode is explicit, opt-in, verifiable, and reversible.
-- Wrappers persist only derived metadata and never raw prompts, stdout, session keys, GitHub tokens, or provider auth tokens.
-- Wrapper events improve confidence where justified.
-- All phase tests pass.
-- No regressions.
+- [ ] Accuracy Mode is explicit, opt-in, verifiable, and reversible.
+- [ ] Wrappers persist only derived metadata and never raw prompts, stdout, session keys, GitHub tokens, or provider auth tokens.
+- [ ] Wrapper events improve confidence where justified.
+- [ ] All phase tests pass.
+- [ ] No regressions.
 
 ## Phase 6: Migration, Diagnostics, and Packaging
 > Test strategy: tests-after

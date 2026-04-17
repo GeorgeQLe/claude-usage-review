@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 4.9: Electron Provider Shell Verification
+
+Completed the Phase 4 verification gate for the Electron provider shell and passive adapters. Standalone typecheck, full Vitest, aggregate production build, and Electron smoke validation all passed from `electron-app/`. Phase 4 is archived in `tasks/phases/phase-4.md`, `tasks/roadmap.md` now marks Phase 4 complete, `tasks/todo.md` now starts Phase 5 with a just-in-time TDD plan for Accuracy Mode wrappers, and `tasks/manual-todo.md` tracks the two real-shell wrapper setup validation follow-ups for after Step 5.6.
+
+Validation: `npm run typecheck` passed from `electron-app/`. `npm test -- --run` passed with 49 files and 179 tests. `npm run build` passed from `electron-app/`, including nested typecheck, tests, main/preload/renderer builds. `npm run smoke:electron` passed with route-level mocked local usage state for popover GitHub states, settings, onboarding, overlay layouts, and error retry. Accepted warning: Node's experimental SQLite warning during storage/integration tests. No unexpected warnings were emitted.
+
 ## 2026-04-17 — Step 4.8: Electron Provider Shell Green Suite
 
 Completed the Phase 4 green-suite step for the Electron provider shell and passive adapters. The focused Phase 4 suites were already green, and the regression coverage now explicitly includes Gemini `/stats` missing-CLI failures through the injectable command boundary plus stale Gemini passive timestamps that remain estimated instead of upgrading confidence. Existing Phase 4 fixture coverage also covers malformed Codex/Gemini provider files, unknown Gemini auth modes, degraded adapters, confidence downgrades, and provider diagnostics redaction.
