@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 5.1: Accuracy Mode Wrapper Red Tests
+
+Added the Phase 5 red-test suite for Electron Accuracy Mode wrappers. Coverage now specifies deterministic Codex/Gemini wrapper generation, versioned app-owned wrapper paths, manual setup/removal commands, no automatic shell profile or PATH mutation, setup verification with harmless version probes, wrapper event ledger insertion/finish/query summaries, stderr-only limit scanning, wrapper-event confidence upgrades, IPC/schema routing, and settings/onboarding copy that stays optional, reversible, and secret-free. The tests assert that prompts, stdout, raw stderr, session keys, provider tokens, cookies, and GitHub tokens are not persisted or rendered.
+
+Validation: focused `npm test -- --run src/main/wrappers/generator.test.ts src/main/wrappers/verification.test.ts src/main/wrappers/stderrScanner.test.ts src/main/wrappers/events.test.ts src/main/providers/codex/adapter.test.ts src/main/providers/gemini/adapter.test.ts src/shared/confidence/providerConfidence.test.ts src/main/ipc.test.ts src/foundation-renderer.test.tsx src/foundation-schemas.test.ts` failed as expected for the red phase with 15 failures: missing Phase 5 wrapper modules/storage, wrapper IPC still using placeholders, wrapper schemas too narrow, Codex/Gemini adapters ignoring wrapper events, provider confidence not upgrading verified wrapper signals, and missing Accuracy Mode renderer copy/actions. `npm run typecheck` passed from `electron-app/`. Accepted warning: Node's experimental SQLite warning during wrapper event storage tests.
+
 ## 2026-04-17 — Step 4.9: Electron Provider Shell Verification
 
 Completed the Phase 4 verification gate for the Electron provider shell and passive adapters. Standalone typecheck, full Vitest, aggregate production build, and Electron smoke validation all passed from `electron-app/`. Phase 4 is archived in `tasks/phases/phase-4.md`, `tasks/roadmap.md` now marks Phase 4 complete, `tasks/todo.md` now starts Phase 5 with a just-in-time TDD plan for Accuracy Mode wrappers, and `tasks/manual-todo.md` tracks the two real-shell wrapper setup validation follow-ups for after Step 5.6.

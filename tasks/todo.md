@@ -15,7 +15,7 @@
 **Subagent lanes:** none
 
 ## Tests First
-- [ ] Step 5.1: [automated] Add failing tests for wrapper script generation, setup-command rendering, setup verification, wrapper event ledgers, stderr limit-hit scanning, confidence upgrades from wrapper events, and privacy constraints proving no prompts/stdout/secrets are persisted.
+- [x] Step 5.1: [automated] Add failing tests for wrapper script generation, setup-command rendering, setup verification, wrapper event ledgers, stderr limit-hit scanning, confidence upgrades from wrapper events, and privacy constraints proving no prompts/stdout/secrets are persisted.
 
   **Implementation plan for Step 5.1:**
   - Add wrapper generation red tests under `electron-app/src/main/wrappers/`, likely `generator.test.ts`, `verification.test.ts`, and `events.test.ts`. Cover Codex and Gemini wrapper metadata, deterministic wrapper paths in an injected app user data directory, versioned generated scripts, shell-safe setup commands, removal instructions, and the explicit guarantee that the app never mutates shell profiles, PowerShell profiles, or PATH automatically.
@@ -25,6 +25,11 @@
   - Add provider confidence integration red tests in `electron-app/src/main/providers/codex/adapter.test.ts`, `electron-app/src/main/providers/gemini/adapter.test.ts`, and/or `electron-app/src/shared/confidence/providerConfidence.test.ts`. Cover wrapper events upgrading passive provider cards to `estimated` or `high_confidence` only where justified, preserving passive fallback when wrappers are disabled or unverifiable, and keeping Codex from claiming `exact`.
   - Add IPC/preload/renderer red tests in `electron-app/src/main/ipc.test.ts`, `electron-app/src/foundation-renderer.test.tsx`, and shared schema tests. Cover `wrappers:generate`, `wrappers:verify`, Accuracy Mode settings toggles, setup instructions in settings/onboarding, verification status, troubleshooting/removal copy, and secret-free renderer state.
   - Keep the tests red for missing wrapper modules and wiring. Validate the red phase with focused `npm test -- --run` paths, then run `npm run typecheck` if the test imports are written to typecheck through intentional runtime failures. Do not implement wrapper production modules in this step.
+
+  **Result for Step 5.1:**
+  - Added Phase 5 red tests for wrapper generation, setup verification, stderr limit scanning, wrapper event ledger storage, wrapper-driven confidence upgrades, IPC/schema contracts, and Accuracy Mode settings/onboarding privacy copy.
+  - Focused validation is red as expected with 15 failures covering missing wrapper modules (`generator`, `verification`, `stderrScanner`, `wrapperEvents`), missing wrapper IPC dependency routing, narrow wrapper schemas, adapters ignoring wrapper events, and missing Accuracy Mode UI copy/actions.
+  - `npm run typecheck` passes from `electron-app/`, so the red contracts are type-safe. Accepted warning: Node's experimental SQLite warning during the wrapper event storage red tests.
 
 ## Implementation
 - [ ] Step 5.2: [automated] Implement wrapper generation under `electron-app/src/main/wrappers/`: per-provider wrapper scripts/binaries in the app user data directory, versioning, safe removal instructions, and no automatic shell/PATH mutation.
