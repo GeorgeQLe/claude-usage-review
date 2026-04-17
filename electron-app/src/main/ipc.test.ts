@@ -125,6 +125,43 @@ describe("Phase 2 IPC command contract", () => {
     expect(JSON.stringify(evaluateUsageState.mock.calls)).not.toContain("sessionKey");
     expect(JSON.stringify(evaluateUsageState.mock.calls)).not.toContain("sk-ant");
   });
+
+  it("routes provider diagnostics and refresh actions through sanitized provider dependencies", async () => {
+    const { ipcChannelNames, registerIpcHandlers } = await import("./ipc.js");
+    const providers = {
+      getDiagnostics: vi.fn(() => ({
+        providerId: "codex",
+        status: "degraded",
+        messages: ["history.jsonl parsed with one malformed line"],
+        lastCheckedAt: "2026-04-17T15:00:00.000Z"
+      })),
+      refreshProvider: vi.fn(() => ({
+        detected: true,
+        providerId: "gemini",
+        confidence: "estimated",
+        message: "Gemini passive session state refreshed."
+      }))
+    };
+
+    (registerIpcHandlers as (dependencies: unknown) => unknown)({ providers });
+
+    const diagnostics = await invoke(ipcChannelNames.getProviderDiagnostics, { providerId: "codex" });
+    const refreshed = await invoke(ipcChannelNames.runProviderDetection, { providerId: "gemini" });
+
+    expect(providers.getDiagnostics).toHaveBeenCalledWith("codex");
+    expect(providers.refreshProvider).toHaveBeenCalledWith("gemini");
+    expect(diagnostics).toMatchObject({
+      providerId: "codex",
+      status: "degraded"
+    });
+    expect(refreshed).toMatchObject({
+      confidence: "estimated",
+      detected: true,
+      providerId: "gemini"
+    });
+    expect(JSON.stringify({ diagnostics, refreshed })).not.toContain("access_token");
+    expect(JSON.stringify({ diagnostics, refreshed })).not.toContain("prompt");
+  });
 });
 
 async function invoke(channel: string, payload?: unknown): Promise<unknown> {

@@ -218,6 +218,21 @@ describe("foundation renderer routes", () => {
     expect(document.body.textContent).not.toContain("ghp_synthetic_secret");
   });
 
+  it("renders provider settings rows from derived status only and exposes refresh/diagnostics actions", async () => {
+    const { container } = await renderRoute(<SettingsRoute />);
+
+    expect(document.body.textContent).toContain("Codex");
+    expect(document.body.textContent).toContain("Gemini");
+    expect(document.body.textContent).toContain("Estimated from local Codex activity.");
+    expect(document.body.textContent).toContain("High confidence from Gemini /stats.");
+    expect(container.querySelector<HTMLSelectElement>('select[name="codex-provider-plan"]')).not.toBeNull();
+    expect(container.querySelector<HTMLSelectElement>('select[name="gemini-provider-auth-mode"]')).not.toBeNull();
+    expect(findButton(container, "Refresh Codex")).not.toBeNull();
+    expect(findButton(container, "Gemini diagnostics")).not.toBeNull();
+    expect(document.body.textContent).not.toContain("codex-secret-token");
+    expect(document.body.textContent).not.toContain("gemini-secret-token");
+  });
+
   it("mounts onboarding and overlay routes with placeholder state", async () => {
     await renderRoute(<OnboardingRoute />);
     expect(document.body.textContent).toContain("Connect usage tracking");
@@ -433,6 +448,42 @@ const mockUsageState: UsageState = {
       sessionUtilization: 0.42,
       status: "configured",
       weeklyUtilization: 0.19
+    },
+    {
+      actions: ["refresh", "diagnostics"],
+      adapterMode: "passive",
+      confidence: "estimated",
+      confidenceExplanation: "Estimated from local Codex activity.",
+      dailyRequestCount: null,
+      detailText: "Local history parsed one minute ago.",
+      displayName: "Codex",
+      enabled: true,
+      headline: "Codex activity observed",
+      lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+      providerId: "codex",
+      requestsPerMinute: null,
+      resetAt: null,
+      sessionUtilization: null,
+      status: "configured",
+      weeklyUtilization: null
+    },
+    {
+      actions: ["refresh", "diagnostics"],
+      adapterMode: "passive",
+      confidence: "high_confidence",
+      confidenceExplanation: "High confidence from Gemini /stats.",
+      dailyRequestCount: 42,
+      detailText: "Gemini /stats summary parsed one minute ago.",
+      displayName: "Gemini",
+      enabled: true,
+      headline: "Gemini request window is healthy",
+      lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+      providerId: "gemini",
+      requestsPerMinute: 2,
+      resetAt: null,
+      sessionUtilization: null,
+      status: "configured",
+      weeklyUtilization: null
     }
   ],
   warning: null
