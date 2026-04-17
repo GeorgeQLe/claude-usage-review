@@ -401,7 +401,15 @@ function createIpcState(dependencies: IpcHandlerDependencies) {
     },
     generateWrapper: (providerId: ProviderId): WrapperSetupResult => placeholder.generateWrapper(providerId),
     verifyWrapper: (providerId: ProviderId): WrapperVerificationResult => placeholder.verifyWrapper(providerId),
-    exportDiagnostics: (): DiagnosticsExportResult => placeholder.exportDiagnostics()
+    exportDiagnostics: async (): Promise<DiagnosticsExportResult> => {
+      if (dependencies.usageState?.getUsageState) {
+        return validateDiagnosticsExportResult(
+          createProviderDiagnosticsExport(validateUsageState(await dependencies.usageState.getUsageState()))
+        );
+      }
+
+      return placeholder.exportDiagnostics();
+    }
   };
 }
 
@@ -570,12 +578,7 @@ function createPlaceholderIpcState() {
         verified: false,
         message: "Wrapper verification is not connected in the foundation IPC skeleton."
       }),
-    exportDiagnostics: (): DiagnosticsExportResult =>
-      validateDiagnosticsExportResult({
-        generatedAt: new Date().toISOString(),
-        summary: "Diagnostics export is not connected in the foundation IPC skeleton.",
-        entries: []
-      })
+    exportDiagnostics: (): DiagnosticsExportResult => validateDiagnosticsExportResult(createProviderDiagnosticsExport(usageState))
   };
 }
 
@@ -742,6 +745,35 @@ function validateWrapperVerificationResult(value: unknown): WrapperVerificationR
 
 function validateDiagnosticsExportResult(value: unknown): DiagnosticsExportResult {
   return diagnosticsExportResultSchema.parse(value);
+}
+
+function createProviderDiagnosticsExport(usageState: UsageState): DiagnosticsExportResult {
+  return {
+    generatedAt: new Date().toISOString(),
+    summary: "Provider diagnostics export contains derived status only.",
+    entries: usageState.providers.map((provider) =>
+      sanitizeDiagnosticsEntry(
+        [
+          `${provider.displayName}: ${provider.status}, ${provider.confidence}`,
+          provider.headline,
+          provider.detailText ?? "",
+          provider.confidenceExplanation,
+          typeof provider.dailyRequestCount === "number" ? `${provider.dailyRequestCount} requests today` : "",
+          typeof provider.requestsPerMinute === "number" ? `${provider.requestsPerMinute}/min` : "",
+          provider.lastUpdatedAt ? `updated ${provider.lastUpdatedAt}` : "not refreshed"
+        ]
+          .filter(Boolean)
+          .join("; ")
+      )
+    )
+  };
+}
+
+function sanitizeDiagnosticsEntry(value: string): string {
+  return value.replace(
+    /(access[_-]?token|api[_-]?key|authorization|bearer|cookie|session[_-]?key|prompt|response|raw chat|chat body|oauth[_-]?creds)=?/giu,
+    "redacted"
+  );
 }
 
 function normalizeActiveAccount(accounts: readonly AccountSummary[]): readonly AccountSummary[] {

@@ -461,14 +461,41 @@ describe("foundation tray routing", () => {
     );
   });
 
-  it("keeps provider rotation controls disabled until provider selection semantics exist", async () => {
+  it("renders active passive provider tray text and provider menu rows from sanitized cards", async () => {
     const { TrayController } = await import("./main/tray.js");
     const controller = new TrayController({
       initialState: {
         usageState: {
-          activeProviderId: "claude",
+          activeProviderId: "codex",
           lastUpdatedAt: "2026-04-15T12:00:00.000Z",
-          providers: [providerCard({ lastUpdatedAt: "2026-04-15T12:00:00.000Z" })],
+          providers: [
+            providerCard({ lastUpdatedAt: "2026-04-15T12:00:00.000Z", sessionUtilization: 0.36 }),
+            providerCard({
+              actions: ["refresh", "diagnostics"],
+              confidence: "estimated",
+              confidenceExplanation: "Estimated from local Codex activity.",
+              dailyRequestCount: 7,
+              detailText: "Local history parsed one minute ago.",
+              displayName: "Codex",
+              lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+              providerId: "codex",
+              requestsPerMinute: 2,
+              sessionUtilization: null,
+              status: "configured",
+              weeklyUtilization: null
+            }),
+            providerCard({
+              confidence: "observed_only",
+              confidenceExplanation: "Observed from local Gemini activity.",
+              detailText: "Gemini activity is stale.",
+              displayName: "Gemini",
+              lastUpdatedAt: "2026-04-15T10:00:00.000Z",
+              providerId: "gemini",
+              sessionUtilization: null,
+              status: "stale",
+              weeklyUtilization: null
+            })
+          ],
           warning: null
         }
       },
@@ -481,15 +508,23 @@ describe("foundation tray routing", () => {
 
     controller.create();
     const template = electronMock.Menu.buildFromTemplate.mock.calls[0]?.[0] as Array<{
+      readonly checked?: boolean;
       readonly enabled?: boolean;
       readonly label?: string;
       readonly type?: string;
     }>;
 
+    expect(electronMock.Tray.instances[0]?.setTitle).toHaveBeenCalledWith("Codex 7 today");
+    expect(electronMock.Tray.instances[0]?.setToolTip).toHaveBeenCalledWith(
+      expect.stringContaining("Codex: Codex usage is derived from local activity")
+    );
+    expect(electronMock.Tray.instances[0]?.setToolTip).toHaveBeenCalledWith(
+      expect.stringContaining("7 requests today | 2/min")
+    );
     expect(template).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ enabled: false, label: "Pause Rotation" }),
-        expect.objectContaining({ enabled: false, label: "Select Provider (Claude)" })
+        expect.objectContaining({ checked: true, enabled: false, label: "Codex - 7 today", type: "radio" }),
+        expect.objectContaining({ checked: false, enabled: false, label: "Gemini - Stale", type: "radio" })
       ])
     );
   });

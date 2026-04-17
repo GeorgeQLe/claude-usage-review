@@ -203,6 +203,7 @@ export class TrayController {
           : "Select Provider",
         enabled: false
       },
+      ...this.createProviderMenuItems(),
       { type: "separator" },
       {
         label: "Quit",
@@ -211,6 +212,21 @@ export class TrayController {
     ];
 
     return Menu.buildFromTemplate(template);
+  }
+
+  private createProviderMenuItems(): MenuItemConstructorOptions[] {
+    const providers = this.state.usageState?.providers ?? [];
+    if (providers.length === 0) {
+      return [];
+    }
+
+    const activeProviderId = this.state.usageState?.activeProviderId ?? null;
+    return providers.map((provider) => ({
+      label: formatProviderMenuLabel(provider),
+      type: "radio" as const,
+      checked: provider.providerId === activeProviderId,
+      enabled: false
+    }));
   }
 
   private async refreshNow(): Promise<void> {
@@ -243,14 +259,15 @@ export function deriveTrayPresentationState(input: TrayControllerState & { reado
   const weeklyText = formatUtilization(provider?.weeklyUtilization ?? null);
   const iconState = deriveTrayIconState(provider, input.usageState?.warning ?? null, input.now);
   const activeProviderLabel = provider?.displayName ?? "Claude";
-  const titleParts = [sessionText === "Pending" ? activeProviderLabel : sessionText, resetText].filter(Boolean);
-  const tooltipLines = [
-    `${activeProviderLabel}: ${formatTrayStatus(provider, input.usageState?.warning ?? null)}`,
-    `Session ${sessionText} | Weekly ${weeklyText}`,
+  const titleParts = [formatTrayTitle(provider, activeProviderLabel, sessionText), resetText].filter(Boolean);
+  const tooltipLines = buildTooltipLines({
+    activeProviderLabel,
+    provider,
     resetText,
-    input.usageState?.lastUpdatedAt ? `Updated ${formatShortDateTime(input.usageState.lastUpdatedAt)}` : "Waiting for refresh",
-    input.usageState?.warning ?? ""
-  ].filter(Boolean);
+    sessionText,
+    usageState: input.usageState,
+    weeklyText
+  });
 
   return {
     title: titleParts.join(" "),
@@ -338,6 +355,77 @@ function formatUtilization(value: number | null): string {
   return typeof value === "number" && Number.isFinite(value) ? `${Math.round(value * 100)}%` : "Pending";
 }
 
+function formatTrayTitle(provider: ProviderCard | null, activeProviderLabel: string, sessionText: string): string {
+  if (!provider) {
+    return activeProviderLabel;
+  }
+
+  if (provider.providerId === "claude") {
+    return sessionText === "Pending" ? activeProviderLabel : sessionText;
+  }
+
+  return `${activeProviderLabel} ${formatPassiveCompactMetric(provider)}`;
+}
+
+function buildTooltipLines(input: {
+  readonly activeProviderLabel: string;
+  readonly provider: ProviderCard | null;
+  readonly resetText: string;
+  readonly sessionText: string;
+  readonly usageState: UsageState | null;
+  readonly weeklyText: string;
+}): readonly string[] {
+  const baseLines = [
+    `${input.activeProviderLabel}: ${formatTrayStatus(input.provider, input.usageState?.warning ?? null)}`
+  ];
+
+  const metricLines =
+    input.provider?.providerId === "claude"
+      ? [`Session ${input.sessionText} | Weekly ${input.weeklyText}`, input.resetText]
+      : [
+          formatPassiveMetricLine(input.provider),
+          input.provider?.confidenceExplanation ?? "",
+          input.provider?.detailText ?? ""
+        ];
+
+  return [
+    ...baseLines,
+    ...metricLines,
+    input.usageState?.lastUpdatedAt ? `Updated ${formatShortDateTime(input.usageState.lastUpdatedAt)}` : "Waiting for refresh",
+    input.usageState?.warning ?? ""
+  ].filter(Boolean);
+}
+
+function formatPassiveCompactMetric(provider: ProviderCard): string {
+  if (typeof provider.dailyRequestCount === "number") {
+    return `${provider.dailyRequestCount} today`;
+  }
+
+  if (typeof provider.requestsPerMinute === "number") {
+    return `${provider.requestsPerMinute}/min`;
+  }
+
+  return formatProviderStatusToken(provider.status);
+}
+
+function formatPassiveMetricLine(provider: ProviderCard | null): string {
+  if (!provider) {
+    return "";
+  }
+
+  const metrics = [
+    typeof provider.dailyRequestCount === "number" ? `${provider.dailyRequestCount} requests today` : "",
+    typeof provider.requestsPerMinute === "number" ? `${provider.requestsPerMinute}/min` : "",
+    provider.resetAt ? `Reset ${formatShortDateTime(provider.resetAt)}` : ""
+  ].filter(Boolean);
+
+  return metrics.length > 0 ? metrics.join(" | ") : formatProviderStatusToken(provider.status);
+}
+
+function formatProviderMenuLabel(provider: ProviderCard): string {
+  return `${provider.displayName} - ${formatPassiveCompactMetric(provider)}`;
+}
+
 function deriveTrayIconState(provider: ProviderCard | null, warning: string | null, now: Date): TrayIconState {
   if (!provider) {
     return "unknown";
@@ -407,10 +495,18 @@ function formatTrayStatus(provider: ProviderCard | null, warning: string | null)
     return "Waiting for provider state";
   }
   if (provider.status === "configured") {
-    return "Configured";
+    return provider.providerId === "claude" ? "Configured" : `${provider.displayName} usage is derived from local activity`;
   }
 
   return provider.status.replace(/_/gu, " ");
+}
+
+function formatProviderStatusToken(status: ProviderCard["status"]): string {
+  return status
+    .split(/_/u)
+    .filter(Boolean)
+    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
 }
 
 function formatShortDateTime(value: string): string {

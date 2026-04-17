@@ -376,7 +376,7 @@ export function ProviderList({
             usageHistory={usageHistory}
           />
         ) : (
-          <ProviderPlaceholderCard key={provider.providerId} provider={provider} />
+          <PassiveProviderCard key={provider.providerId} provider={provider} />
         )
       )}
       <GitHubHeatmapPanel heatmap={githubHeatmap} />
@@ -423,7 +423,7 @@ export function ClaudeUsageCard({
   );
 }
 
-export function ProviderPlaceholderCard({ provider }: { readonly provider: ProviderCard }): React.JSX.Element {
+export function PassiveProviderCard({ provider }: { readonly provider: ProviderCard }): React.JSX.Element {
   return (
     <article className="provider-card provider-card-compact">
       <div className="provider-title-row">
@@ -431,12 +431,38 @@ export function ProviderPlaceholderCard({ provider }: { readonly provider: Provi
           <h2>{provider.displayName}</h2>
           <p className="muted">{formatProviderStatus(provider)}</p>
         </div>
-        <StatusPill tone={provider.enabled ? "active" : "muted"}>{provider.enabled ? "On" : "Later"}</StatusPill>
+        <StatusPill tone={getProviderTone(provider)}>{formatProviderPill(provider)}</StatusPill>
       </div>
-      <p className="provider-headline">{provider.headline}</p>
+      <div className="provider-copy">
+        <p className="provider-headline">{provider.headline}</p>
+        {provider.detailText ? <p className="muted">{provider.detailText}</p> : null}
+        <p className="muted">{provider.confidenceExplanation}</p>
+      </div>
+      <div className="summary-grid">
+        <Metric label="Requests" value={formatDailyRequests(provider.dailyRequestCount)} />
+        <Metric label="Rate" value={formatRequestsPerMinute(provider.requestsPerMinute)} />
+        <Metric label="Updated" value={formatDateTime(provider.lastUpdatedAt)} />
+        <Metric label="Mode" value={formatToken(provider.adapterMode)} />
+      </div>
+      {provider.actions.length > 0 ? (
+        <div className="inline-actions">
+          {provider.actions.includes("refresh") ? (
+            <button onClick={() => void window.claudeUsage.runProviderDetection(provider.providerId)} type="button">
+              Refresh {provider.displayName}
+            </button>
+          ) : null}
+          {provider.actions.includes("diagnostics") ? (
+            <button onClick={() => void window.claudeUsage.getProviderDiagnostics(provider.providerId)} type="button">
+              {provider.displayName} diagnostics
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   );
 }
+
+export const ProviderPlaceholderCard = PassiveProviderCard;
 
 export function AccountList({ accounts }: { readonly accounts: readonly AccountSummary[] }): React.JSX.Element {
   if (accounts.length === 0) {
@@ -1319,7 +1345,12 @@ function NotificationCheckbox({
 }
 
 function getProviderTone(provider: ProviderCard): "active" | "muted" | "warning" {
-  if (provider.status === "expired" || provider.status === "degraded" || provider.status === "missing_configuration") {
+  if (
+    provider.status === "expired" ||
+    provider.status === "degraded" ||
+    provider.status === "missing_configuration" ||
+    provider.status === "stale"
+  ) {
     return "warning";
   }
 
@@ -1337,6 +1368,10 @@ function formatProviderPill(provider: ProviderCard): string {
 
   if (provider.status === "missing_configuration") {
     return "Setup";
+  }
+
+  if (provider.status === "stale") {
+    return "Stale";
   }
 
   return provider.enabled ? "Tracking" : "Off";
@@ -1417,6 +1452,18 @@ function formatAccountStatus(account: AccountSummary): string {
 
 function formatPercent(value: number | null): string {
   return typeof value === "number" ? `${Math.round(value * 100)}%` : "Pending";
+}
+
+function formatDailyRequests(value: number | null): string {
+  if (typeof value !== "number") {
+    return "Pending";
+  }
+
+  return `${value} ${value === 1 ? "request" : "requests"} today`;
+}
+
+function formatRequestsPerMinute(value: number | null): string {
+  return typeof value === "number" ? `${value}/min` : "Pending";
 }
 
 function formatMeterWidth(value: number | null): string {

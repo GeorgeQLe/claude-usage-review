@@ -4,7 +4,6 @@ import type { ProviderCard } from "../../shared/types/provider.js";
 import type { AppSettings } from "../../shared/types/settings.js";
 import {
   ErrorState,
-  getClaudeProvider,
   LoadingState,
   StatusPill,
   WarningBanner,
@@ -25,7 +24,7 @@ export function OverlayRoute(): React.JSX.Element {
 
   const { accounts, settings, usageState } = resource.snapshot;
   const activeAccount = accounts.find((account) => account.isActive) ?? null;
-  const claudeProvider = getClaudeProvider(usageState);
+  const activeProvider = getActiveProvider(usageState);
   const overlaySettings = settings.overlay;
   const layout = overlaySettings.layout;
 
@@ -67,8 +66,8 @@ export function OverlayRoute(): React.JSX.Element {
           </button>
         </div>
       ) : null}
-      {claudeProvider ? (
-        <OverlayContent activeAccount={activeAccount} layout={layout} provider={claudeProvider} />
+      {activeProvider ? (
+        <OverlayContent activeAccount={activeAccount} layout={layout} provider={activeProvider} />
       ) : (
         <section className="overlay-empty" aria-label="Overlay status">
           <p className="eyebrow">ClaudeUsage</p>
@@ -100,11 +99,12 @@ function OverlayContent({
 }
 
 function MinimalOverlay({ provider }: { readonly provider: ProviderCard }): React.JSX.Element {
+  const primaryValue = provider.providerId === "claude" ? formatPercent(provider.sessionUtilization) : formatProviderPrimary(provider);
   return (
     <section className="overlay-minimal" aria-label="Overlay status">
       <div>
         <p className="eyebrow">{provider.displayName}</p>
-        <h1>{formatPercent(provider.sessionUtilization)}</h1>
+        <h1>{primaryValue}</h1>
       </div>
       <StatusPill tone={getProviderTone(provider)}>{formatProviderPill(provider)}</StatusPill>
     </section>
@@ -118,6 +118,10 @@ function CompactOverlay({
   readonly activeAccount: AccountSummary | null;
   readonly provider: ProviderCard;
 }): React.JSX.Element {
+  if (provider.providerId !== "claude") {
+    return <PassiveCompactOverlay provider={provider} />;
+  }
+
   return (
     <section className="overlay-compact" aria-label="Overlay status">
       <div className="overlay-title-row">
@@ -145,6 +149,10 @@ function SidebarOverlay({
   readonly activeAccount: AccountSummary | null;
   readonly provider: ProviderCard;
 }): React.JSX.Element {
+  if (provider.providerId !== "claude") {
+    return <PassiveSidebarOverlay provider={provider} />;
+  }
+
   return (
     <section className="overlay-sidebar" aria-label="Overlay status">
       <div className="overlay-title-row">
@@ -165,6 +173,50 @@ function SidebarOverlay({
         <OverlayMetric label="Updated" value={formatDateTime(provider.lastUpdatedAt)} />
         <OverlayMetric label="Account" value={activeAccount ? activeAccount.label : "No account"} />
         <OverlayMetric label="Auth" value={activeAccount ? formatToken(activeAccount.authStatus) : "Missing Credentials"} />
+      </div>
+    </section>
+  );
+}
+
+function PassiveCompactOverlay({ provider }: { readonly provider: ProviderCard }): React.JSX.Element {
+  return (
+    <section className="overlay-compact" aria-label="Overlay status">
+      <div className="overlay-title-row">
+        <div>
+          <p className="eyebrow">{provider.displayName}</p>
+          <h1>{formatProviderPrimary(provider)}</h1>
+        </div>
+        <StatusPill tone={getProviderTone(provider)}>{formatProviderPill(provider)}</StatusPill>
+      </div>
+      <p className="muted">{provider.headline}</p>
+      {provider.detailText ? <p className="muted">{provider.detailText}</p> : null}
+      <p className="muted">{provider.confidenceExplanation}</p>
+      <div className="overlay-meta">
+        <span>{formatRequestsPerMinute(provider.requestsPerMinute)}</span>
+        <span>{formatDateTime(provider.lastUpdatedAt)}</span>
+      </div>
+    </section>
+  );
+}
+
+function PassiveSidebarOverlay({ provider }: { readonly provider: ProviderCard }): React.JSX.Element {
+  return (
+    <section className="overlay-sidebar" aria-label="Overlay status">
+      <div className="overlay-title-row">
+        <div>
+          <p className="eyebrow">{provider.displayName}</p>
+          <h1>{formatProviderPrimary(provider)}</h1>
+        </div>
+        <StatusPill tone={getProviderTone(provider)}>{formatProviderPill(provider)}</StatusPill>
+      </div>
+      <p className="overlay-headline">{provider.headline}</p>
+      {provider.detailText ? <p className="muted">{provider.detailText}</p> : null}
+      <p className="muted">{provider.confidenceExplanation}</p>
+      <div className="overlay-metric-grid">
+        <OverlayMetric label="Requests" value={formatDailyRequests(provider.dailyRequestCount)} />
+        <OverlayMetric label="Rate" value={formatRequestsPerMinute(provider.requestsPerMinute)} />
+        <OverlayMetric label="Updated" value={formatDateTime(provider.lastUpdatedAt)} />
+        <OverlayMetric label="Mode" value={formatToken(provider.adapterMode)} />
       </div>
     </section>
   );
@@ -194,7 +246,12 @@ function OverlayMetric({ label, value }: { readonly label: string; readonly valu
 }
 
 function getProviderTone(provider: ProviderCard): "active" | "muted" | "warning" {
-  if (provider.status === "expired" || provider.status === "degraded" || provider.status === "missing_configuration") {
+  if (
+    provider.status === "expired" ||
+    provider.status === "degraded" ||
+    provider.status === "missing_configuration" ||
+    provider.status === "stale"
+  ) {
     return "warning";
   }
 
@@ -214,11 +271,41 @@ function formatProviderPill(provider: ProviderCard): string {
     return "Setup";
   }
 
+  if (provider.status === "stale") {
+    return "Stale";
+  }
+
   return provider.enabled ? "Tracking" : "Off";
 }
 
 function formatPercent(value: number | null): string {
   return typeof value === "number" ? `${Math.round(value * 100)}%` : "Pending";
+}
+
+function getActiveProvider(usageState: { readonly activeProviderId: ProviderCard["providerId"] | null; readonly providers: readonly ProviderCard[] }): ProviderCard | null {
+  return (
+    usageState.providers.find((provider) => provider.providerId === usageState.activeProviderId) ??
+    usageState.providers.find((provider) => provider.providerId === "claude") ??
+    usageState.providers.find((provider) => provider.enabled) ??
+    usageState.providers[0] ??
+    null
+  );
+}
+
+function formatProviderPrimary(provider: ProviderCard): string {
+  return formatDailyRequests(provider.dailyRequestCount);
+}
+
+function formatDailyRequests(value: number | null): string {
+  if (typeof value !== "number") {
+    return "Pending";
+  }
+
+  return `${value} ${value === 1 ? "request" : "requests"} today`;
+}
+
+function formatRequestsPerMinute(value: number | null): string {
+  return typeof value === "number" ? `${value}/min` : "Pending";
 }
 
 function formatMeterWidth(value: number | null): string {

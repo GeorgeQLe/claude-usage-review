@@ -162,6 +162,70 @@ describe("Phase 2 IPC command contract", () => {
     expect(JSON.stringify({ diagnostics, refreshed })).not.toContain("access_token");
     expect(JSON.stringify({ diagnostics, refreshed })).not.toContain("prompt");
   });
+
+  it("exports derived provider diagnostics placeholders without raw provider content", async () => {
+    const { ipcChannelNames, registerIpcHandlers } = await import("./ipc.js");
+
+    registerIpcHandlers({
+      usageState: {
+        getUsageState: () => ({
+          activeProviderId: "gemini",
+          lastUpdatedAt: "2026-04-17T15:00:00.000Z",
+          providers: [
+            {
+              actions: ["refresh", "diagnostics"],
+              adapterMode: "passive",
+              confidence: "estimated",
+              confidenceExplanation: "Estimated from local Codex activity.",
+              dailyRequestCount: 12,
+              detailText: "history.jsonl bookmark offset 128.",
+              displayName: "Codex",
+              enabled: true,
+              headline: "Codex activity observed",
+              lastUpdatedAt: "2026-04-17T14:59:00.000Z",
+              providerId: "codex",
+              requestsPerMinute: null,
+              resetAt: null,
+              sessionUtilization: null,
+              status: "configured",
+              weeklyUtilization: null
+            },
+            {
+              actions: ["refresh", "diagnostics"],
+              adapterMode: "accuracy",
+              confidence: "high_confidence",
+              confidenceExplanation: "High confidence from Gemini /stats.",
+              dailyRequestCount: 42,
+              detailText: "Gemini /stats summary parsed.",
+              displayName: "Gemini",
+              enabled: true,
+              headline: "Gemini request window is healthy",
+              lastUpdatedAt: "2026-04-17T15:00:00.000Z",
+              providerId: "gemini",
+              requestsPerMinute: 2,
+              resetAt: null,
+              sessionUtilization: null,
+              status: "configured",
+              weeklyUtilization: null
+            }
+          ],
+          warning: null
+        })
+      }
+    });
+
+    const diagnostics = await invoke(ipcChannelNames.exportDiagnostics);
+
+    expect(diagnostics).toMatchObject({
+      summary: "Provider diagnostics export contains derived status only."
+    });
+    expect(JSON.stringify(diagnostics)).toContain("Codex: configured, estimated");
+    expect(JSON.stringify(diagnostics)).toContain("Gemini: configured, high_confidence");
+    expect(JSON.stringify(diagnostics)).toContain("bookmark offset 128");
+    expect(JSON.stringify(diagnostics)).not.toContain("access_token");
+    expect(JSON.stringify(diagnostics)).not.toContain("prompt");
+    expect(JSON.stringify(diagnostics)).not.toContain("raw chat");
+  });
 });
 
 async function invoke(channel: string, payload?: unknown): Promise<unknown> {

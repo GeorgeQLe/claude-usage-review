@@ -233,6 +233,37 @@ describe("foundation renderer routes", () => {
     expect(document.body.textContent).not.toContain("gemini-secret-token");
   });
 
+  it("renders passive provider cards without Claude-only usage meters", async () => {
+    const { PopoverRoute } = await importRendererApp();
+    const { container } = await renderRoute(<PopoverRoute />);
+    const codexCard = findArticleByHeading(container, "Codex");
+    const geminiCard = findArticleByHeading(container, "Gemini");
+
+    expect(codexCard?.textContent).toContain("Estimated from local Codex activity.");
+    expect(codexCard?.textContent).toContain("7 requests today");
+    expect(codexCard?.textContent).not.toContain("Five-hour usage");
+    expect(geminiCard?.textContent).toContain("High confidence from Gemini /stats.");
+    expect(geminiCard?.textContent).toContain("42 requests today");
+    expect(geminiCard?.textContent).toContain("2/min");
+    expect(geminiCard?.textContent).not.toContain("Weekly usage");
+  });
+
+  it("renders overlay summaries for the active passive provider", async () => {
+    window.claudeUsage.getUsageState = vi.fn(async () => ({
+      ...mockUsageState,
+      activeProviderId: "gemini"
+    }));
+
+    await renderRoute(<OverlayRoute />);
+
+    expect(document.body.textContent).toContain("Gemini");
+    expect(document.body.textContent).toContain("42 requests today");
+    expect(document.body.textContent).toContain("High confidence from Gemini /stats.");
+    expect(document.body.textContent).toContain("2/min");
+    expect(document.body.textContent).not.toContain("42% session");
+    expect(document.body.textContent).not.toContain("Five-hour");
+  });
+
   it("mounts onboarding and overlay routes with placeholder state", async () => {
     await renderRoute(<OnboardingRoute />);
     expect(document.body.textContent).toContain("Connect usage tracking");
@@ -306,6 +337,14 @@ function findEnabledButton(container: HTMLElement, label: string): HTMLButtonEle
   return (
     Array.from(container.querySelectorAll("button")).find(
       (button) => button.textContent?.trim() === label && !button.disabled
+    ) ?? null
+  );
+}
+
+function findArticleByHeading(container: HTMLElement, heading: string): HTMLElement | null {
+  return (
+    Array.from(container.querySelectorAll("article")).find((article) =>
+      Array.from(article.querySelectorAll("h2")).some((node) => node.textContent?.trim() === heading)
     ) ?? null
   );
 }
@@ -416,11 +455,23 @@ const mockSettings: AppSettings = {
   providers: {
     codex: {
       enabled: false,
-      setupPromptDismissed: false
+      setupPromptDismissed: false,
+      adapterMode: "passive",
+      authMode: "unknown",
+      plan: "unknown",
+      profileLabel: null,
+      lastRefreshAt: null,
+      staleAfterMinutes: 30
     },
     gemini: {
       enabled: false,
-      setupPromptDismissed: false
+      setupPromptDismissed: false,
+      adapterMode: "passive",
+      authMode: "unknown",
+      plan: "unknown",
+      profileLabel: null,
+      lastRefreshAt: null,
+      staleAfterMinutes: 30
     }
   },
   timeDisplay: "countdown",
@@ -454,14 +505,14 @@ const mockUsageState: UsageState = {
       adapterMode: "passive",
       confidence: "estimated",
       confidenceExplanation: "Estimated from local Codex activity.",
-      dailyRequestCount: null,
+      dailyRequestCount: 7,
       detailText: "Local history parsed one minute ago.",
       displayName: "Codex",
       enabled: true,
       headline: "Codex activity observed",
       lastUpdatedAt: "2026-04-15T12:00:00.000Z",
       providerId: "codex",
-      requestsPerMinute: null,
+      requestsPerMinute: 1,
       resetAt: null,
       sessionUtilization: null,
       status: "configured",
