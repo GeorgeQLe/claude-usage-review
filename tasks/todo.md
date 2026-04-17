@@ -57,7 +57,7 @@
   - Keep confidence labeling conservative: `/stats` can raise Gemini to `high_confidence` for parsed command-derived summaries, but passive-only local files must remain `estimated` or `observed_only` and must not claim exact remaining quota.
   - Validate with `npm test -- --run src/main/providers/gemini/stats.test.ts src/main/providers/gemini/adapter.test.ts` and `npm run typecheck` from `electron-app/`. Full Phase 4 tests may still fail on settings/UI/tray wiring until Steps 4.6-4.8.
 
-- [ ] Step 4.6: [automated] Implement provider settings UI and IPC for Codex/Gemini enablement, plan/auth confirmation, confidence explanations, last refresh, stale/degraded diagnostics, and provider refresh actions.
+- [x] Step 4.6: [automated] Implement provider settings UI and IPC for Codex/Gemini enablement, plan/auth confirmation, confidence explanations, last refresh, stale/degraded diagnostics, and provider refresh actions.
 
   **Implementation plan for Step 4.6:**
   - Start from the existing red settings/IPC/renderer tests in `electron-app/src/shared/schemas/provider.test.ts`, `electron-app/src/main/ipc.test.ts`, and `electron-app/src/foundation-renderer.test.tsx`. Keep tray rotation, popover cards, overlay summaries, and diagnostics export wiring out of scope until Step 4.7 unless a small shared type is unavoidable.

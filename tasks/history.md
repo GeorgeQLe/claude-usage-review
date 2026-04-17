@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 4.6: Electron Provider Settings UI and IPC
+
+Completed the Phase 4 provider settings UI and IPC step. The current Electron tree already had the Codex/Gemini settings contract, provider diagnostics and refresh IPC, preload API methods, and renderer settings rows in place. The settings surface exposes provider enablement, setup prompt dismissal, plan/auth selection, derived confidence explanations, last provider status details, refresh actions, and diagnostics actions without rendering raw Codex/Gemini file contents, OAuth credentials, API keys, prompts, responses, or command output.
+
+Validation: focused `npm test -- --run src/shared/schemas/provider.test.ts src/main/ipc.test.ts src/foundation-renderer.test.tsx` passed with 3 files and 16 tests. `npm run typecheck` passed from `electron-app/`. Full `npm test -- --run` passed with 49 files and 171 tests. `npm run build` passed from `electron-app/`, including nested typecheck, tests, main/preload/renderer builds. Accepted warning: Node's experimental SQLite warning during storage/integration tests.
+
 ## 2026-04-17 — Step 4.4: Electron Gemini Passive Adapter
 
 Implemented the Electron Gemini passive provider adapter for Phase 4. The new Gemini detector resolves `GEMINI_HOME` with a `~/.gemini` fallback, reads `settings.json` only for safe auth-mode signals, treats `oauth_creds.json` as presence-only auth evidence, and reports unknown or unreadable auth state through redacted diagnostics. The new session parser scans `tmp/**/chats/session-*.json` for derived model, timestamp, token, request-per-minute, and daily request counts while dropping prompts, responses, OAuth tokens, API keys, and raw chat bodies before returning provider state. The Gemini adapter now produces passive provider cards with conservative confidence, stale/degraded/missing status handling, and profile-aware daily headroom.
