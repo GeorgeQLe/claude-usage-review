@@ -31,6 +31,22 @@ describe("Phase 4 Gemini /stats red tests", () => {
     });
     expect(stats.redactGeminiStatsDiagnostics("oauth token abc123 and API_KEY=secret")).not.toMatch(/abc123|secret/u);
   });
+
+  it("reports missing CLI failures through the helper boundary without leaking command secrets", async () => {
+    const stats = await loadStats();
+
+    const summary = await stats.readGeminiStatsSummary({
+      runner: async () => {
+        throw new Error("spawn gemini ENOENT api_key=secret");
+      }
+    });
+
+    expect(summary).toMatchObject({
+      confidence: "observed_only",
+      diagnostics: expect.arrayContaining([expect.stringContaining("failed")])
+    });
+    expect(JSON.stringify(summary)).not.toContain("secret");
+  });
 });
 
 async function loadStats(): Promise<Record<string, any>> {

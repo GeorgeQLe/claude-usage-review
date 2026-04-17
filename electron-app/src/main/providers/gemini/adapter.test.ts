@@ -50,6 +50,30 @@ describe("Phase 4 Gemini adapter red tests", () => {
     expect(JSON.stringify(snapshot)).not.toContain("apiKey");
   });
 
+  it("marks stale passive timestamps without upgrading confidence from local files", async () => {
+    const adapter = await loadAdapter();
+    const snapshot = await adapter.refreshGeminiProviderSnapshot({
+      detector: async () => ({ detected: true }),
+      now: new Date("2026-04-17T15:00:00.000Z"),
+      sessionReader: async () => ({
+        summary: {
+          dailyRequestCount: 8,
+          lastObservedAt: "2026-04-17T13:00:00.000Z",
+          model: "gemini-2.5-pro",
+          requestsPerMinute: 0,
+          tokenCount: 512
+        }
+      }),
+      staleAfterMs: 15 * 60 * 1000
+    });
+
+    expect(snapshot.card).toMatchObject({
+      confidence: "estimated",
+      status: "stale"
+    });
+    expect(snapshot.card.detailText).toContain("stale");
+  });
+
   it("uses reliable /stats summaries without losing passive fallback behavior", async () => {
     const adapter = await loadAdapter();
     const snapshot = await adapter.refreshGeminiProviderSnapshot({
