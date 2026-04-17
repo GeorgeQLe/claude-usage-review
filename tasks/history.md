@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 4.8: Electron Provider Shell Green Suite
+
+Completed the Phase 4 green-suite step for the Electron provider shell and passive adapters. The focused Phase 4 suites were already green, and the regression coverage now explicitly includes Gemini `/stats` missing-CLI failures through the injectable command boundary plus stale Gemini passive timestamps that remain estimated instead of upgrading confidence. Existing Phase 4 fixture coverage also covers malformed Codex/Gemini provider files, unknown Gemini auth modes, degraded adapters, confidence downgrades, and provider diagnostics redaction.
+
+Validation: focused `npm test -- --run src/main/providers src/shared/confidence src/shared/schemas/provider.test.ts src/main/ipc.test.ts src/foundation-main.test.ts src/foundation-renderer.test.tsx` passed with 14 files and 64 tests. `npm run typecheck` passed from `electron-app/`. Full `npm test -- --run` passed with 49 files and 177 tests. `npm run build` passed from `electron-app/`, including nested typecheck, tests, main/preload/renderer builds. Accepted warning: Node's experimental SQLite warning during storage/integration tests.
+
 ## 2026-04-17 — Step 4.7: Electron Provider State UI Wiring
 
 Wired the Phase 4 provider state into the Electron tray, popover, overlay, settings-facing provider rows, and diagnostics export placeholder path. The tray now uses the active provider card for title, tooltip, icon tone, and disabled provider menu rows, with passive Codex/Gemini labels based on derived request/rate/status state while preserving Claude exact percentage and reset text. Popover cards now render Codex/Gemini as first-class passive provider summaries with confidence explanations, request counts, refresh/diagnostics actions, and no Claude-only five-hour or weekly meter semantics. The overlay now renders the active provider instead of always selecting Claude, keeping Claude usage bars for Claude and rendering compact passive summaries for Codex/Gemini. Diagnostics export now emits derived provider status entries only and redacts unsafe token/prompt/raw-chat terms.

@@ -79,7 +79,7 @@
   - Validate with focused tray/renderer/IPC diagnostics tests first, then `npm run typecheck` from `electron-app/`. If the focused work is green, run `npm test -- --run`; full build verification remains Step 4.9 unless Step 4.7 changes require proving bundled renderer/preload output.
 
 ## Green
-- [ ] Step 4.8: [automated] Make all Phase 4 tests pass and add fixture coverage for malformed provider files, missing CLIs, unknown auth modes, stale refresh timestamps, degraded adapters, and confidence downgrade paths.
+- [x] Step 4.8: [automated] Make all Phase 4 tests pass and add fixture coverage for malformed provider files, missing CLIs, unknown auth modes, stale refresh timestamps, degraded adapters, and confidence downgrade paths.
 
   **Implementation plan for Step 4.8:**
   - Run the focused Phase 4 suites first, fix implementation gaps, then run `npm run typecheck` and `npm test -- --run` from `electron-app/`.
@@ -90,8 +90,9 @@
 
   **Implementation plan for Step 4.9:**
   - Run `npm run typecheck`, `npm test -- --run`, `npm run build`, and `npm run smoke:electron` from `electron-app/`.
-  - Inspect all warnings, especially Electron startup/preload/security warnings and provider-parser warnings.
-  - If verification passes, archive Phase 4, update `tasks/roadmap.md`, and prepare Phase 5.
+  - Treat Node's experimental SQLite warning during storage/integration tests as accepted, matching the Phase 4 green-suite record. Inspect and resolve any new warnings, especially Electron startup/preload/security warnings, renderer smoke warnings, and provider-parser diagnostics.
+  - Confirm the provider-card renderer smoke path covers Claude, Codex, and Gemini summaries after the Step 4.8 fixture additions for missing Gemini CLI failures and stale passive timestamps.
+  - If verification passes, archive Phase 4 into `tasks/phases/`, check off the Phase 4 milestone in `tasks/roadmap.md`, advance `tasks/todo.md` to Phase 5, extract Phase 5 manual tasks into `tasks/manual-todo.md`, and run just-in-time planning for Phase 5.
 
 ## Milestone
 - [ ] Claude, Codex, and Gemini are first-class provider cards in Electron.
