@@ -6,6 +6,7 @@ import { registerIpcHandlers, type IpcRegistration } from "./ipc.js";
 import { createLocalNotificationService, type LocalNotificationService } from "./services/notifications.js";
 import { getSecretStorageStatus } from "./storage/secrets.js";
 import { createWrapperGenerationService } from "./wrappers/generator.js";
+import { createWrapperVerificationService } from "./wrappers/verification.js";
 import { createDefaultAppSettings, mergeAppSettings } from "../shared/settings/defaults.js";
 import { appSettingsSchema } from "../shared/schemas/settings.js";
 import { usageStateSchema } from "../shared/schemas/usage.js";
@@ -62,6 +63,9 @@ async function startApp(): Promise<void> {
   const wrapperGenerationService = createWrapperGenerationService({
     appUserDataDir: app.getPath("userData")
   });
+  const wrapperVerificationService = createWrapperVerificationService({
+    appUserDataDir: app.getPath("userData")
+  });
 
   windowManager = new AppWindowManager({
     isDevelopment,
@@ -90,7 +94,8 @@ async function startApp(): Promise<void> {
       updateSettings
     },
     wrappers: {
-      generateWrapper: wrapperGenerationService.generateWrapper
+      generateWrapper: wrapperGenerationService.generateWrapper,
+      verifyWrapper: wrapperVerificationService.verifyWrapper
     },
     windows: {
       openPopover: () => {

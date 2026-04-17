@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 5.3: Accuracy Mode Wrapper Verification
+
+Implemented Electron setup verification for Codex and Gemini Accuracy Mode wrappers. The new verifier resolves the public `codex`/`gemini` command from PATH, compares it to the generated app-owned wrapper path, resolves the native CLI while excluding the wrapper root, detects missing commands, native-CLI-first PATH order, active wrappers, stale wrapper versions, and unverified setups, and runs only harmless `--version` probes through an injectable runner. Runtime IPC now wires `wrappers:verify` to the app user data wrapper directory, and shared IPC schemas/types now expose the Step 5.3 verification statuses.
+
+Validation: focused `npm test -- --run src/main/wrappers/verification.test.ts src/main/ipc.test.ts src/foundation-schemas.test.ts` passed with 3 files and 16 tests. `npm run typecheck` passed from `electron-app/`. `npm test -- --run src/foundation-renderer.test.tsx` still has expected red failures for the future Step 5.6 Accuracy Mode settings/onboarding UI copy and controls; no Step 5.3 verifier regressions were found.
+
 ## 2026-04-17 — Step 5.2: Accuracy Mode Wrapper Generation
 
 Implemented the Electron Accuracy Mode wrapper generation path for Codex and Gemini. The new generator creates deterministic, versioned wrapper scripts under the app user data directory, returns manual setup and removal commands, records only derived invocation metadata when the wrapper event path is configured, and avoids automatic shell profile, PowerShell profile, PATH, or symlink mutation. IPC wrapper setup schemas and types now preserve wrapper paths, setup commands, removal instructions, wrapper versions, and the no-shell-mutation guarantee, and the Electron runtime wires `wrappers:generate` to app-owned wrapper file persistence.

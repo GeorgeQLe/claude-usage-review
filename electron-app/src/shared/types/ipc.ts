@@ -265,7 +265,7 @@ export interface WrapperSetupResult {
 
 export interface WrapperVerificationResult {
   readonly providerId: ProviderId;
-  readonly status?: "missing" | "native_only" | "wrapper_active" | "stale_wrapper" | "unverified";
+  readonly status?: "missing_command" | "native_cli_active" | "wrapper_active" | "stale_wrapper" | "unverified";
   readonly verified: boolean;
   readonly message: string;
   readonly wrapperVersion?: string;

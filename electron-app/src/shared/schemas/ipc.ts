@@ -116,7 +116,7 @@ export const wrapperSetupResultSchema = z.object({
 
 export const wrapperVerificationResultSchema = z.object({
   providerId: z.string().min(1),
-  status: z.enum(["missing", "native_only", "wrapper_active", "stale_wrapper", "unverified"]).optional(),
+  status: z.enum(["missing_command", "native_cli_active", "wrapper_active", "stale_wrapper", "unverified"]).optional(),
   verified: z.boolean(),
   message: z.string(),
   wrapperVersion: z.string().min(1).optional()

@@ -47,7 +47,7 @@
   - Routed wrapper generation through injected IPC dependencies and wired the Electron runtime to generate wrappers under `app.getPath("userData")` without editing shell profiles, PowerShell profiles, system PATH, or symlink locations.
   - Focused validation passed: `npm test -- --run src/main/wrappers/generator.test.ts src/main/ipc.test.ts src/foundation-schemas.test.ts` and `npm run typecheck` from `electron-app/`. Full test/build remain intentionally deferred because later Phase 5 verification/event/UI red suites are still assigned to Steps 5.3-5.8.
 
-- [ ] Step 5.3: [automated] Implement setup verification for Codex and Gemini wrappers: resolve command paths, detect whether `codex`/`gemini` points at the wrapper, run harmless version/status probes where safe, and report status through IPC.
+- [x] Step 5.3: [automated] Implement setup verification for Codex and Gemini wrappers: resolve command paths, detect whether `codex`/`gemini` points at the wrapper, run harmless version/status probes where safe, and report status through IPC.
 
   **Implementation plan for Step 5.3:**
   - Add verification modules under `electron-app/src/main/wrappers/` with injectable process execution and filesystem lookup boundaries. Do not run interactive provider commands in tests.
@@ -55,6 +55,13 @@
   - Limit live probes to harmless version/status checks behind the injected runner, with timeout/error classification and redacted messages.
   - Wire verification results into `wrappers:verify` IPC/preload contracts and settings/onboarding-facing renderer state.
   - Validate with focused verification/IPC/renderer tests, then `npm run typecheck` from `electron-app/`.
+
+  **Result for Step 5.3:**
+  - Added `electron-app/src/main/wrappers/verification.ts` with injectable command resolution, native CLI probing, generated-wrapper detection, stale-wrapper detection, and sanitized provider-specific verification statuses for Codex and Gemini.
+  - Wired runtime `wrappers:verify` to verify app-owned wrapper paths under `app.getPath("userData")`, resolve the public CLI from PATH, resolve the native CLI while excluding the wrapper root, and run only harmless `--version` probes.
+  - Updated shared IPC schemas/types for the Step 5.3 statuses: `missing_command`, `native_cli_active`, `wrapper_active`, `stale_wrapper`, and `unverified`.
+  - Focused validation passed: `npm test -- --run src/main/wrappers/verification.test.ts src/main/ipc.test.ts src/foundation-schemas.test.ts` and `npm run typecheck` from `electron-app/`.
+  - Expected red validation remains for future Step 5.6 UI work: `npm test -- --run src/foundation-renderer.test.tsx` fails only the existing Accuracy Mode settings/onboarding copy/control assertions.
 
 - [ ] Step 5.4: [automated] Implement wrapper event ledgers in SQLite for Codex and Gemini: invocation ID, start/end, duration, command mode, model, exit status, limit-hit flag, wrapper version, and source provider.
 
