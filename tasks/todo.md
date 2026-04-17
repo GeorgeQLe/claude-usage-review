@@ -32,7 +32,7 @@
   - `npm run typecheck` passes from `electron-app/`, so the red contracts are type-safe. Accepted warning: Node's experimental SQLite warning during the wrapper event storage red tests.
 
 ## Implementation
-- [ ] Step 5.2: [automated] Implement wrapper generation under `electron-app/src/main/wrappers/`: per-provider wrapper scripts/binaries in the app user data directory, versioning, safe removal instructions, and no automatic shell/PATH mutation.
+- [x] Step 5.2: [automated] Implement wrapper generation under `electron-app/src/main/wrappers/`: per-provider wrapper scripts/binaries in the app user data directory, versioning, safe removal instructions, and no automatic shell/PATH mutation.
 
   **Implementation plan for Step 5.2:**
   - Create wrapper generator modules under `electron-app/src/main/wrappers/`, including provider metadata, generated script templates, setup command builders, removal instruction builders, and filesystem helpers with injectable app user data paths for tests.
@@ -40,6 +40,12 @@
   - Keep shell/PATH changes manual: return commands/instructions that the user can run, but never edit `.zshrc`, `.bashrc`, PowerShell profiles, system PATH, or symlink locations automatically.
   - Wire `wrappers:generate` through `electron-app/src/main/ipc.ts`, `electron-app/src/preload/api.ts`, shared IPC schemas/types, and placeholder runtime dependencies so renderer calls receive validated setup instructions.
   - Validate with focused wrapper generation and IPC tests, then `npm run typecheck` from `electron-app/`.
+
+  **Result for Step 5.2:**
+  - Added `electron-app/src/main/wrappers/generator.ts` with deterministic Codex/Gemini wrapper generation, app-user-data wrapper paths, versioned script metadata, manual setup/removal instructions, privacy-scoped derived event emission, native CLI path resolution, and app-owned file persistence.
+  - Extended shared wrapper setup/verification IPC schemas and types so setup instructions, wrapper paths, wrapper versions, manual removal instructions, and no-shell-mutation guarantees survive validation.
+  - Routed wrapper generation through injected IPC dependencies and wired the Electron runtime to generate wrappers under `app.getPath("userData")` without editing shell profiles, PowerShell profiles, system PATH, or symlink locations.
+  - Focused validation passed: `npm test -- --run src/main/wrappers/generator.test.ts src/main/ipc.test.ts src/foundation-schemas.test.ts` and `npm run typecheck` from `electron-app/`. Full test/build remain intentionally deferred because later Phase 5 verification/event/UI red suites are still assigned to Steps 5.3-5.8.
 
 - [ ] Step 5.3: [automated] Implement setup verification for Codex and Gemini wrappers: resolve command paths, detect whether `codex`/`gemini` points at the wrapper, run harmless version/status probes where safe, and report status through IPC.
 

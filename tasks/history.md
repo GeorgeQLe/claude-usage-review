@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 5.2: Accuracy Mode Wrapper Generation
+
+Implemented the Electron Accuracy Mode wrapper generation path for Codex and Gemini. The new generator creates deterministic, versioned wrapper scripts under the app user data directory, returns manual setup and removal commands, records only derived invocation metadata when the wrapper event path is configured, and avoids automatic shell profile, PowerShell profile, PATH, or symlink mutation. IPC wrapper setup schemas and types now preserve wrapper paths, setup commands, removal instructions, wrapper versions, and the no-shell-mutation guarantee, and the Electron runtime wires `wrappers:generate` to app-owned wrapper file persistence.
+
+Validation: focused `npm test -- --run src/main/wrappers/generator.test.ts src/main/ipc.test.ts src/foundation-schemas.test.ts` passed with 3 files and 16 tests. `npm run typecheck` passed from `electron-app/`. Full test/build remain intentionally deferred because later Phase 5 setup verification, wrapper event ledger, confidence, and UI red suites are still assigned to Steps 5.3-5.8.
+
 ## 2026-04-17 — Step 5.1: Accuracy Mode Wrapper Red Tests
 
 Added the Phase 5 red-test suite for Electron Accuracy Mode wrappers. Coverage now specifies deterministic Codex/Gemini wrapper generation, versioned app-owned wrapper paths, manual setup/removal commands, no automatic shell profile or PATH mutation, setup verification with harmless version probes, wrapper event ledger insertion/finish/query summaries, stderr-only limit scanning, wrapper-event confidence upgrades, IPC/schema routing, and settings/onboarding copy that stays optional, reversible, and secret-free. The tests assert that prompts, stdout, raw stderr, session keys, provider tokens, cookies, and GitHub tokens are not persisted or rendered.
