@@ -99,6 +99,11 @@ export interface IpcGitHubDependencies {
   readonly refreshHeatmap?: () => MaybePromise<GitHubHeatmapResult>;
 }
 
+export interface IpcProviderDependencies {
+  readonly getDiagnostics?: (providerId: ProviderId) => MaybePromise<ProviderDiagnosticsResult>;
+  readonly refreshProvider?: (providerId: ProviderId) => MaybePromise<ProviderDetectionResult>;
+}
+
 export interface IpcWindowDependencies {
   readonly openPopover?: () => MaybePromise<void>;
   readonly hideOverlay?: () => MaybePromise<void>;
@@ -113,6 +118,7 @@ export interface IpcHandlerDependencies {
   readonly settings?: IpcSettingsDependencies;
   readonly history?: IpcHistoryDependencies;
   readonly github?: IpcGitHubDependencies;
+  readonly providers?: IpcProviderDependencies;
   readonly windows?: IpcWindowDependencies;
 }
 
@@ -379,9 +385,20 @@ function createIpcState(dependencies: IpcHandlerDependencies) {
         return validateClaudeConnectionResult(createClaudeConnectionFailure(error));
       }
     },
-    getProviderDiagnostics: (providerId: ProviderId): ProviderDiagnosticsResult =>
-      placeholder.getProviderDiagnostics(providerId),
-    runProviderDetection: (providerId: ProviderId): ProviderDetectionResult => placeholder.runProviderDetection(providerId),
+    getProviderDiagnostics: async (providerId: ProviderId): Promise<ProviderDiagnosticsResult> => {
+      if (dependencies.providers?.getDiagnostics) {
+        return validateProviderDiagnosticsResult(await dependencies.providers.getDiagnostics(providerId));
+      }
+
+      return placeholder.getProviderDiagnostics(providerId);
+    },
+    runProviderDetection: async (providerId: ProviderId): Promise<ProviderDetectionResult> => {
+      if (dependencies.providers?.refreshProvider) {
+        return validateProviderDetectionResult(await dependencies.providers.refreshProvider(providerId));
+      }
+
+      return placeholder.runProviderDetection(providerId);
+    },
     generateWrapper: (providerId: ProviderId): WrapperSetupResult => placeholder.generateWrapper(providerId),
     verifyWrapper: (providerId: ProviderId): WrapperVerificationResult => placeholder.verifyWrapper(providerId),
     exportDiagnostics: (): DiagnosticsExportResult => placeholder.exportDiagnostics()

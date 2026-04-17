@@ -24,6 +24,12 @@ export interface OverlaySettings {
 export interface ProviderPlaceholderSettings {
   readonly enabled: boolean;
   readonly setupPromptDismissed: boolean;
+  readonly adapterMode: "passive" | "accuracy";
+  readonly authMode: "unknown" | "oauth-personal" | "api-key" | "session-cookie" | "none";
+  readonly plan: "unknown" | "free" | "pro" | "team" | "enterprise";
+  readonly profileLabel: string | null;
+  readonly lastRefreshAt: string | null;
+  readonly staleAfterMinutes: number;
 }
 
 export interface ProviderPlaceholderMap {

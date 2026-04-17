@@ -11,6 +11,10 @@ export type ProviderConfidence = "exact" | "high_confidence" | "estimated" | "ob
 
 export type ProviderAdapterMode = "passive" | "accuracy";
 
+export type ProviderAuthMode = "unknown" | "oauth-personal" | "api-key" | "session-cookie" | "none";
+
+export type ProviderPlan = "unknown" | "free" | "pro" | "team" | "enterprise";
+
 export interface ProviderCard {
   readonly providerId: ProviderId;
   readonly displayName: string;
@@ -28,4 +32,23 @@ export interface ProviderCard {
   readonly adapterMode: ProviderAdapterMode;
   readonly confidenceExplanation: string;
   readonly actions: readonly string[];
+}
+
+export interface ProviderSettings {
+  readonly enabled: boolean;
+  readonly setupPromptDismissed: boolean;
+  readonly adapterMode: ProviderAdapterMode;
+  readonly authMode: ProviderAuthMode;
+  readonly plan: ProviderPlan;
+  readonly profileLabel: string | null;
+  readonly lastRefreshAt: string | null;
+  readonly staleAfterMinutes: number;
+}
+
+export interface ProviderDiagnostics {
+  readonly providerId: ProviderId;
+  readonly status: "not_configured" | "ready" | "degraded";
+  readonly messages: readonly string[];
+  readonly lastCheckedAt: string | null;
+  readonly redacted: boolean;
 }

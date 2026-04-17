@@ -32,7 +32,11 @@ export function SettingsRoute(): React.JSX.Element {
         <div className="panel">
           <h2>Preferences</h2>
           <SettingsSummary settings={settings} />
-          <SettingsControls settings={settings} onUpdateSettings={resource.updateSettings} />
+          <SettingsControls
+            providerCards={usageState.providers}
+            settings={settings}
+            onUpdateSettings={resource.updateSettings}
+          />
         </div>
         <div className="panel">
           <h2>Claude credentials</h2>

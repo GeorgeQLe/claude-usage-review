@@ -15,8 +15,16 @@ export const providerConfidenceSchema = z.enum([
   "observed_only"
 ]);
 
+export const providerAdapterModeSchema = z.enum(["passive", "accuracy"]);
+
+export const providerAuthModeSchema = z.enum(["unknown", "oauth-personal", "api-key", "session-cookie", "none"]);
+
+export const providerPlanSchema = z.enum(["unknown", "free", "pro", "team", "enterprise"]);
+
+export const providerIdSchema = z.string().min(1);
+
 export const providerCardSchema = z.object({
-  providerId: z.string().min(1),
+  providerId: providerIdSchema,
   displayName: z.string().min(1),
   enabled: z.boolean(),
   status: providerStatusSchema,
@@ -29,7 +37,30 @@ export const providerCardSchema = z.object({
   requestsPerMinute: z.number().nonnegative().nullable(),
   resetAt: z.string().datetime().nullable(),
   lastUpdatedAt: z.string().datetime().nullable(),
-  adapterMode: z.enum(["passive", "accuracy"]),
+  adapterMode: providerAdapterModeSchema,
   confidenceExplanation: z.string(),
   actions: z.array(z.string())
 });
+
+export const providerSettingsSchema = z.object({
+  enabled: z.boolean(),
+  setupPromptDismissed: z.boolean().default(false),
+  adapterMode: providerAdapterModeSchema.default("passive"),
+  authMode: providerAuthModeSchema.default("unknown"),
+  plan: providerPlanSchema.default("unknown"),
+  profileLabel: z.string().trim().min(1).nullable().default(null),
+  lastRefreshAt: z.string().datetime().nullable().default(null),
+  staleAfterMinutes: z.number().int().min(1).max(24 * 60).default(30)
+});
+
+const unsafeDiagnosticsPattern = /(access[_-]?token|api[_-]?key|authorization|bearer|cookie|session[_-]?key|prompt|response|chat body|oauth[_-]?creds)=?/iu;
+
+export const providerDiagnosticsSchema = z
+  .object({
+    providerId: providerIdSchema,
+    status: z.enum(["not_configured", "ready", "degraded"]),
+    messages: z.array(z.string().refine((message) => !unsafeDiagnosticsPattern.test(message), "Diagnostics must be redacted.")),
+    lastCheckedAt: z.string().datetime().nullable(),
+    redacted: z.literal(true)
+  })
+  .strict();

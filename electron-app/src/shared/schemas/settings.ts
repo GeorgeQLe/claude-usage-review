@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { providerSettingsSchema } from "./provider.js";
 
 export const overlayBoundsSchema = z.object({
   x: z.number().int(),
@@ -15,10 +16,7 @@ export const overlaySettingsSchema = z.object({
   bounds: overlayBoundsSchema.nullable()
 });
 
-export const providerPlaceholderSettingsSchema = z.object({
-  enabled: z.boolean(),
-  setupPromptDismissed: z.boolean()
-});
+export const providerPlaceholderSettingsSchema = providerSettingsSchema;
 
 export const providerPlaceholderMapSchema = z.object({
   codex: providerPlaceholderSettingsSchema,

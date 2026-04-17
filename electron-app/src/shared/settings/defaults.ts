@@ -1,4 +1,4 @@
-import type { AppSettings, AppSettingsPatch, OverlaySettings } from "../types/settings.js";
+import type { AppSettings, AppSettingsPatch, OverlaySettings, ProviderPlaceholderSettings } from "../types/settings.js";
 
 export function createDefaultOverlaySettings(): OverlaySettings {
   return {
@@ -10,6 +10,19 @@ export function createDefaultOverlaySettings(): OverlaySettings {
   };
 }
 
+export function createDefaultProviderSettings(): ProviderPlaceholderSettings {
+  return {
+    enabled: false,
+    setupPromptDismissed: false,
+    adapterMode: "passive",
+    authMode: "unknown",
+    plan: "unknown",
+    profileLabel: null,
+    lastRefreshAt: null,
+    staleAfterMinutes: 30
+  };
+}
+
 export function createDefaultAppSettings(): AppSettings {
   return {
     launchAtLogin: false,
@@ -18,14 +31,8 @@ export function createDefaultAppSettings(): AppSettings {
     weeklyColorMode: "pace-aware",
     overlay: createDefaultOverlaySettings(),
     providers: {
-      codex: {
-        enabled: false,
-        setupPromptDismissed: false
-      },
-      gemini: {
-        enabled: false,
-        setupPromptDismissed: false
-      }
+      codex: createDefaultProviderSettings(),
+      gemini: createDefaultProviderSettings()
     },
     migration: {
       swiftAppImport: true,
@@ -53,16 +60,19 @@ export function mergeAppSettings(settings: AppSettings, patch: AppSettingsPatch)
     ...settings,
     ...patch,
     overlay: patch.overlay ? { ...settings.overlay, ...patch.overlay } : settings.overlay,
-    providers: patch.providers
-      ? {
-          codex: patch.providers.codex ? { ...settings.providers.codex, ...patch.providers.codex } : settings.providers.codex,
-          gemini: patch.providers.gemini
-            ? { ...settings.providers.gemini, ...patch.providers.gemini }
-            : settings.providers.gemini
-        }
-      : settings.providers,
+    providers: patch.providers ? mergeProviderSettings(settings.providers, patch.providers) : settings.providers,
     migration: patch.migration ? { ...settings.migration, ...patch.migration } : settings.migration,
     notifications: patch.notifications ? { ...settings.notifications, ...patch.notifications } : settings.notifications,
     onboarding: patch.onboarding ? { ...settings.onboarding, ...patch.onboarding } : settings.onboarding
+  };
+}
+
+function mergeProviderSettings(
+  settings: AppSettings["providers"],
+  patch: NonNullable<AppSettingsPatch["providers"]>
+): AppSettings["providers"] {
+  return {
+    codex: patch.codex ? { ...settings.codex, ...patch.codex } : settings.codex,
+    gemini: patch.gemini ? { ...settings.gemini, ...patch.gemini } : settings.gemini
   };
 }

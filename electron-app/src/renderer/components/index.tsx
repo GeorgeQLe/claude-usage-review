@@ -607,9 +607,11 @@ export function SettingsSummary({ settings }: { readonly settings: AppSettings }
 }
 
 export function SettingsControls({
+  providerCards = [],
   settings,
   onUpdateSettings
 }: {
+  readonly providerCards?: readonly ProviderCard[];
   readonly settings: AppSettings;
   readonly onUpdateSettings: (patch: AppSettingsPatch) => Promise<void>;
 }): React.JSX.Element {
@@ -731,18 +733,18 @@ export function SettingsControls({
       </section>
       <section className="settings-section" aria-label="Providers">
         <h3>Providers</h3>
-        <p className="muted">Codex and Gemini are saved as placeholders until adapters are available.</p>
+        <p className="muted">Codex and Gemini use local provider status only.</p>
         <div className="form-grid">
-          <ProviderPlaceholderField
-            enabled={draft.providers.codex.enabled}
-            dismissed={draft.providers.codex.setupPromptDismissed}
+          <ProviderSettingsField
+            provider={findProviderCard(providerCards, "codex")}
+            settings={draft.providers.codex}
             label="Codex"
             name="codex"
             onChange={(patch) => updateDraft({ providers: { codex: patch } })}
           />
-          <ProviderPlaceholderField
-            enabled={draft.providers.gemini.enabled}
-            dismissed={draft.providers.gemini.setupPromptDismissed}
+          <ProviderSettingsField
+            provider={findProviderCard(providerCards, "gemini")}
+            settings={draft.providers.gemini}
             label="Gemini"
             name="gemini"
             onChange={(patch) => updateDraft({ providers: { gemini: patch } })}
@@ -1209,25 +1211,33 @@ function Metric({ label, value }: { readonly label: string; readonly value: stri
   );
 }
 
-function ProviderPlaceholderField({
-  enabled,
-  dismissed,
+function ProviderSettingsField({
+  provider,
+  settings,
   label,
   name,
   onChange
 }: {
-  readonly enabled: boolean;
-  readonly dismissed: boolean;
+  readonly provider: ProviderCard | null;
+  readonly settings: AppSettings["providers"]["codex"];
   readonly label: string;
-  readonly name: string;
+  readonly name: "codex" | "gemini";
   readonly onChange: (patch: Partial<AppSettings["providers"]["codex"]>) => void;
 }): React.JSX.Element {
   return (
     <fieldset className="settings-fieldset">
       <legend>{label}</legend>
+      {provider ? (
+        <>
+          <p className="muted">{provider.confidenceExplanation}</p>
+          <p className="muted">{provider.detailText ?? formatProviderStatus(provider)}</p>
+        </>
+      ) : (
+        <p className="muted">Provider status has not been reported yet.</p>
+      )}
       <label className="checkbox-label">
         <input
-          checked={enabled}
+          checked={settings.enabled}
           name={`${name}-provider-enabled`}
           onChange={(event) => onChange({ enabled: event.target.checked })}
           type="checkbox"
@@ -1236,15 +1246,57 @@ function ProviderPlaceholderField({
       </label>
       <label className="checkbox-label">
         <input
-          checked={dismissed}
+          checked={settings.setupPromptDismissed}
           name={`${name}-provider-dismissed`}
           onChange={(event) => onChange({ setupPromptDismissed: event.target.checked })}
           type="checkbox"
         />
         Hide setup prompt
       </label>
+      <label>
+        Plan
+        <select
+          name={`${name}-provider-plan`}
+          onChange={(event) => onChange({ plan: event.target.value as AppSettings["providers"]["codex"]["plan"] })}
+          value={settings.plan}
+        >
+          <option value="unknown">Unknown</option>
+          <option value="free">Free</option>
+          <option value="pro">Pro</option>
+          <option value="team">Team</option>
+          <option value="enterprise">Enterprise</option>
+        </select>
+      </label>
+      <label>
+        Auth
+        <select
+          name={`${name}-provider-auth-mode`}
+          onChange={(event) =>
+            onChange({ authMode: event.target.value as AppSettings["providers"]["codex"]["authMode"] })
+          }
+          value={settings.authMode}
+        >
+          <option value="unknown">Unknown</option>
+          <option value="oauth-personal">OAuth personal</option>
+          <option value="api-key">API key</option>
+          <option value="session-cookie">Session cookie</option>
+          <option value="none">None</option>
+        </select>
+      </label>
+      <div className="inline-actions">
+        <button onClick={() => void window.claudeUsage.runProviderDetection(name)} type="button">
+          Refresh {label}
+        </button>
+        <button onClick={() => void window.claudeUsage.getProviderDiagnostics(name)} type="button">
+          {label} diagnostics
+        </button>
+      </div>
     </fieldset>
   );
+}
+
+function findProviderCard(providerCards: readonly ProviderCard[], providerId: ProviderCard["providerId"]): ProviderCard | null {
+  return providerCards.find((provider) => provider.providerId === providerId) ?? null;
 }
 
 function NotificationCheckbox({
