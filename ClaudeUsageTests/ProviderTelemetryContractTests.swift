@@ -177,6 +177,237 @@ final class ProviderTelemetryHTTPInjectionContractTests: XCTestCase {
     }
 }
 
+// MARK: - Codex Telemetry Contract
+
+final class CodexTelemetryContractTests: XCTestCase {
+    private var tempDir: URL!
+    private let fileManager = FileManager.default
+
+    override func setUp() {
+        super.setUp()
+        tempDir = fileManager.temporaryDirectory
+            .appendingPathComponent("codex-telemetry-\(UUID().uuidString)")
+        try? fileManager.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    }
+
+    override func tearDown() {
+        try? fileManager.removeItem(at: tempDir)
+        tempDir = nil
+        super.tearDown()
+    }
+
+    func testCodexAuthProviderDetectsChatGPTBackedCLIAuthWithoutLeakingAccountId() throws {
+        try writeAuthJSON(
+            """
+            {
+              "auth_mode": "chatgpt",
+              "tokens": {
+                "id_token": "\(Self.jwt(email: "codex-user@example.com", accountId: "acct_secret_123"))",
+                "access_token": "codex-chatgpt-token",
+                "refresh_token": "codex-refresh-token",
+                "account_id": "acct_secret_123"
+              }
+            }
+            """
+        )
+
+        let provider = CodexTelemetryAuthProvider(codexHome: tempDir, fileManager: fileManager)
+        let auth = try provider.currentAuth()
+
+        guard case let .chatGPT(accessToken, accountLabel) = auth else {
+            return XCTFail("Expected ChatGPT-backed Codex auth")
+        }
+        XCTAssertEqual(accessToken, "codex-chatgpt-token")
+        XCTAssertEqual(accountLabel, "codex-user@example.com")
+        XCTAssertNotEqual(accountLabel, "acct_secret_123")
+    }
+
+    func testCodexAuthProviderDetectsCodexAPIAuthAndConfiguredBaseURL() throws {
+        try writeConfigTOML(
+            """
+            model = "gpt-5-codex"
+
+            [model_providers.openai]
+            base_url = "https://codex-api.example.com"
+            """
+        )
+        try writeAuthJSON(
+            """
+            {
+              "auth_mode": "apikey",
+              "OPENAI_API_KEY": "sk-codex-api-secret"
+            }
+            """
+        )
+
+        let provider = CodexTelemetryAuthProvider(codexHome: tempDir, fileManager: fileManager)
+        let auth = try provider.currentAuth()
+
+        guard case let .codexAPI(baseURL, apiKey, accountLabel) = auth else {
+            return XCTFail("Expected Codex API auth")
+        }
+        XCTAssertEqual(baseURL.absoluteString, "https://codex-api.example.com")
+        XCTAssertEqual(apiKey, "sk-codex-api-secret")
+        XCTAssertEqual(accountLabel, "Codex API")
+    }
+
+    func testCodexTelemetryClientUsesCodexAPIBaseURL() async throws {
+        let httpClient = RecordingProviderTelemetryHTTPClient(
+            responses: [
+                .success(
+                    ProviderTelemetryHTTPResponse(
+                        statusCode: 200,
+                        headers: ["content-type": "application/json"],
+                        body: Fixtures.codexWhamUsage
+                    )
+                )
+            ]
+        )
+        let client = CodexTelemetryClient(
+            authProvider: StubCodexTelemetryAuthProvider(
+                auth: .codexAPI(
+                    baseURL: URL(string: "https://codex-api.example.com")!,
+                    apiKey: "sk-codex-api-secret",
+                    accountLabel: "Codex API"
+                )
+            ),
+            httpClient: httpClient,
+            now: { Fixtures.date("2026-04-16T17:55:00Z") }
+        )
+
+        let snapshot = try await client.refresh()
+
+        XCTAssertEqual(httpClient.requests.count, 1)
+        XCTAssertEqual(
+            httpClient.requests[0].url?.absoluteString,
+            "https://codex-api.example.com/api/codex/usage"
+        )
+        XCTAssertEqual(httpClient.requests[0].value(forHTTPHeaderField: "authorization"), "Bearer sk-codex-api-secret")
+        XCTAssertEqual(snapshot.status, .exact)
+        XCTAssertEqual(snapshot.rawSourceVersion, "codex-api-usage")
+        XCTAssertNil(snapshot.rawResponseData)
+    }
+
+    func testCodexAuthProviderReportsMissingEncryptedExpiredAndMalformedAuth() throws {
+        let missingProvider = CodexTelemetryAuthProvider(codexHome: tempDir, fileManager: fileManager)
+        XCTAssertThrowsError(try missingProvider.currentAuth()) { error in
+            XCTAssertEqual(error as? ProviderTelemetryError, .authUnavailable("Codex CLI auth unavailable"))
+        }
+
+        try writeConfigTOML("auth_credentials_store = \"keyring\"\n")
+        let keyringProvider = CodexTelemetryAuthProvider(codexHome: tempDir, fileManager: fileManager)
+        XCTAssertThrowsError(try keyringProvider.currentAuth()) { error in
+            XCTAssertEqual(
+                error as? ProviderTelemetryError,
+                .unsupportedCredentials("Codex CLI credentials are stored in an unsupported encrypted store")
+            )
+        }
+
+        try writeAuthJSON(
+            """
+            {
+              "auth_mode": "chatgpt",
+              "expires_at": "2026-04-01T00:00:00Z",
+              "tokens": {
+                "access_token": "expired-token",
+                "refresh_token": "refresh-token"
+              }
+            }
+            """
+        )
+        let expiredProvider = CodexTelemetryAuthProvider(
+            codexHome: tempDir,
+            fileManager: fileManager,
+            now: { Fixtures.date("2026-04-16T17:55:00Z") }
+        )
+        XCTAssertThrowsError(try expiredProvider.currentAuth()) { error in
+            XCTAssertEqual(error as? ProviderTelemetryError, .authUnavailable("Codex CLI auth expired"))
+        }
+
+        try "{not-valid-json".write(
+            to: tempDir.appendingPathComponent("auth.json"),
+            atomically: true,
+            encoding: .utf8
+        )
+        let malformedProvider = CodexTelemetryAuthProvider(codexHome: tempDir, fileManager: fileManager)
+        XCTAssertThrowsError(try malformedProvider.currentAuth()) { error in
+            XCTAssertEqual(error as? ProviderTelemetryError, .authUnavailable("Malformed Codex CLI auth"))
+        }
+    }
+
+    func testCodexTelemetryClientTreatsEndpointShapeDriftAsUnavailableFailure() async throws {
+        let httpClient = RecordingProviderTelemetryHTTPClient(
+            responses: [
+                .success(
+                    ProviderTelemetryHTTPResponse(
+                        statusCode: 200,
+                        headers: ["content-type": "application/json"],
+                        body: Data(#"{"unexpected":"shape","access_token":"secret"}"#.utf8)
+                    )
+                )
+            ]
+        )
+        let client = CodexTelemetryClient(
+            authProvider: StubCodexTelemetryAuthProvider(
+                auth: .chatGPT(accessToken: "codex-token-value", accountLabel: "Personal Codex")
+            ),
+            httpClient: httpClient,
+            now: { Fixtures.date("2026-04-16T17:55:00Z") }
+        )
+
+        do {
+            _ = try await client.refresh()
+            XCTFail("Expected endpoint shape drift to throw")
+        } catch let error as ProviderTelemetryError {
+            guard case let .endpointShapeChanged(reason) = error else {
+                return XCTFail("Expected endpointShapeChanged, got \(error)")
+            }
+            XCTAssertTrue(reason.contains("Codex usage response shape changed"))
+            XCTAssertFalse(reason.contains("secret"))
+        }
+    }
+
+    func testCodexDiagnosticsRedactRawAuthJSONAndAPIKeys() {
+        let raw = """
+        {"OPENAI_API_KEY":"sk-codex-api-secret","tokens":{"access_token":"codex-access-secret","refresh_token":"codex-refresh-secret","account_id":"acct_secret_123"}}
+        """
+
+        let redacted = ProviderTelemetryDiagnostics.redact(raw)
+
+        XCTAssertFalse(redacted.contains("sk-codex-api-secret"))
+        XCTAssertFalse(redacted.contains("codex-access-secret"))
+        XCTAssertFalse(redacted.contains("codex-refresh-secret"))
+        XCTAssertFalse(redacted.contains("acct_secret_123"))
+        XCTAssertTrue(redacted.contains("[redacted]"))
+    }
+
+    private func writeAuthJSON(_ contents: String) throws {
+        try contents.write(
+            to: tempDir.appendingPathComponent("auth.json"),
+            atomically: true,
+            encoding: .utf8
+        )
+    }
+
+    private func writeConfigTOML(_ contents: String) throws {
+        try contents.write(
+            to: tempDir.appendingPathComponent("config.toml"),
+            atomically: true,
+            encoding: .utf8
+        )
+    }
+
+    private static func jwt(email: String, accountId: String) -> String {
+        let header = #"{"alg":"none"}"#.data(using: .utf8)!.base64URLEncodedString()
+        let payload = """
+        {"email":"\(email)","https://api.openai.com/auth":{"chatgpt_account_id":"\(accountId)","chatgpt_plan_type":"pro"}}
+        """
+        .data(using: .utf8)!
+        .base64URLEncodedString()
+        return "\(header).\(payload).signature"
+    }
+}
+
 // MARK: - Refresh And Fallback Contract
 
 final class ProviderTelemetryRefreshContractTests: XCTestCase {
@@ -729,4 +960,13 @@ private enum Fixtures {
         }
         """.utf8
     )
+}
+
+private extension Data {
+    func base64URLEncodedString() -> String {
+        base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
 }
