@@ -8,6 +8,11 @@ interface UsageHistoryStore {
     readonly usage: ClaudeUsageFixture;
     readonly capturedAt?: string;
   }) => UsageSnapshotSummary;
+  readonly listUsageHistory: (filters?: {
+    readonly accountId?: string | null;
+    readonly providerId?: string;
+    readonly now?: string;
+  }) => UsageHistorySummary;
   readonly listRecentSnapshots: (filters?: {
     readonly accountId?: string | null;
     readonly providerId?: string;
@@ -24,6 +29,20 @@ interface UsageSnapshotSummary {
   readonly weeklyUtilization: number | null;
   readonly resetAt: string | null;
   readonly payload: ClaudeUsageFixture;
+}
+
+interface UsageHistorySummary {
+  readonly generatedAt: string;
+  readonly points: readonly UsageHistoryPoint[];
+}
+
+interface UsageHistoryPoint {
+  readonly accountId: string | null;
+  readonly providerId: string;
+  readonly capturedAt: string;
+  readonly sessionUtilization: number | null;
+  readonly weeklyUtilization: number | null;
+  readonly resetAt: string | null;
 }
 
 interface HistoryModule {
@@ -154,6 +173,70 @@ describe("usage history storage contract", () => {
         accountId: null
       }
     ]);
+  });
+
+  it("keeps raw 24-hour history and compacts older seven-day points into hourly buckets", async () => {
+    const store = await createStore([
+      "old-low",
+      "old-high",
+      "old-high-later",
+      "old-next-bucket",
+      "raw-boundary",
+      "raw-recent",
+      "outside-window"
+    ]);
+    insertAccount("account-1");
+
+    store.recordClaudeUsageSnapshot({
+      accountId: "account-1",
+      usage: claudeUsageFixture({ fiveHourUtilization: 0.2, weeklyUtilization: 0.2 }),
+      capturedAt: "2026-04-14T10:05:00.000Z"
+    });
+    store.recordClaudeUsageSnapshot({
+      accountId: "account-1",
+      usage: claudeUsageFixture({ fiveHourUtilization: 0.6, weeklyUtilization: 0.3 }),
+      capturedAt: "2026-04-14T10:25:00.000Z"
+    });
+    store.recordClaudeUsageSnapshot({
+      accountId: "account-1",
+      usage: claudeUsageFixture({ fiveHourUtilization: 0.6, weeklyUtilization: 0.4 }),
+      capturedAt: "2026-04-14T10:55:00.000Z"
+    });
+    store.recordClaudeUsageSnapshot({
+      accountId: "account-1",
+      usage: claudeUsageFixture({ fiveHourUtilization: 0.35, weeklyUtilization: 0.5 }),
+      capturedAt: "2026-04-14T11:05:00.000Z"
+    });
+    store.recordClaudeUsageSnapshot({
+      accountId: "account-1",
+      usage: claudeUsageFixture({ fiveHourUtilization: 0.41, weeklyUtilization: 0.6 }),
+      capturedAt: "2026-04-14T12:00:00.000Z"
+    });
+    store.recordClaudeUsageSnapshot({
+      accountId: "account-1",
+      usage: claudeUsageFixture({ fiveHourUtilization: 0.45, weeklyUtilization: 0.7 }),
+      capturedAt: "2026-04-14T12:30:00.000Z"
+    });
+    store.recordClaudeUsageSnapshot({
+      accountId: "account-1",
+      usage: claudeUsageFixture({ fiveHourUtilization: 0.99, weeklyUtilization: 0.99 }),
+      capturedAt: "2026-04-08T11:59:59.000Z"
+    });
+
+    const history = store.listUsageHistory({
+      accountId: "account-1",
+      now: "2026-04-15T12:00:00.000Z",
+      providerId: "claude"
+    });
+
+    expect(history.generatedAt).toBe("2026-04-15T12:00:00.000Z");
+    expect(history.points.map((point) => point.capturedAt)).toEqual([
+      "2026-04-14T10:55:00.000Z",
+      "2026-04-14T11:05:00.000Z",
+      "2026-04-14T12:00:00.000Z",
+      "2026-04-14T12:30:00.000Z"
+    ]);
+    expect(history.points.map((point) => point.sessionUtilization)).toEqual([0.6, 0.35, 0.41, 0.45]);
   });
 });
 

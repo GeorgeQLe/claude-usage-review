@@ -6,6 +6,7 @@ import { OnboardingRoute } from "./renderer/onboarding/index.js";
 import { OverlayRoute } from "./renderer/overlay/index.js";
 import { SettingsRoute } from "./renderer/settings/index.js";
 import type { AccountSummary } from "./shared/types/accounts.js";
+import type { GitHubHeatmapResult } from "./shared/types/ipc.js";
 import type { AppSettings } from "./shared/types/settings.js";
 import type { UsageState } from "./shared/types/usage.js";
 
@@ -49,6 +50,19 @@ describe("foundation renderer routes", () => {
     expect(document.body.textContent).toContain("Local placeholder");
     expect(window.claudeUsage.getUsageState).toHaveBeenCalled();
     expect(window.claudeUsage.subscribeUsageUpdated).toHaveBeenCalled();
+  });
+
+  it("renders configured GitHub heatmap state without credential material", async () => {
+    const { PopoverRoute } = await importRendererApp();
+    window.claudeUsage.getGitHubHeatmap = vi.fn(async () => configuredGitHubHeatmap);
+
+    const { container } = await renderRoute(<PopoverRoute />);
+
+    expect(document.body.textContent).toContain("GitHub Contributions");
+    expect(document.body.textContent).toContain("Updated");
+    expect(document.body.textContent).toContain("12 contributions");
+    expect(container.querySelector('[aria-label="2026-04-15: 7 contributions"]')).not.toBeNull();
+    expect(document.body.textContent).not.toContain("ghp_");
   });
 
   it("mounts settings with account controls and write-only Claude credentials", async () => {
@@ -150,6 +164,58 @@ describe("foundation renderer routes", () => {
     expect(container.querySelector<HTMLInputElement>('input[name="session-key"]')?.value).toBe("");
     expect(document.body.textContent).toContain("Claude connection succeeded.");
     expect(document.body.textContent).not.toContain("synthetic-session-secret-2");
+  });
+
+  it("submits provider placeholders and write-only GitHub settings from settings", async () => {
+    const { container } = await renderRoute(<SettingsRoute />);
+    const codexEnabled = container.querySelector<HTMLInputElement>('input[name="codex-provider-enabled"]');
+    const geminiDismissed = container.querySelector<HTMLInputElement>('input[name="gemini-provider-dismissed"]');
+    const settingsForm = container.querySelector<HTMLSelectElement>('select[name="time-display"]')?.closest("form");
+
+    await act(async () => {
+      codexEnabled?.click();
+      geminiDismissed?.click();
+    });
+    await act(async () => {
+      settingsForm?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(window.claudeUsage.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providers: expect.objectContaining({
+          codex: expect.objectContaining({ enabled: true }),
+          gemini: expect.objectContaining({ setupPromptDismissed: true })
+        })
+      })
+    );
+
+    const githubUsername = container.querySelector<HTMLInputElement>('input[name="github-username"]');
+    const githubToken = container.querySelector<HTMLInputElement>('input[name="github-token"]');
+    const githubForm = githubUsername?.closest("form");
+    const githubEnabled = githubForm?.querySelector<HTMLInputElement>('input[type="checkbox"]');
+
+    await act(async () => {
+      githubEnabled?.click();
+      if (githubUsername) {
+        setInputValue(githubUsername, " octocat ");
+      }
+      if (githubToken) {
+        setInputValue(githubToken, "ghp_synthetic_secret");
+      }
+    });
+    await act(async () => {
+      githubForm?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(window.claudeUsage.saveGitHubSettings).toHaveBeenCalledWith({
+      enabled: true,
+      token: "ghp_synthetic_secret",
+      username: "octocat"
+    });
+    expect(container.querySelector<HTMLInputElement>('input[name="github-token"]')?.value).toBe("");
+    expect(document.body.textContent).not.toContain("ghp_synthetic_secret");
   });
 
   it("mounts onboarding and overlay routes with placeholder state", async () => {
@@ -405,3 +471,28 @@ const mockGitHubHeatmap = {
   username: null,
   weeks: []
 } as const;
+
+const configuredGitHubHeatmap: GitHubHeatmapResult = {
+  configured: true,
+  enabled: true,
+  error: null,
+  lastFetchedAt: "2026-04-15T12:00:00.000Z",
+  nextRefreshAt: "2026-04-15T13:00:00.000Z",
+  status: "ready",
+  totalContributions: 12,
+  username: "octocat",
+  weeks: [
+    {
+      contributionDays: [
+        {
+          contributionCount: 0,
+          date: "2026-04-14"
+        },
+        {
+          contributionCount: 7,
+          date: "2026-04-15"
+        }
+      ]
+    }
+  ]
+};

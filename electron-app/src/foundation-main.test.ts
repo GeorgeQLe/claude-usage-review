@@ -208,6 +208,58 @@ describe("foundation window routing", () => {
       }
     });
   });
+
+  it("applies overlay settings changes to existing overlay windows", async () => {
+    const { AppWindowManager } = await import("./main/windows.js");
+    const manager = new AppWindowManager({
+      devServerUrl: "http://127.0.0.1:5173/",
+      getOverlaySettings: () => ({
+        bounds: null,
+        enabled: true,
+        layout: "compact",
+        opacity: 0.9,
+        visible: true
+      }),
+      isDevelopment: true
+    });
+
+    await manager.toggleOverlay();
+    const window = electronMock.BrowserWindow.instances[0];
+
+    manager.applyOverlaySettings({
+      bounds: null,
+      enabled: true,
+      layout: "minimal",
+      opacity: 0.55,
+      visible: true
+    });
+    expect(window?.setOpacity).toHaveBeenCalledWith(0.55);
+    expect(window?.setSize).toHaveBeenCalledWith(240, 96);
+    expect(window?.show).toHaveBeenCalled();
+
+    manager.applyOverlaySettings({
+      bounds: { x: 10.2, y: 20.8, width: 310.4, height: 190.6 },
+      enabled: true,
+      layout: "sidebar",
+      opacity: 0.8,
+      visible: true
+    });
+    expect(window?.setBounds).toHaveBeenCalledWith({
+      height: 191,
+      width: 310,
+      x: 10,
+      y: 21
+    });
+
+    manager.applyOverlaySettings({
+      bounds: null,
+      enabled: false,
+      layout: "minimal",
+      opacity: 0.55,
+      visible: false
+    });
+    expect(window?.hide).toHaveBeenCalled();
+  });
 });
 
 describe("foundation tray routing", () => {
