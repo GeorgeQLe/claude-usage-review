@@ -22,7 +22,7 @@
   - Run focused tray tests first, then `npm run typecheck`, `npm test -- --run`, and `npm run build` from `electron-app/`. The existing accepted warning is Node's experimental SQLite warning during storage/integration tests.
 
 ## Green
-- [ ] Step 3.8: [automated] Add regression tests for pace functions, history compaction, GitHub GraphQL request construction, overlay settings persistence, notification preferences, and renderer component state.
+- [x] Step 3.8: [automated] Add regression tests for pace functions, history compaction, GitHub GraphQL request construction, overlay settings persistence, notification preferences, and renderer component state.
 
   **Implementation plan for Step 3.8:**
   - Audit existing focused coverage before adding tests: `electron-app/src/shared/formatting/pace.ts` tests, `electron-app/src/main/storage/history.test.ts`, `electron-app/src/main/services/github` coverage if present, overlay/settings behavior in `electron-app/src/foundation-main.test.ts` and `electron-app/src/foundation-renderer.test.tsx`, and notification tests in `electron-app/src/main/services/notifications.test.ts`.
@@ -30,6 +30,13 @@
   - Prefer pure-function or injected-service tests over Electron runtime tests where possible. Keep secrets out of fixtures, keep network calls mocked, and avoid mutating OS-level settings.
   - Run the focused new/changed test files first, then `npm run typecheck`, `npm test -- --run`, and `npm run build` from `electron-app/`. The accepted warning remains Node's experimental SQLite warning during storage/integration tests.
 - [ ] Step 3.9: [automated] Add Electron/Playwright smoke coverage for settings, onboarding, popover, overlay layouts, error states, and GitHub disabled/configured states.
+
+  **Implementation plan for Step 3.9:**
+  - Audit the existing Electron smoke harness in `electron-app/scripts/smoke-electron.mjs`, the package script `npm run smoke:electron`, and the renderer route/window contracts in `electron-app/src/main/windows.ts`, `electron-app/src/preload/api.ts`, and `electron-app/src/renderer/`.
+  - Prefer extending the existing Electron smoke harness over introducing a separate browser-only path. Cover production-built app startup and route loading for popover, settings, onboarding, and overlay where feasible with mocked preload/main state.
+  - Add smoke assertions for settings controls, onboarding completion/skip controls, popover usage state, overlay compact/minimal/sidebar layout rendering, error state rendering/retry behavior, and GitHub disabled/configured/ready states. Keep all credentials synthetic and ensure no GitHub token or Claude session key is rendered.
+  - If the current harness cannot drive renderer DOM state directly, add the smallest test hook or fixture entry point needed under `electron-app/scripts/` or the Electron app bootstrap. Do not add GitHub Actions or live network dependencies.
+  - Run focused smoke coverage first, then `npm run typecheck`, `npm test -- --run`, `npm run build`, and `npm run smoke:electron` from `electron-app/`. The accepted warning remains Node's experimental SQLite warning during storage/integration tests; investigate any Electron startup, preload, or security warnings.
 - [ ] Step 3.10: [automated] Run Phase 3 verification: `npm run typecheck`, `npm test`, `npm run build`, and renderer smoke tests.
 
 ## Milestone

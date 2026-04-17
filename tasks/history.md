@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 3.8: Electron Product UI Regression Suite
+
+Added the Phase 3 green regression suite for the Electron Product UI Parity work. New focused coverage exercises pace stability windows, weekly color modes, today usage baselines, daily budgets, countdown/reset-time formatting, GitHub GraphQL variables and error classification, token-free heatmap controller state, hourly/forced GitHub refresh behavior, and history raw/compacted window boundaries. Existing foundation coverage now also verifies overlay settings are applied to live overlay windows, configured GitHub heatmaps render without credential material, and settings submit provider placeholders plus write-only GitHub token state.
+
+Validation: focused `npm test -- --run src/shared/formatting/pace.test.ts src/main/storage/history.test.ts src/main/services/github.test.ts src/foundation-main.test.ts src/foundation-renderer.test.tsx` passed with 5 files and 41 tests. `npm run typecheck` passed from `electron-app/`. `npm test -- --run` passed with 25 files and 109 tests. `npm run build` passed from `electron-app/`. Accepted warning: Node's experimental SQLite warning during existing storage/integration tests. Note: Vitest currently discovers previously built `dist-electron` test files as well as `src` tests, so some suites run twice during full validation.
+
 ## 2026-04-17 — Step 3.7: Electron Tray/Menu Polish
 
 Polished the Electron tray presentation path for Product UI Parity. The tray title now preserves the configured reset phrase (`Resets in ...` or `Resets at ...`) instead of stripping and truncating the countdown/reset signal. Added focused tray regression coverage for countdown and reset-time title/tooltip text, overlay checkbox state, warning/critical/limit-hit/expired/degraded/missing-configuration icon states, refresh disabled behavior, provider rotation placeholders, menu action routing, and launch-at-login idempotency through a fake Electron app API.
