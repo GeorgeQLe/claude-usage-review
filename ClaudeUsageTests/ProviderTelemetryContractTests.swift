@@ -180,6 +180,11 @@ final class ProviderTelemetryHTTPInjectionContractTests: XCTestCase {
 // MARK: - Refresh And Fallback Contract
 
 final class ProviderTelemetryRefreshContractTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        ProviderTelemetryAttachmentRegistry.removeAll()
+    }
+
     func testCoordinatorTransitionsFromPassiveToProviderSuppliedThenBackToPassiveFallback() async throws {
         let telemetryClient = ScriptedProviderTelemetryClient(
             results: [
@@ -224,6 +229,47 @@ final class ProviderTelemetryRefreshContractTests: XCTestCase {
         XCTAssertEqual(fallback.passiveSnapshot?.id, .codex)
     }
 
+    func testScheduledRefreshHonorsNextRefreshAtUntilDue() async throws {
+        let refreshTime = Fixtures.date("2026-04-16T17:55:00Z")
+        let telemetryClient = ScriptedProviderTelemetryClient(
+            results: [
+                .success(
+                    ProviderTelemetrySnapshot(
+                        providerId: .codex,
+                        accountLabel: "Personal Codex",
+                        status: .exact,
+                        confidence: .providerSupplied,
+                        lastRefreshAt: refreshTime,
+                        nextRefreshAt: refreshTime.addingTimeInterval(300),
+                        failureCount: 0,
+                        degradedReason: nil,
+                        rawSourceVersion: "codex-wham-usage",
+                        providerPayload: .codex(try ProviderTelemetryJSONDecoder.make().decode(
+                            CodexTelemetryPayload.self,
+                            from: Fixtures.codexWhamUsage
+                        ))
+                    )
+                ),
+                .failure(ProviderTelemetryError.network("should not be called before due time"))
+            ]
+        )
+        var now = refreshTime
+        let coordinator = ProviderTelemetryCoordinator(
+            clients: [.codex: telemetryClient],
+            store: InMemoryProviderTelemetryStore(),
+            now: { now }
+        )
+
+        let supplied = try await coordinator.refresh(.codex, reason: .scheduled, passiveSnapshot: nil)
+        XCTAssertEqual(supplied.status, .exact)
+        XCTAssertEqual(telemetryClient.refreshCount, 1)
+
+        now = refreshTime.addingTimeInterval(60)
+        let skipped = try await coordinator.refresh(.codex, reason: .scheduled, passiveSnapshot: nil)
+        XCTAssertEqual(skipped.status, .exact)
+        XCTAssertEqual(telemetryClient.refreshCount, 1)
+    }
+
     func testRefreshBacksOffAfterFailuresAndManualRefreshBypassesBackoff() async throws {
         let telemetryClient = ScriptedProviderTelemetryClient(
             results: [
@@ -257,7 +303,9 @@ final class ProviderTelemetryRefreshContractTests: XCTestCase {
         )
 
         _ = try await coordinator.refresh(.gemini, reason: .scheduled, passiveSnapshot: nil)
+        now = now.addingTimeInterval(ProviderTelemetryCoordinator.refreshCadence + 1)
         _ = try await coordinator.refresh(.gemini, reason: .scheduled, passiveSnapshot: nil)
+        now = now.addingTimeInterval((ProviderTelemetryCoordinator.refreshCadence * 2) + 1)
         let degraded = try await coordinator.refresh(.gemini, reason: .scheduled, passiveSnapshot: nil)
 
         XCTAssertEqual(degraded.status, .degraded)
@@ -274,6 +322,31 @@ final class ProviderTelemetryRefreshContractTests: XCTestCase {
         XCTAssertEqual(recovered.status, .exact)
         XCTAssertEqual(recovered.failureCount, 0)
         XCTAssertEqual(telemetryClient.refreshCount, 4, "Manual refresh should bypass backoff")
+    }
+
+    func testDisabledProviderTelemetryDoesNotCallClientOrPersistSnapshot() async throws {
+        let telemetryClient = ScriptedProviderTelemetryClient(
+            results: [
+                .failure(ProviderTelemetryError.network("disabled providers should not refresh"))
+            ]
+        )
+        let store = InMemoryProviderTelemetryStore()
+        let coordinator = ProviderTelemetryCoordinator(
+            clients: [.codex: telemetryClient],
+            store: store,
+            now: { Fixtures.date("2026-04-16T17:55:00Z") }
+        )
+
+        let result = try await coordinator.refreshIfEnabled(
+            .codex,
+            telemetryEnabled: false,
+            reason: .scheduled,
+            passiveSnapshot: nil
+        )
+
+        XCTAssertNil(result)
+        XCTAssertEqual(telemetryClient.refreshCount, 0)
+        XCTAssertNil(try store.snapshot(for: .codex))
     }
 }
 
@@ -326,11 +399,63 @@ final class ProviderTelemetryPrivacyContractTests: XCTestCase {
         XCTAssertFalse(persisted.diagnosticText?.contains("explain private code") == true)
         XCTAssertFalse(persisted.diagnosticText?.contains("private answer") == true)
     }
+
+    func testUserDefaultsTelemetryStorePersistsOnlySanitizedNormalizedSnapshot() throws {
+        let suiteName = "com.claudeusage.provider-telemetry-store.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = UserDefaultsProviderTelemetryStore(defaults: defaults)
+        let snapshot = ProviderTelemetrySnapshot(
+            providerId: .codex,
+            accountLabel: "Personal Codex",
+            status: .exact,
+            confidence: .providerSupplied,
+            lastRefreshAt: Fixtures.date("2026-04-16T17:55:00Z"),
+            nextRefreshAt: Fixtures.date("2026-04-16T18:00:00Z"),
+            failureCount: 0,
+            degradedReason: nil,
+            rawSourceVersion: "codex-wham-usage",
+            providerPayload: .codex(try ProviderTelemetryJSONDecoder.make().decode(
+                CodexTelemetryPayload.self,
+                from: Fixtures.codexWhamUsage
+            )),
+            passiveSnapshot: .codexRich(estimate: CodexEstimate(confidence: .estimated), isEnabled: true),
+            rawResponseData: Fixtures.codexWhamUsage,
+            diagnosticText: "prompt: explain private code\nresponse: private answer"
+        )
+
+        try store.save(snapshot)
+        let persisted = try XCTUnwrap(store.snapshot(for: .codex))
+
+        XCTAssertEqual(persisted.providerId, .codex)
+        XCTAssertEqual(persisted.accountLabel, "Personal Codex")
+        XCTAssertEqual(persisted.status, .exact)
+        XCTAssertEqual(persisted.confidence, .providerSupplied)
+        XCTAssertNil(persisted.passiveSnapshot)
+        XCTAssertNil(persisted.rawResponseData)
+        XCTAssertNil(persisted.diagnosticText)
+        guard case let .codex(payload) = persisted.providerPayload else {
+            return XCTFail("Expected persisted Codex payload")
+        }
+        XCTAssertEqual(payload.rateLimits.count, 2)
+    }
 }
 
 // MARK: - Adapter Fallback Contract
 
 final class ProviderTelemetryAdapterFallbackContractTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        ProviderTelemetryAttachmentRegistry.removeAll()
+    }
+
+    override func tearDown() {
+        ProviderTelemetryAttachmentRegistry.removeAll()
+        super.tearDown()
+    }
+
     func testCodexAdapterKeepsPassiveSnapshotWhenTelemetryUnavailable() throws {
         let passive = ProviderSnapshot.codexRich(
             estimate: CodexEstimate(confidence: .estimated),
@@ -378,6 +503,72 @@ final class ProviderTelemetryAdapterFallbackContractTests: XCTestCase {
             return XCTFail("Expected passive Gemini snapshot to remain visible")
         }
         XCTAssertEqual(estimate.confidence, .estimated)
+    }
+
+    func testProviderShellViewModelAttachesStoredTelemetryOnlyWhenOptedIn() throws {
+        let suiteName = "com.claudeusage.provider-telemetry-shell.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settings = ProviderSettingsStore(defaults: defaults)
+        settings.setEnabled(.codex, true)
+        settings.setProviderTelemetryEnabled(true, for: .codex)
+
+        let store = InMemoryProviderTelemetryStore()
+        try store.save(
+            ProviderTelemetrySnapshot(
+                providerId: .codex,
+                accountLabel: "Personal Codex",
+                status: .exact,
+                confidence: .providerSupplied,
+                lastRefreshAt: Fixtures.date("2026-04-16T17:55:00Z"),
+                nextRefreshAt: Fixtures.date("2026-04-16T18:00:00Z"),
+                failureCount: 0,
+                degradedReason: nil,
+                rawSourceVersion: "codex-wham-usage",
+                providerPayload: .codex(try ProviderTelemetryJSONDecoder.make().decode(
+                    CodexTelemetryPayload.self,
+                    from: Fixtures.codexWhamUsage
+                ))
+            )
+        )
+        let telemetryCoordinator = ProviderTelemetryCoordinator(
+            clients: [:],
+            store: store,
+            now: { Fixtures.date("2026-04-16T17:55:00Z") }
+        )
+
+        let viewModel = ProviderShellViewModel(
+            settingsStore: settings,
+            codexSnapshot: .codexRich(estimate: CodexEstimate(confidence: .estimated), isEnabled: true),
+            codexLastRefreshTime: Fixtures.date("2026-04-16T17:55:00Z"),
+            geminiSnapshot: .gemini(status: .missingConfiguration, isEnabled: false),
+            geminiLastRefreshTime: nil,
+            nowProvider: { Fixtures.date("2026-04-16T17:55:00Z") },
+            providerTelemetryCoordinator: telemetryCoordinator
+        )
+
+        XCTAssertFalse(viewModel.shellState.providers.isEmpty)
+        XCTAssertEqual(ProviderTelemetryAttachmentRegistry.snapshot(for: .codex)?.status, .exact)
+        XCTAssertEqual(
+            ProviderTelemetryAttachmentRegistry.snapshot(for: .codex)?.confidence,
+            .providerSupplied
+        )
+
+        settings.setProviderTelemetryEnabled(false, for: .codex)
+        let disabledViewModel = ProviderShellViewModel(
+            settingsStore: settings,
+            codexSnapshot: .codexRich(estimate: CodexEstimate(confidence: .estimated), isEnabled: true),
+            codexLastRefreshTime: Fixtures.date("2026-04-16T17:55:00Z"),
+            geminiSnapshot: .gemini(status: .missingConfiguration, isEnabled: false),
+            geminiLastRefreshTime: nil,
+            nowProvider: { Fixtures.date("2026-04-16T17:55:00Z") },
+            providerTelemetryCoordinator: telemetryCoordinator
+        )
+
+        XCTAssertFalse(disabledViewModel.shellState.providers.isEmpty)
+        XCTAssertNil(ProviderTelemetryAttachmentRegistry.snapshot(for: .codex))
     }
 }
 

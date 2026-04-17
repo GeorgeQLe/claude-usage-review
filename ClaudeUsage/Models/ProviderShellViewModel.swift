@@ -14,10 +14,12 @@ class ProviderShellViewModel: ObservableObject {
     private let geminiSnapshotProvider: (Bool) -> ProviderSnapshot
     private let codexLastRefreshTimeProvider: () -> Date?
     private let geminiLastRefreshTimeProvider: () -> Date?
+    private let providerTelemetryCoordinator: ProviderTelemetryCoordinator?
     private let nowProvider: () -> Date
     private var codexTimer: Timer?
     private var geminiTimer: Timer?
     private var rotationTimer: Timer?
+    private var telemetryTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
 
     init(usageViewModel: UsageViewModel, settingsStore: ProviderSettingsStore) {
@@ -37,6 +39,10 @@ class ProviderShellViewModel: ObservableObject {
         self.geminiSnapshotProvider = { geminiAdapter.toProviderSnapshot(isEnabled: $0) }
         self.codexLastRefreshTimeProvider = { codexAdapter.lastRefreshTime }
         self.geminiLastRefreshTimeProvider = { geminiAdapter.lastRefreshTime }
+        self.providerTelemetryCoordinator = ProviderTelemetryCoordinator(
+            clients: [:],
+            store: UserDefaultsProviderTelemetryStore()
+        )
         self.nowProvider = Date.init
         self.shellState = ShellState(providers: [])
 
@@ -45,6 +51,16 @@ class ProviderShellViewModel: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] usageData, authStatus, _ in
                 self?.rebuildShellState(usageData: usageData, authStatus: authStatus)
+            }
+            .store(in: &cancellables)
+
+        settingsStore.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.rebuildFromCurrent()
+                    self?.refreshProviderTelemetry(reason: .scheduled)
+                }
             }
             .store(in: &cancellables)
 
@@ -66,6 +82,13 @@ class ProviderShellViewModel: ObservableObject {
         rotationTimer = Timer.scheduledTimer(withTimeInterval: 7, repeats: true) { [weak self] _ in
             self?.rebuildFromCurrent()
         }
+        telemetryTimer = Timer.scheduledTimer(
+            withTimeInterval: ProviderTelemetryCoordinator.refreshCadence,
+            repeats: true
+        ) { [weak self] _ in
+            self?.refreshProviderTelemetry(reason: .scheduled)
+        }
+        refreshProviderTelemetry(reason: .scheduled)
     }
 
     init(
@@ -75,7 +98,8 @@ class ProviderShellViewModel: ObservableObject {
         codexLastRefreshTime: Date?,
         geminiSnapshot: ProviderSnapshot,
         geminiLastRefreshTime: Date?,
-        nowProvider: @escaping () -> Date
+        nowProvider: @escaping () -> Date,
+        providerTelemetryCoordinator: ProviderTelemetryCoordinator? = nil
     ) {
         self.coordinator = ProviderCoordinator(trayPolicy: trayPolicy)
         self.settingsStore = settingsStore
@@ -85,6 +109,7 @@ class ProviderShellViewModel: ObservableObject {
         self.geminiSnapshotProvider = { _ in geminiSnapshot }
         self.codexLastRefreshTimeProvider = { codexLastRefreshTime }
         self.geminiLastRefreshTimeProvider = { geminiLastRefreshTime }
+        self.providerTelemetryCoordinator = providerTelemetryCoordinator
         self.nowProvider = nowProvider
         self.shellState = ShellState(providers: [])
 
@@ -95,6 +120,7 @@ class ProviderShellViewModel: ObservableObject {
         codexTimer?.invalidate()
         geminiTimer?.invalidate()
         rotationTimer?.invalidate()
+        telemetryTimer?.invalidate()
     }
 
     // MARK: - Public
@@ -178,6 +204,7 @@ class ProviderShellViewModel: ObservableObject {
 
         snapshots.append(codexSnapshotProvider(settingsStore.isEnabled(.codex)))
         snapshots.append(geminiSnapshotProvider(settingsStore.isEnabled(.gemini)))
+        snapshots = attachProviderTelemetry(to: snapshots)
 
         let now = nowProvider()
         let refreshTimes = providerRefreshTimes()
@@ -283,6 +310,66 @@ class ProviderShellViewModel: ObservableObject {
 
     private func rebuildFromCurrent() {
         rebuildShellState(usageData: lastUsageData, authStatus: lastAuthStatus)
+    }
+
+    private func attachProviderTelemetry(to snapshots: [ProviderSnapshot]) -> [ProviderSnapshot] {
+        snapshots.map { snapshot in
+            guard snapshot.id != .claude else {
+                return snapshot
+            }
+
+            guard settingsStore.providerTelemetryEnabled(for: snapshot.id),
+                  let telemetry = try? providerTelemetryCoordinator?.snapshot(for: snapshot.id) else {
+                ProviderTelemetryAttachmentRegistry.detach(snapshot.id)
+                return snapshot
+            }
+
+            return ProviderTelemetryAdapterBridge.merge(
+                passiveSnapshot: snapshot,
+                telemetrySnapshot: telemetry
+            )
+        }
+    }
+
+    private func refreshProviderTelemetry(reason: ProviderTelemetryRefreshReason) {
+        guard let providerTelemetryCoordinator else {
+            return
+        }
+
+        let providers: [(ProviderId, ProviderSnapshot)] = [
+            (.codex, codexSnapshotProvider(settingsStore.isEnabled(.codex))),
+            (.gemini, geminiSnapshotProvider(settingsStore.isEnabled(.gemini))),
+        ]
+
+        for (providerId, passiveSnapshot) in providers {
+            let telemetryEnabled = settingsStore.isEnabled(providerId)
+                && settingsStore.providerTelemetryEnabled(for: providerId)
+
+            guard telemetryEnabled else {
+                ProviderTelemetryAttachmentRegistry.detach(providerId)
+                continue
+            }
+
+            Task { [weak self] in
+                guard let self else { return }
+                let snapshot = try? await providerTelemetryCoordinator.refreshIfEnabled(
+                    providerId,
+                    telemetryEnabled: true,
+                    reason: reason,
+                    passiveSnapshot: passiveSnapshot
+                )
+
+                await MainActor.run {
+                    if let snapshot {
+                        _ = ProviderTelemetryAdapterBridge.merge(
+                            passiveSnapshot: passiveSnapshot,
+                            telemetrySnapshot: snapshot
+                        )
+                    }
+                    self.rebuildFromCurrent()
+                }
+            }
+        }
     }
 
     // MARK: - Persistence

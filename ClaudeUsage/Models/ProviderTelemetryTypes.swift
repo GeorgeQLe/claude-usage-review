@@ -162,23 +162,6 @@ protocol ProviderTelemetryClient {
     func refresh() async throws -> ProviderTelemetrySnapshot
 }
 
-protocol ProviderTelemetryStore {
-    func save(_ snapshot: ProviderTelemetrySnapshot) throws
-    func snapshot(for providerId: ProviderId) throws -> ProviderTelemetrySnapshot?
-}
-
-final class InMemoryProviderTelemetryStore: ProviderTelemetryStore {
-    private var snapshots: [ProviderId: ProviderTelemetrySnapshot] = [:]
-
-    func save(_ snapshot: ProviderTelemetrySnapshot) throws {
-        snapshots[snapshot.providerId] = snapshot.sanitizedForPersistence()
-    }
-
-    func snapshot(for providerId: ProviderId) throws -> ProviderTelemetrySnapshot? {
-        snapshots[providerId]
-    }
-}
-
 enum ProviderTelemetryRefreshReason {
     case scheduled
     case manual
@@ -217,17 +200,17 @@ protocol GeminiTelemetryAuthProviding {
     func currentAuth() throws -> GeminiTelemetryAuth
 }
 
-struct CodexTelemetryPayload: Decodable, Equatable {
+struct CodexTelemetryPayload: Codable, Equatable {
     let planType: String?
     let balance: Balance?
     let rateLimits: [RateLimit]
 
-    struct Balance: Decodable, Equatable {
+    struct Balance: Codable, Equatable {
         let amount: Int
         let unit: String
     }
 
-    struct RateLimit: Decodable, Equatable {
+    struct RateLimit: Codable, Equatable {
         let limitId: String
         let limitName: String
         let windowLabel: String?
@@ -256,10 +239,10 @@ struct CodexTelemetryPayload: Decodable, Equatable {
     }
 }
 
-struct GeminiTelemetryPayload: Decodable, Equatable {
+struct GeminiTelemetryPayload: Codable, Equatable {
     let quotaBuckets: [QuotaBucket]
 
-    struct QuotaBucket: Decodable, Equatable {
+    struct QuotaBucket: Codable, Equatable {
         let modelId: String
         let tokenType: String
         let remainingAmount: Int
@@ -347,6 +330,18 @@ enum ProviderTelemetryAttachmentRegistry {
         lock.lock()
         defer { lock.unlock() }
         return attachments[providerId]
+    }
+
+    static func detach(_ providerId: ProviderId) {
+        lock.lock()
+        defer { lock.unlock() }
+        attachments.removeValue(forKey: providerId)
+    }
+
+    static func removeAll() {
+        lock.lock()
+        defer { lock.unlock() }
+        attachments.removeAll()
     }
 }
 

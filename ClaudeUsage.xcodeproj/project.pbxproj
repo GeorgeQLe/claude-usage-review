@@ -54,6 +54,7 @@
 		AA000045 /* ProviderTelemetryCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100048 /* ProviderTelemetryCoordinator.swift */; };
 		AA000046 /* CodexTelemetryClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100049 /* CodexTelemetryClient.swift */; };
 		AA000047 /* GeminiTelemetryClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100050 /* GeminiTelemetryClient.swift */; };
+		AA000048 /* ProviderTelemetryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100051 /* ProviderTelemetryStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -117,6 +118,7 @@
 		AA100048 /* ProviderTelemetryCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTelemetryCoordinator.swift; sourceTree = "<group>"; };
 		AA100049 /* CodexTelemetryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexTelemetryClient.swift; sourceTree = "<group>"; };
 		AA100050 /* GeminiTelemetryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiTelemetryClient.swift; sourceTree = "<group>"; };
+		AA100051 /* ProviderTelemetryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderTelemetryStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -235,6 +237,7 @@
 				AA100043 /* GeminiEventLedger.swift */,
 				AA100044 /* GeminiWrapper.swift */,
 				AA100048 /* ProviderTelemetryCoordinator.swift */,
+				AA100051 /* ProviderTelemetryStore.swift */,
 				AA100049 /* CodexTelemetryClient.swift */,
 				AA100050 /* GeminiTelemetryClient.swift */,
 			);
@@ -354,6 +357,7 @@
 				AA000032 /* CodexEventLedger.swift in Sources */,
 				AA000033 /* CodexWrapper.swift in Sources */,
 				AA000045 /* ProviderTelemetryCoordinator.swift in Sources */,
+				AA000048 /* ProviderTelemetryStore.swift in Sources */,
 				AA000046 /* CodexTelemetryClient.swift in Sources */,
 				AA000035 /* GeminiDetector.swift in Sources */,
 				AA000036 /* GeminiActivityParser.swift in Sources */,
