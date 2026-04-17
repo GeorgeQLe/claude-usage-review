@@ -46,6 +46,53 @@ describe("Phase 4 Codex adapter red tests", () => {
     });
     expect(snapshot.card.detailText).toContain("stale");
   });
+
+  it("uses verified wrapper events to upgrade Codex confidence without claiming exact usage", async () => {
+    const adapter = await loadAdapter();
+    const snapshot = await adapter.refreshCodexProviderSnapshot({
+      detector: async () => ({ accountLabel: "user@example.com", detected: true }),
+      historyReader: async () => ({ bookmark: { byteOffset: 128 }, events: [] }),
+      now: new Date("2026-04-17T15:00:00.000Z"),
+      sessionReader: async () => ({ events: [] }),
+      staleAfterMs: 30 * 60 * 1000,
+      wrapperEventReader: async () => ({
+        events: [
+          {
+            commandMode: "chat",
+            durationMs: 1200,
+            invocationId: "codex-wrapper-1",
+            limitHit: true,
+            model: "gpt-5.4",
+            providerId: "codex",
+            startedAt: "2026-04-17T14:58:00.000Z",
+            wrapperVersion: "5.0.0"
+          },
+          {
+            commandMode: "edit",
+            durationMs: 900,
+            invocationId: "codex-wrapper-2",
+            limitHit: false,
+            model: "gpt-5.4",
+            providerId: "codex",
+            startedAt: "2026-04-17T14:59:00.000Z",
+            wrapperVersion: "5.0.0"
+          }
+        ],
+        verified: true
+      })
+    });
+
+    expect(snapshot.card).toMatchObject({
+      adapterMode: "accuracy",
+      confidence: "high_confidence",
+      dailyRequestCount: 2,
+      providerId: "codex",
+      status: "configured"
+    });
+    expect(snapshot.card.confidence).not.toBe("exact");
+    expect(snapshot.card.confidenceExplanation).toContain("Accuracy Mode");
+    expect(JSON.stringify(snapshot)).not.toMatch(/prompt|stdout|raw stderr|access[_-]?token|session[_-]?key/iu);
+  });
 });
 
 async function loadAdapter(): Promise<Record<string, any>> {

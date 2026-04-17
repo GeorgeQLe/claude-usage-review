@@ -163,6 +163,48 @@ describe("Phase 2 IPC command contract", () => {
     expect(JSON.stringify({ diagnostics, refreshed })).not.toContain("prompt");
   });
 
+  it("routes wrapper generation and verification through sanitized wrapper dependencies", async () => {
+    const { ipcChannelNames, registerIpcHandlers } = await import("./ipc.js");
+    const wrappers = {
+      generateWrapper: vi.fn(() => ({
+        command: "export PATH='/tmp/ClaudeUsage/wrappers/codex':$PATH",
+        instructions: ["Run the command manually in your shell."],
+        mutatesShellProfiles: false,
+        providerId: "codex",
+        removalInstructions: ["Remove /tmp/ClaudeUsage/wrappers/codex from PATH."],
+        setupCommands: ["export PATH='/tmp/ClaudeUsage/wrappers/codex':$PATH"],
+        verified: false,
+        wrapperPath: "/tmp/ClaudeUsage/wrappers/codex/codex"
+      })),
+      verifyWrapper: vi.fn(() => ({
+        message: "Codex wrapper is active.",
+        providerId: "codex",
+        status: "wrapper_active",
+        verified: true,
+        wrapperVersion: "5.0.0"
+      }))
+    };
+
+    (registerIpcHandlers as (dependencies: unknown) => unknown)({ wrappers });
+
+    const setup = await invoke(ipcChannelNames.generateWrapper, { providerId: "codex" });
+    const verification = await invoke(ipcChannelNames.verifyWrapper, { providerId: "codex" });
+
+    expect(wrappers.generateWrapper).toHaveBeenCalledWith("codex");
+    expect(wrappers.verifyWrapper).toHaveBeenCalledWith("codex");
+    expect(setup).toMatchObject({
+      mutatesShellProfiles: false,
+      providerId: "codex",
+      setupCommands: ["export PATH='/tmp/ClaudeUsage/wrappers/codex':$PATH"]
+    });
+    expect(verification).toMatchObject({
+      providerId: "codex",
+      status: "wrapper_active",
+      verified: true
+    });
+    expect(JSON.stringify({ setup, verification })).not.toMatch(/prompt|stdout|raw stderr|access[_-]?token|session[_-]?key|cookie/iu);
+  });
+
   it("exports derived provider diagnostics placeholders without raw provider content", async () => {
     const { ipcChannelNames, registerIpcHandlers } = await import("./ipc.js");
 

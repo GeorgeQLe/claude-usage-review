@@ -7,6 +7,7 @@ import {
   providerCommandPayloadSchema,
   saveClaudeCredentialsPayloadSchema,
   updateSettingsPayloadSchema,
+  wrapperVerificationResultSchema,
   wrapperSetupResultSchema
 } from "./shared/schemas/ipc.js";
 import { appSettingsSchema } from "./shared/schemas/settings.js";
@@ -190,5 +191,42 @@ describe("foundation IPC schemas", () => {
         entries: []
       })
     ).toMatchObject({ entries: [] });
+  });
+
+  it("validates Accuracy Mode wrapper setup and verification contracts", () => {
+    expect(
+      wrapperSetupResultSchema.parse({
+        command: "export PATH='/tmp/ClaudeUsage/wrappers/codex':$PATH",
+        instructions: ["Run this command manually in your shell."],
+        mutatesShellProfiles: false,
+        providerId: "codex",
+        removalInstructions: ["Remove /tmp/ClaudeUsage/wrappers/codex from PATH."],
+        setupCommands: ["export PATH='/tmp/ClaudeUsage/wrappers/codex':$PATH"],
+        verified: false,
+        wrapperPath: "/tmp/ClaudeUsage/wrappers/codex/codex",
+        wrapperVersion: "5.0.0"
+      })
+    ).toMatchObject({
+      mutatesShellProfiles: false,
+      providerId: "codex",
+      removalInstructions: ["Remove /tmp/ClaudeUsage/wrappers/codex from PATH."],
+      setupCommands: ["export PATH='/tmp/ClaudeUsage/wrappers/codex':$PATH"],
+      wrapperPath: "/tmp/ClaudeUsage/wrappers/codex/codex"
+    });
+
+    expect(
+      wrapperVerificationResultSchema.parse({
+        message: "Gemini wrapper is active.",
+        providerId: "gemini",
+        status: "wrapper_active",
+        verified: true,
+        wrapperVersion: "5.0.0"
+      })
+    ).toMatchObject({
+      providerId: "gemini",
+      status: "wrapper_active",
+      verified: true,
+      wrapperVersion: "5.0.0"
+    });
   });
 });

@@ -233,6 +233,54 @@ describe("foundation renderer routes", () => {
     expect(document.body.textContent).not.toContain("gemini-secret-token");
   });
 
+  it("renders Accuracy Mode setup and verification controls without secret-bearing renderer state", async () => {
+    window.claudeUsage.generateWrapper = vi.fn(async () => ({
+      command: "export PATH='/tmp/ClaudeUsage/wrappers/codex':$PATH",
+      instructions: ["Run this command manually in your shell."],
+      providerId: "codex",
+      verified: false
+    }));
+    window.claudeUsage.verifyWrapper = vi.fn(async () => ({
+      message: "Codex wrapper is active.",
+      providerId: "codex",
+      verified: true
+    }));
+
+    const { container } = await renderRoute(<SettingsRoute />);
+
+    expect(document.body.textContent).toContain("Accuracy Mode");
+    expect(document.body.textContent).toContain("Optional");
+    expect(document.body.textContent).toContain("invocation timing");
+    expect(document.body.textContent).toContain("derived limit signals");
+    expect(document.body.textContent).toContain("Removal");
+
+    await act(async () => {
+      findButton(container, "Generate Codex wrapper")?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(window.claudeUsage.generateWrapper).toHaveBeenCalledWith("codex");
+
+    await act(async () => {
+      findButton(container, "Verify Codex wrapper")?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(window.claudeUsage.verifyWrapper).toHaveBeenCalledWith("codex");
+    expect(document.body.textContent).not.toMatch(/prompt|stdout|raw stderr|access[_-]?token|session[_-]?key|cookie|ghp_|sk-ant/iu);
+  });
+
+  it("keeps Accuracy Mode onboarding copy optional and privacy scoped", async () => {
+    await renderRoute(<OnboardingRoute />);
+
+    expect(document.body.textContent).toContain("Accuracy Mode");
+    expect(document.body.textContent).toContain("manual setup");
+    expect(document.body.textContent).toContain("does not edit shell profiles");
+    expect(document.body.textContent).toContain("does not store prompts or stdout");
+  });
+
   it("renders passive provider cards without Claude-only usage meters", async () => {
     const { PopoverRoute } = await importRendererApp();
     const { container } = await renderRoute(<PopoverRoute />);

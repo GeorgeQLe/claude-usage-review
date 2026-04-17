@@ -52,6 +52,29 @@ describe("Phase 4 provider confidence red tests", () => {
       downgraded: true
     });
   });
+
+  it("lets verified wrapper events improve confidence while still blocking exact Codex claims", async () => {
+    const confidence = await loadConfidence();
+
+    expect(
+      confidence.deriveProviderConfidence({
+        providerId: "codex",
+        sources: ["verified-wrapper-events", "stderr-limit-signals"],
+        requestedConfidence: "exact"
+      })
+    ).toMatchObject({
+      confidence: "high_confidence",
+      downgraded: true,
+      reason: expect.stringContaining("Accuracy Mode")
+    });
+    expect(
+      confidence.explainProviderConfidence({
+        confidence: "high_confidence",
+        providerId: "gemini",
+        source: "verified-wrapper-events"
+      })
+    ).toContain("Accuracy Mode");
+  });
 });
 
 async function loadConfidence(): Promise<Record<string, any>> {

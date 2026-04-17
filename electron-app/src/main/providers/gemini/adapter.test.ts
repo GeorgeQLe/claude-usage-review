@@ -101,6 +101,53 @@ describe("Phase 4 Gemini adapter red tests", () => {
     expect(snapshot.card.confidenceExplanation).toContain("/stats");
     expect(snapshot.dailyHeadroom).toBe(958);
   });
+
+  it("merges verified wrapper events with passive Gemini data while preserving secret-free diagnostics", async () => {
+    const adapter = await loadAdapter();
+    const snapshot = await adapter.refreshGeminiProviderSnapshot({
+      detector: async () => ({ auth: { mode: "oauth-personal" }, detected: true }),
+      now: new Date("2026-04-17T15:00:00.000Z"),
+      profile: { dailyRequestLimit: 1000, label: "Personal" },
+      sessionReader: async () => ({ summary: { dailyRequestCount: 3, tokenCount: 12 } }),
+      staleAfterMs: 30 * 60 * 1000,
+      wrapperEventReader: async () => ({
+        events: [
+          {
+            commandMode: "prompt",
+            durationMs: 800,
+            invocationId: "gemini-wrapper-1",
+            limitHit: false,
+            model: "gemini-2.5-pro",
+            providerId: "gemini",
+            startedAt: "2026-04-17T14:58:00.000Z",
+            wrapperVersion: "5.0.0"
+          },
+          {
+            commandMode: "prompt",
+            durationMs: 1200,
+            invocationId: "gemini-wrapper-2",
+            limitHit: true,
+            model: "gemini-2.5-pro",
+            providerId: "gemini",
+            startedAt: "2026-04-17T14:59:00.000Z",
+            wrapperVersion: "5.0.0"
+          }
+        ],
+        verified: true
+      })
+    });
+
+    expect(snapshot.card).toMatchObject({
+      adapterMode: "accuracy",
+      confidence: "high_confidence",
+      dailyRequestCount: 5,
+      providerId: "gemini",
+      status: "configured"
+    });
+    expect(snapshot.dailyHeadroom).toBe(995);
+    expect(snapshot.card.confidenceExplanation).toContain("Accuracy Mode");
+    expect(JSON.stringify(snapshot)).not.toMatch(/oauth|access[_-]?token|api[_-]?key|prompt text|stdout|raw stderr/iu);
+  });
 });
 
 async function loadAdapter(): Promise<Record<string, any>> {
