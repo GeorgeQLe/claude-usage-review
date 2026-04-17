@@ -856,3 +856,14 @@ Validation:
 - `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`: 136 tests passed, 0 failures.
 - Added focused coverage for scheduled refresh skipping until due, manual bypass after backoff, sanitized `UserDefaults` persistence, disabled-provider no-op behavior, and shell attachment only when Provider Telemetry is opted in.
 - Accepted environment warnings: xcodebuild selected the first of multiple matching local macOS destinations, AppIntents metadata extraction was skipped because the app has no AppIntents dependency, and the XCTest link step warned that the local XCTest libraries target macOS 14 while the app deployment target is macOS 13.
+
+## 2026-04-17 — Step 7.5: Swift Gemini Code Assist Provider Telemetry
+
+Implemented Gemini Code Assist provider telemetry for the Swift macOS app. `GeminiTelemetryAuthProvider` now reads existing local Gemini CLI settings and OAuth credential files at request time, accepts only Code Assist OAuth mode, discovers the Code Assist project id from settings or credentials, detects missing/encrypted/expired/malformed/unsupported credentials as structured telemetry failures, and never stores raw provider tokens. `GeminiTelemetryClient` now treats endpoint shape drift or empty quota buckets as structured telemetry failures with redacted diagnostics. `ProviderShellViewModel` now registers the live Gemini telemetry client alongside Codex while preserving the opt-in telemetry gate and Gemini's passive local scan cadence.
+
+Added fixture-driven Gemini telemetry contract tests for Code Assist auth detection, project id discovery, unsupported/encrypted/expired/malformed credential fallback, endpoint shape drift, diagnostics redaction, injected HTTP request behavior, and passive fallback preservation. The tests use temp credential fixtures and fake HTTP clients only; no live Gemini, Google, Cloud Code, Vertex, Codex, ChatGPT, or provider requests are made.
+
+Validation:
+- `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/GeminiTelemetryContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryHTTPInjectionContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryAdapterFallbackContractTests`: 10 tests passed, 0 failures.
+- `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`: 147 tests passed, 0 failures.
+- Accepted environment warnings: xcodebuild selected the first of multiple matching local macOS destinations, AppIntents metadata extraction was skipped because the app has no AppIntents dependency, the XCTest link step warned that local XCTest libraries target macOS 14 while the app deployment target is macOS 13, and macOS logged a transient missing `/private/var/db/DetachedSignatures` message during the test host run.
