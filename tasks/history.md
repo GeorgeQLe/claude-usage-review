@@ -837,3 +837,14 @@ Validation:
 - `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`: 132 tests passed, 0 failures.
 - Fixed issues found during validation: persistence now drops raw response/prompt diagnostic content, and scheduled telemetry backoff begins only after the three-failure degraded state while manual refresh bypasses backoff.
 - Accepted environment warnings: xcodebuild selected the first of multiple matching local macOS destinations, AppIntents metadata extraction was skipped because the app has no AppIntents dependency, and the XCTest link step warned that the local XCTest libraries target macOS 14 while the app deployment target is macOS 13.
+
+## 2026-04-17 — Step 7.3: Swift Provider Telemetry Coordinator And Store
+
+Implemented the Provider Telemetry orchestration layer for the Swift macOS app. The telemetry store contract now lives under `ClaudeUsage/Services/ProviderTelemetryStore.swift` with both in-memory test storage and a `UserDefaultsProviderTelemetryStore` that persists only sanitized normalized snapshots and parsed provider payloads. `ProviderTelemetryCoordinator` now owns scheduled refresh cadence, manual refresh bypass, exponential failure backoff capped at 30 minutes, success recovery, disabled-provider no-op behavior, and passive fallback snapshots for unavailable/degraded telemetry.
+
+`ProviderShellViewModel` now integrates the coordinator through opt-in Provider Telemetry toggles, attaches stored telemetry only when enabled, and keeps the existing Codex/Gemini passive 15-second local scan cadence unchanged. Claude polling and Claude API ingestion were not changed.
+
+Validation:
+- `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`: 136 tests passed, 0 failures.
+- Added focused coverage for scheduled refresh skipping until due, manual bypass after backoff, sanitized `UserDefaults` persistence, disabled-provider no-op behavior, and shell attachment only when Provider Telemetry is opted in.
+- Accepted environment warnings: xcodebuild selected the first of multiple matching local macOS destinations, AppIntents metadata extraction was skipped because the app has no AppIntents dependency, and the XCTest link step warned that the local XCTest libraries target macOS 14 while the app deployment target is macOS 13.
