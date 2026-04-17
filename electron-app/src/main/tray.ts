@@ -243,9 +243,7 @@ export function deriveTrayPresentationState(input: TrayControllerState & { reado
   const weeklyText = formatUtilization(provider?.weeklyUtilization ?? null);
   const iconState = deriveTrayIconState(provider, input.usageState?.warning ?? null, input.now);
   const activeProviderLabel = provider?.displayName ?? "Claude";
-  const titleParts = [sessionText === "Pending" ? activeProviderLabel : sessionText, resetText.replace(/^Resets (in|at) /u, "")].filter(
-    Boolean
-  );
+  const titleParts = [sessionText === "Pending" ? activeProviderLabel : sessionText, resetText].filter(Boolean);
   const tooltipLines = [
     `${activeProviderLabel}: ${formatTrayStatus(provider, input.usageState?.warning ?? null)}`,
     `Session ${sessionText} | Weekly ${weeklyText}`,
@@ -255,7 +253,7 @@ export function deriveTrayPresentationState(input: TrayControllerState & { reado
   ].filter(Boolean);
 
   return {
-    title: titleParts.join(" ").slice(0, 24),
+    title: titleParts.join(" "),
     tooltip: tooltipLines.join("\n"),
     iconState,
     activeProviderLabel,

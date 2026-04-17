@@ -302,10 +302,76 @@ describe("foundation tray routing", () => {
       overlayChecked: true,
       resetText: "Resets in 1:00:00",
       sessionText: "70%",
-      title: "70% 1:00:00",
+      title: "70% Resets in 1:00:00",
       weeklyText: "62%"
     });
     expect(presentation.tooltip).toContain("Session 70% | Weekly 62%");
+  });
+
+  it("preserves exact tray reset-time text without truncating the utilization signal", async () => {
+    const { deriveTrayPresentationState } = await import("./main/tray.js");
+    const { createDefaultAppSettings } = await import("./shared/settings/defaults.js");
+
+    const settings = createDefaultAppSettings();
+    const resetAt = "2026-04-15T22:30:00.000Z";
+    const expectedResetTime = new Intl.DateTimeFormat(undefined, {
+      hour: "numeric",
+      minute: "2-digit"
+    }).format(new Date(resetAt));
+
+    const presentation = deriveTrayPresentationState({
+      isRefreshing: false,
+      now: new Date("2026-04-15T12:00:00.000Z"),
+      settings: {
+        ...settings,
+        timeDisplay: "reset-time"
+      },
+      usageState: {
+        activeProviderId: "claude",
+        lastUpdatedAt: "2026-04-15T11:59:00.000Z",
+        providers: [
+          providerCard({
+            displayName: "Claude Pro Very Long Provider Label",
+            resetAt,
+            sessionUtilization: 0.93,
+            weeklyUtilization: 0.72
+          })
+        ],
+        warning: null
+      }
+    });
+
+    expect(presentation.resetText).toBe(`Resets at ${expectedResetTime}`);
+    expect(presentation.title).toBe(`93% Resets at ${expectedResetTime}`);
+    expect(presentation.tooltip).toContain(`Resets at ${expectedResetTime}`);
+  });
+
+  it.each([
+    ["missing_configuration", providerCard({ status: "missing_configuration" }), "missing_configuration"],
+    ["expired", providerCard({ status: "expired" }), "expired"],
+    ["degraded", providerCard({ status: "degraded" }), "degraded"],
+    ["stale", providerCard({ status: "stale" }), "degraded"],
+    ["warning text", providerCard(), "degraded"],
+    ["weekly warning", providerCard({ weeklyUtilization: 0.81 }), "warning"],
+    ["weekly critical", providerCard({ weeklyUtilization: 0.96 }), "critical"],
+    ["weekly limit hit", providerCard({ weeklyUtilization: 1 }), "limit_hit"]
+  ] as const)("derives %s tray icon state", async (_label, provider, iconState) => {
+    const { deriveTrayPresentationState } = await import("./main/tray.js");
+    const { createDefaultAppSettings } = await import("./shared/settings/defaults.js");
+
+    const presentation = deriveTrayPresentationState({
+      isRefreshing: false,
+      now: new Date("2026-04-15T12:00:00.000Z"),
+      settings: createDefaultAppSettings(),
+      usageState: {
+        activeProviderId: "claude",
+        lastUpdatedAt: "2026-04-15T11:59:00.000Z",
+        providers: [provider],
+        warning: _label === "warning text" ? "Claude usage is stale." : null
+      }
+    });
+
+    expect(presentation.iconState).toBe(iconState);
   });
 
   it("routes refresh-now through the tray and rebuilds the disabled refreshing menu", async () => {
@@ -340,6 +406,39 @@ describe("foundation tray routing", () => {
     expect(refreshNow).toHaveBeenCalledTimes(1);
     expect(electronMock.Menu.buildFromTemplate).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ enabled: false, label: "Refreshing..." })])
+    );
+  });
+
+  it("keeps provider rotation controls disabled until provider selection semantics exist", async () => {
+    const { TrayController } = await import("./main/tray.js");
+    const controller = new TrayController({
+      initialState: {
+        usageState: {
+          activeProviderId: "claude",
+          lastUpdatedAt: "2026-04-15T12:00:00.000Z",
+          providers: [providerCard({ lastUpdatedAt: "2026-04-15T12:00:00.000Z" })],
+          warning: null
+        }
+      },
+      openOnboarding: vi.fn(),
+      openSettings: vi.fn(),
+      quit: vi.fn(),
+      showPopover: vi.fn(),
+      toggleOverlay: vi.fn()
+    });
+
+    controller.create();
+    const template = electronMock.Menu.buildFromTemplate.mock.calls[0]?.[0] as Array<{
+      readonly enabled?: boolean;
+      readonly label?: string;
+      readonly type?: string;
+    }>;
+
+    expect(template).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ enabled: false, label: "Pause Rotation" }),
+        expect.objectContaining({ enabled: false, label: "Select Provider (Claude)" })
+      ])
     );
   });
 
