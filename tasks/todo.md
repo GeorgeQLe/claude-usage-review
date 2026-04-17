@@ -29,7 +29,7 @@
   - Add only the missing regression tests needed for Phase 3 green coverage. Expected likely targets are pace edge cases around reset windows and weekly color modes, history 24h-to-7d compaction boundaries, GitHub GraphQL variable/body construction and auth-disabled behavior, overlay settings persistence through the IPC/window-manager boundary, notification preference suppression, and renderer component state for disabled/configured provider surfaces.
   - Prefer pure-function or injected-service tests over Electron runtime tests where possible. Keep secrets out of fixtures, keep network calls mocked, and avoid mutating OS-level settings.
   - Run the focused new/changed test files first, then `npm run typecheck`, `npm test -- --run`, and `npm run build` from `electron-app/`. The accepted warning remains Node's experimental SQLite warning during storage/integration tests.
-- [ ] Step 3.9: [automated] Add Electron/Playwright smoke coverage for settings, onboarding, popover, overlay layouts, error states, and GitHub disabled/configured states.
+- [x] Step 3.9: [automated] Add Electron/Playwright smoke coverage for settings, onboarding, popover, overlay layouts, error states, and GitHub disabled/configured states.
 
   **Implementation plan for Step 3.9:**
   - Audit the existing Electron smoke harness in `electron-app/scripts/smoke-electron.mjs`, the package script `npm run smoke:electron`, and the renderer route/window contracts in `electron-app/src/main/windows.ts`, `electron-app/src/preload/api.ts`, and `electron-app/src/renderer/`.
@@ -38,6 +38,12 @@
   - If the current harness cannot drive renderer DOM state directly, add the smallest test hook or fixture entry point needed under `electron-app/scripts/` or the Electron app bootstrap. Do not add GitHub Actions or live network dependencies.
   - Run focused smoke coverage first, then `npm run typecheck`, `npm test -- --run`, `npm run build`, and `npm run smoke:electron` from `electron-app/`. The accepted warning remains Node's experimental SQLite warning during storage/integration tests; investigate any Electron startup, preload, or security warnings.
 - [ ] Step 3.10: [automated] Run Phase 3 verification: `npm run typecheck`, `npm test`, `npm run build`, and renderer smoke tests.
+
+  **Implementation plan for Step 3.10:**
+  - Run final Phase 3 verification from `electron-app/` using the exact phase commands: `npm run typecheck`, `npm test -- --run`, `npm run build`, and `npm run smoke:electron`. `npm run build` repeats typecheck and tests by design; still run the explicit commands first so the phase gate has standalone output.
+  - Inspect all output, not just exit codes. The accepted warning remains Node's `ExperimentalWarning: SQLite is an experimental feature` during SQLite-backed storage/integration tests. Treat any Electron preload, startup, renderer, security, or route-smoke warning as a regression unless it is understood and documented.
+  - If validation passes, check off the Phase 3 milestone criteria in this file and archive Phase 3 to `tasks/phases/phase-3.md`. Then update `tasks/roadmap.md` so Phase 3 is complete and copy Phase 4 into `tasks/todo.md` for the next phase.
+  - If validation fails, fix the failing code or smoke harness first, rerun only the failing command, and do not ship the Phase 3 completion docs with known failures.
 
 ## Milestone
 - [ ] Electron matches the Swift product's non-provider Claude UI behavior where cross-platform APIs allow it.

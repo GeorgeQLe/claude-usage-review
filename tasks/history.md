@@ -899,3 +899,15 @@ Validation:
 - `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/GeminiTelemetryContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryHTTPInjectionContractTests -only-testing:ClaudeUsageTests/ProviderTelemetryAdapterFallbackContractTests`: 10 tests passed, 0 failures.
 - `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'`: 147 tests passed, 0 failures.
 - Accepted environment warnings: xcodebuild selected the first of multiple matching local macOS destinations, AppIntents metadata extraction was skipped because the app has no AppIntents dependency, the XCTest link step warned that local XCTest libraries target macOS 14 while the app deployment target is macOS 13, and macOS logged a transient missing `/private/var/db/DetachedSignatures` message during the test host run.
+
+## 2026-04-17 — Step 3.9: Electron Route Smoke Coverage
+
+Extended the Electron smoke harness from a startup-only marker into route-level packaged app coverage. The new main-process smoke suite opens the production-built popover, settings, onboarding, and overlay routes, asserts real renderer DOM content, verifies overlay compact/minimal/sidebar layouts, exercises a smoke-only renderer error/retry fixture, and checks GitHub disabled, configured, and ready states without rendering synthetic GitHub tokens or Claude session keys. The smoke launcher now requires each route marker before accepting `CLAUDE_USAGE_ELECTRON_SMOKE_OK`.
+
+The smoke work found and fixed a packaged-renderer bug: Vite was emitting absolute `/assets/...` URLs, which left React unmounted under `file://` in Electron. `electron-app/vite.config.ts` now uses a relative base so packaged renderer assets load correctly.
+
+Validation:
+- `npm test -- --run src/foundation-main.test.ts src/main/ipc.test.ts` in `electron-app/`: 27 tests passed.
+- `npm run build` in `electron-app/`: typecheck, full Vitest suite, main build, preload build, and renderer build passed.
+- `npm run smoke:electron` in `electron-app/`: passed with route markers for popover GitHub disabled/configured/ready states, settings, onboarding, all overlay layouts, and settings error retry.
+- Accepted existing environment warning: Node emitted `ExperimentalWarning: SQLite is an experimental feature` during SQLite-backed storage and integration tests.
