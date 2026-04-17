@@ -26,7 +26,7 @@
   - Keep Claude exact usage behavior unchanged and avoid moving Claude credentials or polling into the new provider shell.
   - Start from the Step 4.1 red suites now present in `electron-app/src/main/providers/providerCoordinator.test.ts`, `electron-app/src/shared/confidence/providerConfidence.test.ts`, `electron-app/src/shared/schemas/provider.test.ts`, `electron-app/src/main/ipc.test.ts`, and `electron-app/src/foundation-renderer.test.tsx`. For Step 4.2, make only the shared model/coordinator/confidence/settings-schema portion green; Codex/Gemini adapter tests under `electron-app/src/main/providers/{codex,gemini}/` should remain red until Steps 4.3-4.5.
 
-- [ ] Step 4.3: [automated] Implement Codex passive adapter under `electron-app/src/main/providers/codex/`: `CODEX_HOME` resolution, install/auth presence detection, `history.jsonl` incremental bookmarks, recursive `sessions/YYYY/MM/DD/rollout-*.jsonl` parsing, local log limit-hit detection, cooldown state, and privacy-safe derived events.
+- [x] Step 4.3: [automated] Implement Codex passive adapter under `electron-app/src/main/providers/codex/`: `CODEX_HOME` resolution, install/auth presence detection, `history.jsonl` incremental bookmarks, recursive `sessions/YYYY/MM/DD/rollout-*.jsonl` parsing, local log limit-hit detection, cooldown state, and privacy-safe derived events.
 
   **Implementation plan for Step 4.3:**
   - Start from the red suites in `electron-app/src/main/providers/codex/detector.test.ts`, `electron-app/src/main/providers/codex/history.test.ts`, `electron-app/src/main/providers/codex/sessions.test.ts`, and `electron-app/src/main/providers/codex/adapter.test.ts`. Keep Gemini tests out of scope for this step.
@@ -39,9 +39,13 @@
 - [ ] Step 4.4: [automated] Implement Gemini passive adapter under `electron-app/src/main/providers/gemini/`: `GEMINI_HOME`/`~/.gemini` resolution, settings/auth-mode detection, `oauth_creds.json` presence, `tmp/**/chats/session-*.json` parsing, token/model extraction, rate pressure, and local request windows.
 
   **Implementation plan for Step 4.4:**
-  - Create Gemini detector, session parsers, adapter state, and fixtures under `electron-app/src/main/providers/gemini/`.
-  - Treat OAuth/API credentials as presence-only inputs; never persist or render provider tokens, API keys, prompts, responses, or raw chat bodies.
-  - Derive request-per-minute, daily request count, token totals where available, profile-aware daily headroom, confidence, stale state, and degraded state.
+  - Start from the red suites in `electron-app/src/main/providers/gemini/detector.test.ts`, `electron-app/src/main/providers/gemini/sessions.test.ts`, and `electron-app/src/main/providers/gemini/adapter.test.ts`. Keep Gemini `/stats` tests out of scope until Step 4.5 unless a shared helper is unavoidable.
+  - Create Gemini modules under `electron-app/src/main/providers/gemini/`: home resolution/detection, settings/auth-mode parsing, OAuth/API credential presence detection, chat session tree parsing, adapter snapshot assembly, and small parser helpers if needed by tests.
+  - Resolve `GEMINI_HOME` first, then fall back to `~/.gemini`. Treat `settings.json` and `oauth_creds.json` as presence/auth-mode signals only; never emit or persist OAuth tokens, API keys, prompts, responses, or raw chat bodies.
+  - Parse `tmp/**/chats/session-*.json` into privacy-safe derived events: timestamp, model, token totals where available, request counts, and malformed-file diagnostics. Drop raw request/response content before it reaches provider snapshots or diagnostics.
+  - Derive local request-per-minute and daily request windows from parsed event timestamps. Use provider settings/profile assumptions only for coarse headroom text; do not claim exact remaining quota from passive files.
+  - Return provider cards compatible with the Step 4.2 coordinator/settings contracts: passive adapter mode, estimated confidence, useful stale/degraded detail text, and privacy-safe diagnostics.
+  - Validate with focused Gemini passive adapter tests first, then `npm run typecheck` from `electron-app/`. Full Phase 4 tests may still fail on Gemini `/stats` and later UI/tray wiring until Steps 4.5-4.8.
 
 - [ ] Step 4.5: [automated] Implement Gemini `/stats` support under `electron-app/src/main/providers/gemini/stats.ts`, using a deliberate helper path and confidence labeling based on the reliability of command-derived summaries.
 

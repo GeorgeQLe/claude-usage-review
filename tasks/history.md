@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 4.3: Electron Codex Passive Adapter
+
+Implemented the Phase 4 Codex passive adapter path for Electron. Added Codex home resolution with `CODEX_HOME` and `~/.codex` fallback, privacy-safe install/auth presence detection, `history.jsonl` incremental byte-offset parsing, malformed JSONL tolerance, recursive rollout session scanning, local limit-hit/cooldown detection, and a snapshot adapter that emits a first-class Codex provider card with estimated confidence, stale/degraded/missing state, derived bookmarks, and redacted diagnostics. The implementation never emits raw auth JSON, tokens, cookies, prompts, stdout, or raw session payloads.
+
+Validation: focused `npm test -- --run src/main/providers/codex/detector.test.ts src/main/providers/codex/history.test.ts src/main/providers/codex/sessions.test.ts src/main/providers/codex/adapter.test.ts` passed with 4 files and 8 tests. `npm run typecheck` passed from `electron-app/`. `npm run build:main` passed from `electron-app/`. No warnings were emitted. Full `npm run build` was not run because it invokes all tests, and the remaining Phase 4 Gemini adapter and `/stats` red suites are reserved for Steps 4.4-4.5.
+
 ## 2026-04-17 — Step 4.2: Electron Provider Shell Models
 
 Implemented the shared Electron provider shell contract for Phase 4. Provider settings now persist enablement, setup prompt dismissal, adapter mode, auth mode, plan, profile label, last refresh timestamp, and stale thresholds with backward-compatible defaults. Added privacy-safe provider diagnostics validation, provider confidence helpers with hard downgrades that prevent passive Codex/Gemini sources from claiming exact quota confidence, and a provider coordinator that normalizes Claude/Codex/Gemini cards, marks stale cards, preserves manual tray override and pin state, and skips degraded providers when healthy alternatives are available.
