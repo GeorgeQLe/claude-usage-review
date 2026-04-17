@@ -5,6 +5,7 @@ import { syncLaunchAtLogin, TrayController, type TrayFallbackStatus } from "./tr
 import { registerIpcHandlers, type IpcRegistration } from "./ipc.js";
 import { createLocalNotificationService, type LocalNotificationService } from "./services/notifications.js";
 import { getSecretStorageStatus } from "./storage/secrets.js";
+import { createWrapperGenerationService } from "./wrappers/generator.js";
 import { createDefaultAppSettings, mergeAppSettings } from "../shared/settings/defaults.js";
 import { appSettingsSchema } from "../shared/schemas/settings.js";
 import { usageStateSchema } from "../shared/schemas/usage.js";
@@ -58,6 +59,9 @@ if (!hasSingleInstanceLock) {
 
 async function startApp(): Promise<void> {
   notificationService = createLocalNotificationService();
+  const wrapperGenerationService = createWrapperGenerationService({
+    appUserDataDir: app.getPath("userData")
+  });
 
   windowManager = new AppWindowManager({
     isDevelopment,
@@ -84,6 +88,9 @@ async function startApp(): Promise<void> {
     settings: {
       getSettings: () => settings,
       updateSettings
+    },
+    wrappers: {
+      generateWrapper: wrapperGenerationService.generateWrapper
     },
     windows: {
       openPopover: () => {

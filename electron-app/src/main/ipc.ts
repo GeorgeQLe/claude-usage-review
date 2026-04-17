@@ -104,6 +104,11 @@ export interface IpcProviderDependencies {
   readonly refreshProvider?: (providerId: ProviderId) => MaybePromise<ProviderDetectionResult>;
 }
 
+export interface IpcWrapperDependencies {
+  readonly generateWrapper?: (providerId: ProviderId) => MaybePromise<WrapperSetupResult>;
+  readonly verifyWrapper?: (providerId: ProviderId) => MaybePromise<WrapperVerificationResult>;
+}
+
 export interface IpcWindowDependencies {
   readonly openPopover?: () => MaybePromise<void>;
   readonly hideOverlay?: () => MaybePromise<void>;
@@ -119,6 +124,7 @@ export interface IpcHandlerDependencies {
   readonly history?: IpcHistoryDependencies;
   readonly github?: IpcGitHubDependencies;
   readonly providers?: IpcProviderDependencies;
+  readonly wrappers?: IpcWrapperDependencies;
   readonly windows?: IpcWindowDependencies;
 }
 
@@ -399,8 +405,20 @@ function createIpcState(dependencies: IpcHandlerDependencies) {
 
       return placeholder.runProviderDetection(providerId);
     },
-    generateWrapper: (providerId: ProviderId): WrapperSetupResult => placeholder.generateWrapper(providerId),
-    verifyWrapper: (providerId: ProviderId): WrapperVerificationResult => placeholder.verifyWrapper(providerId),
+    generateWrapper: async (providerId: ProviderId): Promise<WrapperSetupResult> => {
+      if (dependencies.wrappers?.generateWrapper) {
+        return validateWrapperSetupResult(await dependencies.wrappers.generateWrapper(providerId));
+      }
+
+      return placeholder.generateWrapper(providerId);
+    },
+    verifyWrapper: async (providerId: ProviderId): Promise<WrapperVerificationResult> => {
+      if (dependencies.wrappers?.verifyWrapper) {
+        return validateWrapperVerificationResult(await dependencies.wrappers.verifyWrapper(providerId));
+      }
+
+      return placeholder.verifyWrapper(providerId);
+    },
     exportDiagnostics: async (): Promise<DiagnosticsExportResult> => {
       if (dependencies.usageState?.getUsageState) {
         return validateDiagnosticsExportResult(

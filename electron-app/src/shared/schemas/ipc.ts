@@ -105,13 +105,21 @@ export const wrapperSetupResultSchema = z.object({
   providerId: z.string().min(1),
   command: z.string().nullable(),
   instructions: z.array(z.string()),
-  verified: z.boolean()
+  mutatesShellProfiles: z.literal(false).optional(),
+  removalInstructions: z.array(z.string()).optional(),
+  setupCommands: z.array(z.string()).optional(),
+  shellProfilesTouched: z.array(z.string()).optional(),
+  verified: z.boolean(),
+  wrapperPath: z.string().min(1).optional(),
+  wrapperVersion: z.string().min(1).optional()
 });
 
 export const wrapperVerificationResultSchema = z.object({
   providerId: z.string().min(1),
+  status: z.enum(["missing", "native_only", "wrapper_active", "stale_wrapper", "unverified"]).optional(),
   verified: z.boolean(),
-  message: z.string()
+  message: z.string(),
+  wrapperVersion: z.string().min(1).optional()
 });
 
 export const diagnosticsExportResultSchema = z.object({
