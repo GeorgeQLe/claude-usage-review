@@ -66,6 +66,8 @@ ClaudeUsage monitors usage across three AI providers:
 
 **Accuracy Mode** (Codex & Gemini) — an optional setting that wraps CLI invocations to capture start/end timestamps and limit-hit signals. No prompt content is captured. Enable in Settings → provider toggle → Accuracy Mode.
 
+**Provider Telemetry** (Codex & Gemini) — an optional setting, off by default and separate from Accuracy Mode, that reads provider-supplied quota endpoints when your existing CLI auth supports them. Codex can show provider rate-limit snapshots; Gemini Code Assist can show quota buckets. Endpoint access is experimental and unofficial, uses injected HTTP clients in tests, and falls back to passive monitoring when auth or endpoint shape is unavailable.
+
 ### Usage history
 
 The popover includes collapsible sparkline graphs showing session and weekly utilization over the last 24 hours. History is persisted per-account and compacted over time.
@@ -112,6 +114,7 @@ Paste both into the Settings panel and you're good to go.
 - **Provider toggles** — enable/disable Codex and Gemini monitoring
 - **Provider plans** — configure plan profiles for better accuracy estimates
 - **Accuracy Mode** — optional wrapper for Codex/Gemini (captures timing only, no prompt content)
+- **Provider Telemetry** — optional Codex/Gemini provider quota reads, off by default and separate from Accuracy Mode
 
 ## Building from Source
 
@@ -136,6 +139,8 @@ The app will be at:
 - Session key is automatically updated if the API rotates it via `Set-Cookie`
 - Usage history is stored in `~/Library/Application Support/ClaudeUsage/`
 - Codex and Gemini monitoring is passive — reads local log/session files only, no network calls
+- Provider Telemetry is opt-in per provider. When enabled, it reads existing Codex or Gemini Code Assist auth at request time, persists only normalized quota snapshots, and does not persist raw tokens, raw endpoint responses, prompts, or model responses
+- Automated Provider Telemetry tests use fixtures and fake clients only; they do not call live Codex, ChatGPT, Gemini, Google, Cloud Code, or Vertex endpoints
 
 ## Disclaimer
 

@@ -1,5 +1,13 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 7.6: Swift Provider Telemetry UI And Docs
+
+Wired Provider Telemetry into the Swift macOS UI and docs. `ProviderCard` now carries normalized telemetry presentation rows for Codex rate limits and Gemini Code Assist quota buckets, including account labels, provider-specific details, last/next refresh text, degraded/unavailable reasons, and manual refresh capability. `ProviderCardView` renders those details and exposes a refresh action through `ProviderShellViewModel.refreshProviderTelemetry(_:)`, while preserving passive Codex/Gemini card state and the existing 15-second passive scan cadence.
+
+Settings now exposes per-provider Provider Telemetry toggles for Codex and Gemini separately from Accuracy Mode, with experimental/unofficial endpoint copy and existing-auth-only behavior. README now documents the Provider Telemetry privacy contract: off by default, opt-in per provider, separate from Accuracy Mode, no raw tokens/raw endpoint responses/prompts/model responses persisted, passive fallback remains available, and automated tests use fixtures and fake clients only.
+
+Validation: `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS' -only-testing:ClaudeUsageTests/ProviderTelemetryPresentationContractTests` passed with 4 tests, 0 failures. Full `xcodebuild test -scheme ClaudeUsage -destination 'platform=macOS'` passed with 151 tests, 0 failures. Accepted warnings/output: Xcode selected the first of multiple matching macOS destinations, AppIntents metadata extraction was skipped because the app has no AppIntents dependency, XCTest link warnings came from the local SDK targeting newer macOS than the app deployment target, and the test runner emitted the known detached-signatures logging message. No automated test performs live Codex, ChatGPT, Gemini, Google, Cloud Code, or Vertex requests.
+
 ## 2026-04-17 — Step 7.4: Swift Codex Provider Telemetry
 
 Implemented Codex Provider Telemetry for the Swift macOS app. `CodexTelemetryAuthProvider` now inspects existing Codex CLI auth at request time, supports ChatGPT-backed token auth and API-key auth with configured `base_url`, classifies missing/keyring/expired/malformed/unsupported credentials into structured telemetry errors, and derives safe account labels without surfacing raw account ids. `CodexTelemetryClient` now selects `https://chatgpt.com/backend-api/wham/usage` or `{base_url}/api/codex/usage`, keeps HTTP behind injected clients, maps parsed rate-limit payloads into normalized snapshots, treats endpoint-shape drift as structured telemetry failure, and avoids raw response persistence.
