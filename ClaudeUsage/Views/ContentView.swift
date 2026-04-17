@@ -188,7 +188,11 @@ struct ContentView: View {
                 DisclosureGroup(isExpanded: $providersExpanded) {
                     VStack(spacing: 6) {
                         ForEach(providerShellViewModel.shellState.providers, id: \.id) { card in
-                            ProviderCardView(card: card)
+                            ProviderCardView(card: card) { providerId in
+                                Task {
+                                    await providerShellViewModel.refreshProviderTelemetry(providerId)
+                                }
+                            }
                         }
                     }
                     .padding(.top, 4)

@@ -105,6 +105,161 @@ final class ProviderTelemetryPayloadContractTests: XCTestCase {
     }
 }
 
+// MARK: - Provider Telemetry Presentation Contract
+
+final class ProviderTelemetryPresentationContractTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        ProviderTelemetryAttachmentRegistry.removeAll()
+    }
+
+    override func tearDown() {
+        ProviderTelemetryAttachmentRegistry.removeAll()
+        super.tearDown()
+    }
+
+    func testCodexProviderCardSurfacesRateLimitTelemetry() throws {
+        let passive = ProviderSnapshot.codexRich(
+            estimate: CodexEstimate(confidence: .estimated),
+            isEnabled: true
+        )
+        let telemetry = ProviderTelemetrySnapshot(
+            providerId: .codex,
+            accountLabel: "Personal Codex",
+            status: .exact,
+            confidence: .providerSupplied,
+            lastRefreshAt: Fixtures.date("2026-04-16T17:55:00Z"),
+            nextRefreshAt: Fixtures.date("2026-04-16T18:00:00Z"),
+            failureCount: 0,
+            degradedReason: nil,
+            rawSourceVersion: "codex-wham-usage",
+            providerPayload: .codex(try ProviderTelemetryJSONDecoder.make().decode(
+                CodexTelemetryPayload.self,
+                from: Fixtures.codexWhamUsage
+            ))
+        )
+
+        let merged = ProviderTelemetryAdapterBridge.merge(passiveSnapshot: passive, telemetrySnapshot: telemetry)
+        let shell = ProviderCoordinator().makeShellState(providers: [merged], now: telemetry.lastRefreshAt!)
+        let card = try XCTUnwrap(shell.providers.first)
+
+        XCTAssertEqual(card.telemetryStatusText, "Provider Telemetry: exact")
+        XCTAssertTrue(card.telemetryDetails.contains { $0.label == "Account" && $0.value == "Personal Codex" })
+        XCTAssertTrue(card.telemetryDetails.contains { $0.label == "Plan" && $0.value == "pro" })
+        XCTAssertTrue(card.telemetryDetails.contains { $0.label == "GPT-5 usage" && $0.value.contains("61.5% used") })
+        XCTAssertTrue(card.telemetryRefreshText?.contains("Last refresh") == true)
+    }
+
+    func testGeminiProviderCardSurfacesQuotaTelemetry() throws {
+        let passive = ProviderSnapshot.geminiRich(
+            estimate: GeminiEstimate(confidence: .estimated, ratePressure: nil, authMode: .oauthPersonal),
+            isEnabled: true
+        )
+        let telemetry = ProviderTelemetrySnapshot(
+            providerId: .gemini,
+            accountLabel: "Work Google",
+            status: .exact,
+            confidence: .providerSupplied,
+            lastRefreshAt: Fixtures.date("2026-04-16T17:55:00Z"),
+            nextRefreshAt: Fixtures.date("2026-04-16T18:00:00Z"),
+            failureCount: 0,
+            degradedReason: nil,
+            rawSourceVersion: "gemini-code-assist-quota",
+            providerPayload: .gemini(try ProviderTelemetryJSONDecoder.make().decode(
+                GeminiTelemetryPayload.self,
+                from: Fixtures.geminiRetrieveUserQuota
+            ))
+        )
+
+        let merged = ProviderTelemetryAdapterBridge.merge(passiveSnapshot: passive, telemetrySnapshot: telemetry)
+        let shell = ProviderCoordinator().makeShellState(providers: [merged], now: telemetry.lastRefreshAt!)
+        let card = try XCTUnwrap(shell.providers.first)
+
+        XCTAssertEqual(card.telemetryStatusText, "Provider Telemetry: exact")
+        XCTAssertTrue(card.telemetryDetails.contains { $0.label == "Account" && $0.value == "Work Google" })
+        XCTAssertTrue(card.telemetryDetails.contains { $0.label == "gemini-2.5-pro requests" && $0.value.contains("87 remaining") })
+        XCTAssertTrue(card.telemetryDetails.contains { $0.label == "gemini-2.5-flash tokens" && $0.value.contains("50000 remaining") })
+    }
+
+    func testDegradedTelemetryReasonDoesNotHidePassiveProviderState() throws {
+        let passive = ProviderSnapshot.codexRich(
+            estimate: CodexEstimate(confidence: .estimated),
+            isEnabled: true
+        )
+        let telemetry = ProviderTelemetrySnapshot.degraded(
+            providerId: .codex,
+            reason: "Provider endpoint changed",
+            failureCount: 3,
+            passiveSnapshot: passive,
+            nextRefreshAt: Fixtures.date("2026-04-16T18:25:00Z")
+        )
+
+        let merged = ProviderTelemetryAdapterBridge.merge(passiveSnapshot: passive, telemetrySnapshot: telemetry)
+        let shell = ProviderCoordinator().makeShellState(providers: [merged], now: Fixtures.date("2026-04-16T17:55:00Z"))
+        let card = try XCTUnwrap(shell.providers.first)
+
+        XCTAssertEqual(card.cardState, .configured)
+        XCTAssertEqual(card.headline, "Codex — Estimated")
+        XCTAssertEqual(card.telemetryStatusText, "Provider Telemetry: degraded")
+        XCTAssertTrue(card.telemetryDetails.contains { $0.label == "Reason" && $0.value == "Provider endpoint changed" })
+    }
+
+    func testManualProviderTelemetryRefreshAttachesSnapshotAndMarksCardRefreshable() async throws {
+        let suiteName = "com.claudeusage.provider-telemetry-presentation.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let settings = ProviderSettingsStore(defaults: defaults)
+        settings.setEnabled(.codex, true)
+        settings.setProviderTelemetryEnabled(true, for: .codex)
+
+        let telemetryClient = ScriptedProviderTelemetryClient(
+            results: [
+                .success(
+                    ProviderTelemetrySnapshot(
+                        providerId: .codex,
+                        accountLabel: "Personal Codex",
+                        status: .exact,
+                        confidence: .providerSupplied,
+                        lastRefreshAt: nil,
+                        nextRefreshAt: nil,
+                        failureCount: 0,
+                        degradedReason: nil,
+                        rawSourceVersion: "codex-wham-usage",
+                        providerPayload: .codex(try ProviderTelemetryJSONDecoder.make().decode(
+                            CodexTelemetryPayload.self,
+                            from: Fixtures.codexWhamUsage
+                        ))
+                    )
+                )
+            ]
+        )
+        let telemetryCoordinator = ProviderTelemetryCoordinator(
+            clients: [.codex: telemetryClient],
+            store: InMemoryProviderTelemetryStore(),
+            now: { Fixtures.date("2026-04-16T17:55:00Z") }
+        )
+        let viewModel = ProviderShellViewModel(
+            settingsStore: settings,
+            codexSnapshot: .codexRich(estimate: CodexEstimate(confidence: .estimated), isEnabled: true),
+            codexLastRefreshTime: Fixtures.date("2026-04-16T17:55:00Z"),
+            geminiSnapshot: .gemini(status: .missingConfiguration, isEnabled: false),
+            geminiLastRefreshTime: nil,
+            nowProvider: { Fixtures.date("2026-04-16T17:55:00Z") },
+            providerTelemetryCoordinator: telemetryCoordinator
+        )
+
+        let refreshed = await viewModel.refreshProviderTelemetry(.codex)
+        let card = try XCTUnwrap(viewModel.shellState.providers.first { $0.id == .codex })
+
+        XCTAssertEqual(refreshed?.status, .exact)
+        XCTAssertEqual(ProviderTelemetryAttachmentRegistry.snapshot(for: .codex)?.status, .exact)
+        XCTAssertTrue(card.supportsProviderTelemetryRefresh)
+        XCTAssertFalse(card.telemetryDetails.isEmpty)
+    }
+}
+
 // MARK: - HTTP Injection Contract
 
 final class ProviderTelemetryHTTPInjectionContractTests: XCTestCase {

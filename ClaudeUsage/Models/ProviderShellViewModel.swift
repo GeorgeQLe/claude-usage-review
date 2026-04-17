@@ -178,6 +178,11 @@ class ProviderShellViewModel: ObservableObject {
         rebuildFromCurrent()
     }
 
+    @discardableResult
+    func refreshProviderTelemetry(_ providerId: ProviderId) async -> ProviderTelemetrySnapshot? {
+        await refreshProviderTelemetry(providerId, reason: .manual)
+    }
+
     var codexDetected: Bool {
         guard let codexAdapter else { return false }
         if case .installed = codexAdapter.state { return true }
@@ -218,7 +223,9 @@ class ProviderShellViewModel: ObservableObject {
 
         let now = nowProvider()
         let refreshTimes = providerRefreshTimes()
-        shellState = coordinator.makeShellState(providers: snapshots, now: now, refreshTimes: refreshTimes)
+        shellState = shellStateWithTelemetryRefreshSupport(
+            coordinator.makeShellState(providers: snapshots, now: now, refreshTimes: refreshTimes)
+        )
         traySnapshot = coordinator.selectedTrayProvider(from: snapshots, now: now)
         if let snap = traySnapshot {
             let selectedCard = shellState.providers.first { $0.id == snap.id }
@@ -342,44 +349,77 @@ class ProviderShellViewModel: ObservableObject {
     }
 
     private func refreshProviderTelemetry(reason: ProviderTelemetryRefreshReason) {
-        guard let providerTelemetryCoordinator else {
+        guard providerTelemetryCoordinator != nil else {
             return
         }
 
-        let providers: [(ProviderId, ProviderSnapshot)] = [
-            (.codex, codexSnapshotProvider(settingsStore.isEnabled(.codex))),
-            (.gemini, geminiSnapshotProvider(settingsStore.isEnabled(.gemini))),
-        ]
-
-        for (providerId, passiveSnapshot) in providers {
-            let telemetryEnabled = settingsStore.isEnabled(providerId)
-                && settingsStore.providerTelemetryEnabled(for: providerId)
-
-            guard telemetryEnabled else {
-                ProviderTelemetryAttachmentRegistry.detach(providerId)
-                continue
-            }
-
+        for providerId in [ProviderId.codex, ProviderId.gemini] {
             Task { [weak self] in
-                guard let self else { return }
-                let snapshot = try? await providerTelemetryCoordinator.refreshIfEnabled(
-                    providerId,
-                    telemetryEnabled: true,
-                    reason: reason,
-                    passiveSnapshot: passiveSnapshot
-                )
-
-                await MainActor.run {
-                    if let snapshot {
-                        _ = ProviderTelemetryAdapterBridge.merge(
-                            passiveSnapshot: passiveSnapshot,
-                            telemetrySnapshot: snapshot
-                        )
-                    }
-                    self.rebuildFromCurrent()
-                }
+                _ = await self?.refreshProviderTelemetry(providerId, reason: reason)
             }
         }
+    }
+
+    private func refreshProviderTelemetry(
+        _ providerId: ProviderId,
+        reason: ProviderTelemetryRefreshReason
+    ) async -> ProviderTelemetrySnapshot? {
+        guard let providerTelemetryCoordinator,
+              let passiveSnapshot = passiveProviderSnapshot(for: providerId) else {
+            return nil
+        }
+
+        let telemetryEnabled = settingsStore.isEnabled(providerId)
+            && settingsStore.providerTelemetryEnabled(for: providerId)
+
+        guard telemetryEnabled else {
+            ProviderTelemetryAttachmentRegistry.detach(providerId)
+            await MainActor.run {
+                self.rebuildFromCurrent()
+            }
+            return nil
+        }
+
+        let snapshot = try? await providerTelemetryCoordinator.refreshIfEnabled(
+            providerId,
+            telemetryEnabled: true,
+            reason: reason,
+            passiveSnapshot: passiveSnapshot
+        )
+
+        await MainActor.run {
+            if let snapshot {
+                _ = ProviderTelemetryAdapterBridge.merge(
+                    passiveSnapshot: passiveSnapshot,
+                    telemetrySnapshot: snapshot
+                )
+            }
+            self.rebuildFromCurrent()
+        }
+
+        return snapshot
+    }
+
+    private func passiveProviderSnapshot(for providerId: ProviderId) -> ProviderSnapshot? {
+        switch providerId {
+        case .codex:
+            return codexSnapshotProvider(settingsStore.isEnabled(.codex))
+        case .gemini:
+            return geminiSnapshotProvider(settingsStore.isEnabled(.gemini))
+        case .claude:
+            return nil
+        }
+    }
+
+    private func shellStateWithTelemetryRefreshSupport(_ shellState: ShellState) -> ShellState {
+        ShellState(
+            providers: shellState.providers.map { card in
+                let supportsRefresh = card.id != .claude
+                    && settingsStore.isEnabled(card.id)
+                    && settingsStore.providerTelemetryEnabled(for: card.id)
+                return card.withProviderTelemetryRefreshSupport(supportsRefresh)
+            }
+        )
     }
 
     // MARK: - Persistence

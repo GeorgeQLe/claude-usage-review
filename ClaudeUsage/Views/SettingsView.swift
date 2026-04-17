@@ -284,6 +284,26 @@ struct SettingsView: View {
                             .toggleStyle(.switch)
                             .controlSize(.mini)
                         }
+
+                        HStack {
+                            Text("  Provider Telemetry")
+                                .font(.system(size: 11))
+                            Spacer()
+                            Text(providerSettingsStore.providerTelemetryEnabled(for: .codex) ? "Active" : "Off")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                            Toggle("", isOn: Binding(
+                                get: { providerSettingsStore.providerTelemetryEnabled(for: .codex) },
+                                set: { providerSettingsStore.setProviderTelemetryEnabled($0, for: .codex) }
+                            ))
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                        }
+
+                        Text("Experimental and unofficial. Reads existing Codex CLI auth only when enabled, then falls back to passive monitoring when unavailable.")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                            .padding(.leading, 12)
                     }
 
                     HStack {
@@ -380,6 +400,26 @@ struct SettingsView: View {
                             .toggleStyle(.switch)
                             .controlSize(.mini)
                         }
+
+                        HStack {
+                            Text("  Provider Telemetry")
+                                .font(.system(size: 11))
+                            Spacer()
+                            Text(providerSettingsStore.providerTelemetryEnabled(for: .gemini) ? "Active" : "Off")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                            Toggle("", isOn: Binding(
+                                get: { providerSettingsStore.providerTelemetryEnabled(for: .gemini) },
+                                set: { providerSettingsStore.setProviderTelemetryEnabled($0, for: .gemini) }
+                            ))
+                            .toggleStyle(.switch)
+                            .controlSize(.mini)
+                        }
+
+                        Text("Experimental and unofficial. Reads existing Gemini Code Assist auth only when enabled, then falls back to passive monitoring when unavailable.")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                            .padding(.leading, 12)
                     }
                 }
             }
