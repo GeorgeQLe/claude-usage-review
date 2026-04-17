@@ -43,7 +43,22 @@ final class GeminiTelemetryClient: ProviderTelemetryClient {
             throw ProviderTelemetryError.httpStatus(response.statusCode)
         }
 
-        let payload = try decoder.decode(GeminiTelemetryPayload.self, from: response.body)
+        let payload: GeminiTelemetryPayload
+        do {
+            payload = try decoder.decode(GeminiTelemetryPayload.self, from: response.body)
+        } catch {
+            let reason = ProviderTelemetryDiagnostics.redact(
+                "Gemini quota response shape changed: \(error.localizedDescription)"
+            )
+            throw ProviderTelemetryError.endpointShapeChanged(reason)
+        }
+
+        guard !payload.quotaBuckets.isEmpty else {
+            throw ProviderTelemetryError.endpointShapeChanged(
+                "Gemini quota response shape changed: missing quota buckets"
+            )
+        }
+
         let refreshTime = now()
         return ProviderTelemetrySnapshot(
             providerId: .gemini,

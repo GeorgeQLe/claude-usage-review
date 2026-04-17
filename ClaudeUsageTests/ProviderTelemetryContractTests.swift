@@ -408,6 +408,233 @@ final class CodexTelemetryContractTests: XCTestCase {
     }
 }
 
+// MARK: - Gemini Telemetry Contract
+
+final class GeminiTelemetryContractTests: XCTestCase {
+    private var tempDir: URL!
+    private let fileManager = FileManager.default
+
+    override func setUp() {
+        super.setUp()
+        tempDir = fileManager.temporaryDirectory
+            .appendingPathComponent("gemini-telemetry-\(UUID().uuidString)")
+        try? fileManager.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    }
+
+    override func tearDown() {
+        try? fileManager.removeItem(at: tempDir)
+        tempDir = nil
+        super.tearDown()
+    }
+
+    func testGeminiAuthProviderDetectsCodeAssistOAuthWithoutLeakingAccountId() throws {
+        try writeSettingsJSON(
+            """
+            {
+              "security": {
+                "auth": {
+                  "selectedType": "code-assist",
+                  "projectId": "cloud-ai-companion-project"
+                }
+              }
+            }
+            """
+        )
+        try writeOAuthCredsJSON(
+            """
+            {
+              "access_token": "gemini-code-assist-token",
+              "refresh_token": "gemini-refresh-token",
+              "expiry": "2026-05-01T00:00:00Z",
+              "email": "gemini-user@example.com",
+              "account_id": "acct_google_secret_123"
+            }
+            """
+        )
+
+        let provider = GeminiTelemetryAuthProvider(
+            geminiHome: tempDir,
+            fileManager: fileManager,
+            now: { Fixtures.date("2026-04-16T17:55:00Z") }
+        )
+        let auth = try provider.currentAuth()
+
+        guard case let .codeAssistOAuth(accessToken, projectId, accountLabel) = auth else {
+            return XCTFail("Expected Code Assist OAuth auth")
+        }
+        XCTAssertEqual(accessToken, "gemini-code-assist-token")
+        XCTAssertEqual(projectId, "cloud-ai-companion-project")
+        XCTAssertEqual(accountLabel, "gemini-user@example.com")
+        XCTAssertNotEqual(accountLabel, "acct_google_secret_123")
+    }
+
+    func testGeminiAuthProviderDiscoversProjectIdFromOAuthCredentials() throws {
+        try writeSettingsJSON(
+            """
+            {"security":{"auth":{"selectedType":"code-assist"}}}
+            """
+        )
+        try writeOAuthCredsJSON(
+            """
+            {
+              "access_token": "gemini-code-assist-token",
+              "refresh_token": "gemini-refresh-token",
+              "expiry": "2026-05-01T00:00:00Z",
+              "quota_project_id": "quota-project-from-creds"
+            }
+            """
+        )
+
+        let provider = GeminiTelemetryAuthProvider(
+            geminiHome: tempDir,
+            fileManager: fileManager,
+            now: { Fixtures.date("2026-04-16T17:55:00Z") }
+        )
+
+        guard case let .codeAssistOAuth(_, projectId, _) = try provider.currentAuth() else {
+            return XCTFail("Expected Code Assist OAuth auth")
+        }
+        XCTAssertEqual(projectId, "quota-project-from-creds")
+    }
+
+    func testGeminiAuthProviderReportsMissingEncryptedExpiredUnsupportedAndMalformedAuth() throws {
+        let missingProvider = GeminiTelemetryAuthProvider(geminiHome: tempDir, fileManager: fileManager)
+        XCTAssertThrowsError(try missingProvider.currentAuth()) { error in
+            XCTAssertEqual(error as? ProviderTelemetryError, .authUnavailable("Gemini Code Assist auth unavailable"))
+        }
+
+        try writeSettingsJSON(
+            """
+            {"security":{"auth":{"selectedType":"code-assist","credentialStore":"keychain"}}}
+            """
+        )
+        let encryptedProvider = GeminiTelemetryAuthProvider(geminiHome: tempDir, fileManager: fileManager)
+        XCTAssertThrowsError(try encryptedProvider.currentAuth()) { error in
+            XCTAssertEqual(
+                error as? ProviderTelemetryError,
+                .unsupportedCredentials("Gemini Code Assist credentials are stored in an unsupported encrypted store")
+            )
+        }
+
+        try writeSettingsJSON(
+            """
+            {"security":{"auth":{"selectedType":"api-key"}}}
+            """
+        )
+        try writeOAuthCredsJSON(
+            """
+            {"access_token":"not-code-assist","project_id":"wrong-mode-project"}
+            """
+        )
+        let unsupportedProvider = GeminiTelemetryAuthProvider(geminiHome: tempDir, fileManager: fileManager)
+        XCTAssertThrowsError(try unsupportedProvider.currentAuth()) { error in
+            XCTAssertEqual(
+                error as? ProviderTelemetryError,
+                .unsupportedCredentials("Gemini Code Assist telemetry requires Code Assist OAuth credentials")
+            )
+        }
+
+        try writeSettingsJSON(
+            """
+            {"security":{"auth":{"selectedType":"code-assist","projectId":"cloud-ai-companion-project"}}}
+            """
+        )
+        try writeOAuthCredsJSON(
+            """
+            {
+              "access_token": "expired-token",
+              "refresh_token": "refresh-token",
+              "expiry": "2026-04-01T00:00:00Z"
+            }
+            """
+        )
+        let expiredProvider = GeminiTelemetryAuthProvider(
+            geminiHome: tempDir,
+            fileManager: fileManager,
+            now: { Fixtures.date("2026-04-16T17:55:00Z") }
+        )
+        XCTAssertThrowsError(try expiredProvider.currentAuth()) { error in
+            XCTAssertEqual(error as? ProviderTelemetryError, .authUnavailable("Gemini Code Assist auth expired"))
+        }
+
+        try "{not-valid-json".write(
+            to: tempDir.appendingPathComponent("oauth_creds.json"),
+            atomically: true,
+            encoding: .utf8
+        )
+        let malformedProvider = GeminiTelemetryAuthProvider(geminiHome: tempDir, fileManager: fileManager)
+        XCTAssertThrowsError(try malformedProvider.currentAuth()) { error in
+            XCTAssertEqual(error as? ProviderTelemetryError, .authUnavailable("Malformed Gemini Code Assist auth"))
+        }
+    }
+
+    func testGeminiTelemetryClientTreatsEndpointShapeDriftAsUnavailableFailure() async throws {
+        let httpClient = RecordingProviderTelemetryHTTPClient(
+            responses: [
+                .success(
+                    ProviderTelemetryHTTPResponse(
+                        statusCode: 200,
+                        headers: ["content-type": "application/json"],
+                        body: Data(#"{"unexpected":"shape","access_token":"gemini-secret"}"#.utf8)
+                    )
+                )
+            ]
+        )
+        let client = GeminiTelemetryClient(
+            authProvider: StubGeminiTelemetryAuthProvider(
+                auth: .codeAssistOAuth(
+                    accessToken: "gemini-token-value",
+                    projectId: "cloud-ai-companion-project",
+                    accountLabel: "Work Gemini"
+                )
+            ),
+            httpClient: httpClient,
+            now: { Fixtures.date("2026-04-16T17:55:00Z") }
+        )
+
+        do {
+            _ = try await client.refresh()
+            XCTFail("Expected endpoint shape drift to throw")
+        } catch let error as ProviderTelemetryError {
+            guard case let .endpointShapeChanged(reason) = error else {
+                return XCTFail("Expected endpointShapeChanged, got \(error)")
+            }
+            XCTAssertTrue(reason.contains("Gemini quota response shape changed"))
+            XCTAssertFalse(reason.contains("gemini-secret"))
+        }
+    }
+
+    func testGeminiDiagnosticsRedactRawCredentialJSON() {
+        let raw = """
+        {"access_token":"gemini-access-secret","refresh_token":"gemini-refresh-secret","account_id":"acct_google_secret_123","client_secret":"google-client-secret"}
+        """
+
+        let redacted = ProviderTelemetryDiagnostics.redact(raw)
+
+        XCTAssertFalse(redacted.contains("gemini-access-secret"))
+        XCTAssertFalse(redacted.contains("gemini-refresh-secret"))
+        XCTAssertFalse(redacted.contains("acct_google_secret_123"))
+        XCTAssertFalse(redacted.contains("google-client-secret"))
+        XCTAssertTrue(redacted.contains("[redacted]"))
+    }
+
+    private func writeSettingsJSON(_ contents: String) throws {
+        try contents.write(
+            to: tempDir.appendingPathComponent("settings.json"),
+            atomically: true,
+            encoding: .utf8
+        )
+    }
+
+    private func writeOAuthCredsJSON(_ contents: String) throws {
+        try contents.write(
+            to: tempDir.appendingPathComponent("oauth_creds.json"),
+            atomically: true,
+            encoding: .utf8
+        )
+    }
+}
+
 // MARK: - Refresh And Fallback Contract
 
 final class ProviderTelemetryRefreshContractTests: XCTestCase {

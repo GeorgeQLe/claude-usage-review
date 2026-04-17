@@ -19,7 +19,7 @@ class GeminiAdapter: ObservableObject {
     private(set) var lastRefreshTime: Date?
     private(set) var consecutiveFailures: Int = 0
 
-    init(geminiHome: URL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".gemini"),
+    init(geminiHome: URL = GeminiDetector.defaultGeminiHome(),
          planProfile: GeminiPlanProfile? = nil,
          confirmedAuthMode: GeminiAuthMode? = nil,
          ledgerDirectory: URL = GeminiEventLedger.defaultDirectory) {

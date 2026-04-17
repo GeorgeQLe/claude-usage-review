@@ -307,6 +307,8 @@ enum ProviderTelemetryDiagnostics {
             "(?i)\"api_key\"\\s*:\\s*\"[^\"]+\"",
             "(?i)\"access_token\"\\s*:\\s*\"[^\"]+\"",
             "(?i)\"refresh_token\"\\s*:\\s*\"[^\"]+\"",
+            "(?i)\"account_id\"\\s*:\\s*\"[^\"]+\"",
+            "(?i)\"client_secret\"\\s*:\\s*\"[^\"]+\"",
             "(?i)access_token=[^\\s&\\n\\r]+",
             "(?i)refresh_token=[^\\s&\\n\\r]+",
             "(?i)acct_[A-Za-z0-9_\\-]+",
@@ -342,6 +344,12 @@ enum ProviderTelemetryDiagnostics {
         }
         if pattern.contains("\"refresh_token\"") {
             return "\"refresh_token\":\"[redacted]\""
+        }
+        if pattern.contains("\"account_id\"") {
+            return "\"account_id\":\"[redacted]\""
+        }
+        if pattern.contains("\"client_secret\"") {
+            return "\"client_secret\":\"[redacted]\""
         }
         if pattern.contains("Cookie") {
             return "Cookie: [redacted]"

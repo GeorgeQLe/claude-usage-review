@@ -46,6 +46,10 @@ class ProviderShellViewModel: ObservableObject {
                     authProvider: CodexTelemetryAuthProvider(),
                     httpClient: telemetryHTTPClient
                 ),
+                .gemini: GeminiTelemetryClient(
+                    authProvider: GeminiTelemetryAuthProvider(),
+                    httpClient: telemetryHTTPClient
+                ),
             ],
             store: UserDefaultsProviderTelemetryStore()
         )
