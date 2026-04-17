@@ -36,7 +36,7 @@
   - Return provider cards compatible with the Step 4.2 coordinator/settings contracts: passive adapter mode, no exact quota confidence, useful degraded/stale detail text, and privacy-safe diagnostics.
   - Validate with focused Codex provider tests first, then `npm run typecheck` from `electron-app/`. Full Phase 4 tests may still fail on Gemini adapter and `/stats` work until Steps 4.4-4.5.
 
-- [ ] Step 4.4: [automated] Implement Gemini passive adapter under `electron-app/src/main/providers/gemini/`: `GEMINI_HOME`/`~/.gemini` resolution, settings/auth-mode detection, `oauth_creds.json` presence, `tmp/**/chats/session-*.json` parsing, token/model extraction, rate pressure, and local request windows.
+- [x] Step 4.4: [automated] Implement Gemini passive adapter under `electron-app/src/main/providers/gemini/`: `GEMINI_HOME`/`~/.gemini` resolution, settings/auth-mode detection, `oauth_creds.json` presence, `tmp/**/chats/session-*.json` parsing, token/model extraction, rate pressure, and local request windows.
 
   **Implementation plan for Step 4.4:**
   - Start from the red suites in `electron-app/src/main/providers/gemini/detector.test.ts`, `electron-app/src/main/providers/gemini/sessions.test.ts`, and `electron-app/src/main/providers/gemini/adapter.test.ts`. Keep Gemini `/stats` tests out of scope until Step 4.5 unless a shared helper is unavoidable.
@@ -50,9 +50,12 @@
 - [ ] Step 4.5: [automated] Implement Gemini `/stats` support under `electron-app/src/main/providers/gemini/stats.ts`, using a deliberate helper path and confidence labeling based on the reliability of command-derived summaries.
 
   **Implementation plan for Step 4.5:**
-  - Add a parser for known `/stats` summary shapes and a helper interface that can be faked in tests.
-  - Keep real command execution behind an explicit adapter method, avoid running interactive CLI commands from tests, and redact diagnostics.
-  - Merge reliable `/stats` summaries into Gemini confidence and rate/headroom state without weakening passive-only fallback behavior.
+  - Start from the red suite in `electron-app/src/main/providers/gemini/stats.test.ts`. Keep settings UI, IPC, tray, popover, overlay, and diagnostics export wiring out of scope until Steps 4.6-4.7.
+  - Create `electron-app/src/main/providers/gemini/stats.ts` with a pure parser for known Gemini `/stats` summary shapes: requests today, daily limit, tokens today, model, reset timestamp, reliable-summary confidence, unsupported/missing command diagnostics, and redaction of OAuth/API key/token text.
+  - Add a deliberate helper boundary for future command execution, but do not invoke the real Gemini CLI in tests. Any command runner should be injectable/fakeable and should not run interactive commands as part of Step 4.5 validation.
+  - Merge reliable `/stats` summaries into `electron-app/src/main/providers/gemini/adapter.ts` only if needed to satisfy the red tests or keep the integration boundary coherent. Preserve the passive adapter fallback from Step 4.4: local chat sessions still work when `/stats` is unavailable or unsupported.
+  - Keep confidence labeling conservative: `/stats` can raise Gemini to `high_confidence` for parsed command-derived summaries, but passive-only local files must remain `estimated` or `observed_only` and must not claim exact remaining quota.
+  - Validate with `npm test -- --run src/main/providers/gemini/stats.test.ts src/main/providers/gemini/adapter.test.ts` and `npm run typecheck` from `electron-app/`. Full Phase 4 tests may still fail on settings/UI/tray wiring until Steps 4.6-4.8.
 
 - [ ] Step 4.6: [automated] Implement provider settings UI and IPC for Codex/Gemini enablement, plan/auth confirmation, confidence explanations, last refresh, stale/degraded diagnostics, and provider refresh actions.
 

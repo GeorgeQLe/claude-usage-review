@@ -1,5 +1,15 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 4.4: Electron Gemini Passive Adapter
+
+Implemented the Electron Gemini passive provider adapter for Phase 4. The new Gemini detector resolves `GEMINI_HOME` with a `~/.gemini` fallback, reads `settings.json` only for safe auth-mode signals, treats `oauth_creds.json` as presence-only auth evidence, and reports unknown or unreadable auth state through redacted diagnostics. The new session parser scans `tmp/**/chats/session-*.json` for derived model, timestamp, token, request-per-minute, and daily request counts while dropping prompts, responses, OAuth tokens, API keys, and raw chat bodies before returning provider state. The Gemini adapter now produces passive provider cards with conservative confidence, stale/degraded/missing status handling, and profile-aware daily headroom.
+
+Validation:
+- `npm test -- --run src/main/providers/gemini/detector.test.ts src/main/providers/gemini/sessions.test.ts src/main/providers/gemini/adapter.test.ts` in `electron-app/`: 6 tests passed.
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm run build:main` in `electron-app/`: passed.
+- Full Phase 4 tests/build remain intentionally deferred because the Step 4.5 Gemini `/stats` red suite and later settings/UI/tray wiring are still incomplete.
+
 ## 2026-04-17 — Step 4.3: Electron Codex Passive Adapter
 
 Implemented the Phase 4 Codex passive adapter path for Electron. Added Codex home resolution with `CODEX_HOME` and `~/.codex` fallback, privacy-safe install/auth presence detection, `history.jsonl` incremental byte-offset parsing, malformed JSONL tolerance, recursive rollout session scanning, local limit-hit/cooldown detection, and a snapshot adapter that emits a first-class Codex provider card with estimated confidence, stale/degraded/missing state, derived bookmarks, and redacted diagnostics. The implementation never emits raw auth JSON, tokens, cookies, prompts, stdout, or raw session payloads.
