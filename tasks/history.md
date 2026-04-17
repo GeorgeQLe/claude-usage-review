@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 4.7: Electron Provider State UI Wiring
+
+Wired the Phase 4 provider state into the Electron tray, popover, overlay, settings-facing provider rows, and diagnostics export placeholder path. The tray now uses the active provider card for title, tooltip, icon tone, and disabled provider menu rows, with passive Codex/Gemini labels based on derived request/rate/status state while preserving Claude exact percentage and reset text. Popover cards now render Codex/Gemini as first-class passive provider summaries with confidence explanations, request counts, refresh/diagnostics actions, and no Claude-only five-hour or weekly meter semantics. The overlay now renders the active provider instead of always selecting Claude, keeping Claude usage bars for Claude and rendering compact passive summaries for Codex/Gemini. Diagnostics export now emits derived provider status entries only and redacts unsafe token/prompt/raw-chat terms.
+
+Validation: focused `npm test -- --run src/foundation-main.test.ts src/foundation-renderer.test.tsx src/main/ipc.test.ts` passed with 3 files and 39 tests. `npm run typecheck` passed from `electron-app/`. Full `npm test -- --run` passed with 49 files and 174 tests. `npm run build` passed from `electron-app/`, including nested typecheck, tests, main/preload/renderer builds. Accepted warning: Node's experimental SQLite warning during storage/integration tests.
+
 ## 2026-04-17 — Step 4.6: Electron Provider Settings UI and IPC
 
 Completed the Phase 4 provider settings UI and IPC step. The current Electron tree already had the Codex/Gemini settings contract, provider diagnostics and refresh IPC, preload API methods, and renderer settings rows in place. The settings surface exposes provider enablement, setup prompt dismissal, plan/auth selection, derived confidence explanations, last provider status details, refresh actions, and diagnostics actions without rendering raw Codex/Gemini file contents, OAuth credentials, API keys, prompts, responses, or command output.

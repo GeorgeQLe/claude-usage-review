@@ -67,7 +67,7 @@
   - Preserve the Step 4.3-4.5 adapter contracts: passive Codex and Gemini local parsing still works without network calls; Gemini `/stats` command execution remains injectable/fakeable; no live Codex, ChatGPT, Gemini, Google, Vertex, or provider API requests are introduced.
   - Validate with focused settings/IPC/renderer tests first, then `npm run typecheck` from `electron-app/`. Full Phase 4 tests may still fail on tray/popover/overlay/diagnostics wiring until Steps 4.7-4.8.
 
-- [ ] Step 4.7: [automated] Wire provider state into tray rotation, popover provider cards, settings provider rows, overlay summaries, and diagnostics placeholders.
+- [x] Step 4.7: [automated] Wire provider state into tray rotation, popover provider cards, settings provider rows, overlay summaries, and diagnostics placeholders.
 
   **Implementation plan for Step 4.7:**
   - Start from `electron-app/src/main/tray.ts`, `electron-app/src/main/providers/providerCoordinator.ts`, `electron-app/src/renderer/components/index.tsx`, `electron-app/src/renderer/overlay/index.tsx`, `electron-app/src/main/ipc.ts`, `electron-app/src/foundation-main.test.ts`, and `electron-app/src/foundation-renderer.test.tsx`. Keep adapter parsing internals and provider settings persistence out of scope unless a narrow shared type is required.
