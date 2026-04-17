@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 3.10: Electron Product UI Parity Verification
+
+Completed the Phase 3 verification gate for the Electron Product UI Parity work. The standalone typecheck, full test suite, aggregate production build, and Electron smoke harness all passed. Phase 3 is archived in `tasks/phases/phase-3.md`, `tasks/roadmap.md` now marks Phase 3 complete, and `tasks/todo.md` now starts Phase 4 with a just-in-time TDD plan for the provider shell and passive Codex/Gemini adapters.
+
+Validation: `npm run typecheck` passed from `electron-app/`. `npm test -- --run` passed with 27 files and 122 tests. `npm run build` passed from `electron-app/`, including nested typecheck, tests, main/preload/renderer builds. `npm run smoke:electron` passed with route-level mocked local usage state for popover GitHub states, settings, onboarding, overlay layouts, and error retry. Accepted warning: Node's experimental SQLite warning during storage/integration tests. No unexpected warnings were emitted.
+
 ## 2026-04-17 — Step 3.8: Electron Product UI Regression Suite
 
 Added the Phase 3 green regression suite for the Electron Product UI Parity work. New focused coverage exercises pace stability windows, weekly color modes, today usage baselines, daily budgets, countdown/reset-time formatting, GitHub GraphQL variables and error classification, token-free heatmap controller state, hourly/forced GitHub refresh behavior, and history raw/compacted window boundaries. Existing foundation coverage now also verifies overlay settings are applied to live overlay windows, configured GitHub heatmaps render without credential material, and settings submit provider placeholders plus write-only GitHub token state.
