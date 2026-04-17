@@ -3,6 +3,17 @@ import electronPath from "electron";
 
 const timeoutMs = 15_000;
 const successMarker = "CLAUDE_USAGE_ELECTRON_SMOKE_OK";
+const routeMarkers = [
+  "popover-disabled-github",
+  "popover-configured-github",
+  "popover-ready-github",
+  "settings",
+  "onboarding",
+  "overlay-compact",
+  "overlay-minimal",
+  "overlay-sidebar",
+  "settings-error-retry"
+];
 const failurePatterns = [
   /Unable to load preload script/i,
   /Electron Security Warning/i,
@@ -10,6 +21,7 @@ const failurePatterns = [
 ];
 let output = "";
 let sawSuccessMarker = false;
+const seenRouteMarkers = new Set();
 
 const child = spawn(electronPath, ["."], {
   cwd: new URL("..", import.meta.url),
@@ -50,7 +62,14 @@ child.on("close", (code, signal) => {
   }
 
   if (code === 0 && sawSuccessMarker) {
-    console.log("Electron smoke launch passed with mocked local usage state.");
+    const missingRouteMarkers = routeMarkers.filter((marker) => !seenRouteMarkers.has(marker));
+
+    if (missingRouteMarkers.length > 0) {
+      fail(`Electron smoke launch missed route markers: ${missingRouteMarkers.join(", ")}.`);
+      return;
+    }
+
+    console.log("Electron smoke launch passed with route-level mocked local usage state.");
     return;
   }
 
@@ -64,6 +83,12 @@ function recordOutput(chunk) {
 
   if (text.includes(successMarker)) {
     sawSuccessMarker = true;
+  }
+
+  for (const routeMarker of routeMarkers) {
+    if (text.includes(`CLAUDE_USAGE_ELECTRON_SMOKE_ROUTE_OK:${routeMarker}`)) {
+      seenRouteMarkers.add(routeMarker);
+    }
   }
 }
 

@@ -16,11 +16,12 @@ import { OverlayRoute } from "../overlay/index.js";
 import { SettingsRoute } from "../settings/index.js";
 import "../styles/app.css";
 
-type RendererRoute = "popover" | "settings" | "onboarding" | "overlay";
+type RendererRoute = "popover" | "settings" | "onboarding" | "overlay" | "smoke-error";
 
 declare global {
   interface Window {
     __CLAUDE_USAGE_SKIP_AUTO_MOUNT__?: boolean;
+    __CLAUDE_USAGE_SMOKE__?: boolean;
   }
 }
 
@@ -45,6 +46,15 @@ export function App(): React.JSX.Element {
       return <OnboardingRoute />;
     case "overlay":
       return <OverlayRoute />;
+    case "smoke-error":
+      return (
+        <ErrorState
+          message="Synthetic smoke renderer error."
+          onRetry={() => {
+            window.location.hash = "settings";
+          }}
+        />
+      );
     case "popover":
     default:
       return <PopoverRoute />;
@@ -103,6 +113,10 @@ export function getRouteFromHash(hash: string): RendererRoute {
 
   if (route === "settings" || route === "onboarding" || route === "overlay") {
     return route;
+  }
+
+  if (route === "smoke-error" && window.__CLAUDE_USAGE_SMOKE__ === true) {
+    return "smoke-error";
   }
 
   return "popover";

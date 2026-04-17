@@ -458,11 +458,12 @@ function createPlaceholderIpcState() {
       return githubHeatmap;
     },
     refreshGitHubHeatmap: (): GitHubHeatmapResult => {
-      githubHeatmap = createPlaceholderGitHubHeatmap({
+      const configuredHeatmap = createPlaceholderGitHubHeatmap({
         enabled: githubHeatmap.enabled,
         hasToken: hasGitHubToken,
         username: githubHeatmap.username
       });
+      githubHeatmap = configuredHeatmap.configured ? createPlaceholderReadyGitHubHeatmap(configuredHeatmap) : configuredHeatmap;
       return githubHeatmap;
     },
     getSettings: (): AppSettings => settings,
@@ -651,6 +652,30 @@ function createPlaceholderGitHubHeatmap(input: {
     lastFetchedAt: null,
     nextRefreshAt: null,
     error: null
+  });
+}
+
+function createPlaceholderReadyGitHubHeatmap(heatmap: GitHubHeatmapResult): GitHubHeatmapResult {
+  return validateGitHubHeatmapResult({
+    ...heatmap,
+    status: "ready",
+    weeks: [
+      {
+        contributionDays: [
+          {
+            contributionCount: 5,
+            date: "2026-04-14"
+          },
+          {
+            contributionCount: 7,
+            date: "2026-04-15"
+          }
+        ]
+      }
+    ],
+    totalContributions: 12,
+    lastFetchedAt: "2026-04-15T12:00:00.000Z",
+    nextRefreshAt: "2026-04-15T13:00:00.000Z"
   });
 }
 

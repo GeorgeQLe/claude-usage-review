@@ -513,6 +513,54 @@ describe("foundation tray routing", () => {
   });
 });
 
+describe("Electron route smoke contract", () => {
+  it("keeps the packaged Electron smoke suite aligned with Phase 3 routes", async () => {
+    const { smokeRouteMarkers } = await import("./main/smoke.js");
+
+    expect(smokeRouteMarkers).toEqual([
+      "popover-disabled-github",
+      "popover-configured-github",
+      "popover-ready-github",
+      "settings",
+      "onboarding",
+      "overlay-compact",
+      "overlay-minimal",
+      "overlay-sidebar",
+      "settings-error-retry"
+    ]);
+  });
+
+  it("asserts expected route text, layout classes, and secret redaction", async () => {
+    const { assertSmokeDomSnapshot } = await import("./main/smoke.js");
+    const snapshot = {
+      html: "<main class=\"overlay-frame overlay-frame-sidebar\"><input value=\"\"></main>",
+      inputValues: [""],
+      mainClassName: "overlay-frame overlay-frame-sidebar",
+      text: "Usage Five-hour usage Weekly usage Auth"
+    };
+
+    expect(() =>
+      assertSmokeDomSnapshot(snapshot, {
+        expectedMainClass: "overlay-frame-sidebar",
+        expectedText: ["Usage", "Auth"],
+        forbiddenText: ["ghp_secret"],
+        marker: "overlay-sidebar"
+      })
+    ).not.toThrow();
+
+    expect(() =>
+      assertSmokeDomSnapshot(
+        { ...snapshot, inputValues: ["ghp_secret"] },
+        {
+          expectedText: ["Usage"],
+          forbiddenText: ["ghp_secret"],
+          marker: "settings"
+        }
+      )
+    ).toThrow(/forbidden secret/u);
+  });
+});
+
 function providerCard(overrides: Partial<ProviderCard> = {}): ProviderCard {
   return {
     providerId: "claude",

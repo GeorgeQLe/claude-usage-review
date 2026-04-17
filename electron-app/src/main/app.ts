@@ -1,5 +1,6 @@
 import { app } from "electron";
 import { AppWindowManager } from "./windows.js";
+import { runElectronSmokeSuite } from "./smoke.js";
 import { syncLaunchAtLogin, TrayController, type TrayFallbackStatus } from "./tray.js";
 import { registerIpcHandlers, type IpcRegistration } from "./ipc.js";
 import { createLocalNotificationService, type LocalNotificationService } from "./services/notifications.js";
@@ -21,7 +22,7 @@ let ipcRegistration: IpcRegistration | null = null;
 let notificationService: LocalNotificationService | null = null;
 let isQuitting = false;
 let settings = appSettingsSchema.parse(createDefaultAppSettings());
-let usageState = createPlaceholderUsageState();
+let usageState = createInitialUsageState();
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
@@ -121,15 +122,23 @@ async function startApp(): Promise<void> {
   const trayStatus = trayController.create();
   reportTrayFallback(trayStatus);
   syncLaunchAtLogin(app, settings.launchAtLogin);
-  await windowManager.showPopover();
 
   if (isSmokeMode) {
+    await runElectronSmokeSuite({
+      updateSettings: (patch) => {
+        updateSettings(patch);
+      },
+      windowManager
+    });
     console.log("CLAUDE_USAGE_ELECTRON_SMOKE_OK");
     setTimeout(() => {
       isQuitting = true;
       app.quit();
     }, 50);
+    return;
   }
+
+  await windowManager.showPopover();
 }
 
 function updateSettings(patch: AppSettingsPatch): AppSettings {
@@ -172,7 +181,11 @@ function refreshUsageState(): UsageState {
   return usageState;
 }
 
-function createPlaceholderUsageState(): UsageState {
+function createInitialUsageState(): UsageState {
+  if (isSmokeMode) {
+    return createSmokeUsageState();
+  }
+
   return usageStateSchema.parse({
     activeProviderId: "claude",
     providers: [
@@ -181,6 +194,28 @@ function createPlaceholderUsageState(): UsageState {
       createPlaceholderProviderCard("gemini", "Gemini")
     ],
     lastUpdatedAt: null,
+    warning: getSecretStorageStatus().warning
+  });
+}
+
+function createSmokeUsageState(): UsageState {
+  return usageStateSchema.parse({
+    activeProviderId: "claude",
+    providers: [
+      {
+        ...createPlaceholderProviderCard("claude", "Claude"),
+        status: "configured",
+        headline: "Claude usage is below the five-hour limit",
+        detailText: "Resets at 2:00 PM.",
+        sessionUtilization: 0.42,
+        weeklyUtilization: 0.19,
+        resetAt: "2026-04-15T14:00:00.000Z",
+        lastUpdatedAt: "2026-04-15T12:00:00.000Z"
+      },
+      createPlaceholderProviderCard("codex", "Codex"),
+      createPlaceholderProviderCard("gemini", "Gemini")
+    ],
+    lastUpdatedAt: "2026-04-15T12:00:00.000Z",
     warning: getSecretStorageStatus().warning
   });
 }
