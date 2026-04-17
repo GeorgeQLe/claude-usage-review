@@ -78,7 +78,7 @@ struct KeychainService {
     @discardableResult
     static func delete(key: KeychainKey) -> Bool {
         // Clear cache
-        cacheQueue.sync { cache.removeValue(forKey: key.rawValue) }
+        _ = cacheQueue.sync { cache.removeValue(forKey: key.rawValue) }
 
         if key == .orgId {
             UserDefaults.standard.removeObject(forKey: "claude_org_id")
@@ -163,7 +163,7 @@ struct KeychainService {
     @discardableResult
     static func delete(key: KeychainKey, accountId: UUID) -> Bool {
         let scopedKey = accountKey(key, accountId: accountId)
-        cacheQueue.sync { cache.removeValue(forKey: scopedKey) }
+        _ = cacheQueue.sync { cache.removeValue(forKey: scopedKey) }
 
         if key == .orgId {
             UserDefaults.standard.removeObject(forKey: "claude_org_id_\(accountId.uuidString)")
