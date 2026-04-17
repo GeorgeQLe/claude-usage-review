@@ -17,7 +17,7 @@
   - Keep these tests red for missing production modules and behaviors. Run focused tests to confirm the red state, then run `npm run typecheck` if the red tests are written in a way that should still typecheck through intentional runtime failures. Do not implement provider modules in this step.
 
 ## Implementation
-- [ ] Step 4.2: [automated] Implement shared provider models and coordinator logic under `electron-app/src/shared/types/provider.ts`, `electron-app/src/shared/schemas/provider.ts`, `electron-app/src/shared/confidence/`, and `electron-app/src/main/providers/providerCoordinator.ts`.
+- [x] Step 4.2: [automated] Implement shared provider models and coordinator logic under `electron-app/src/shared/types/provider.ts`, `electron-app/src/shared/schemas/provider.ts`, `electron-app/src/shared/confidence/`, and `electron-app/src/main/providers/providerCoordinator.ts`.
 
   **Implementation plan for Step 4.2:**
   - Extend provider settings beyond placeholders to include enablement, plan/profile, auth mode, adapter mode, manual tray override, pinning, and stale thresholds while keeping current defaults backward-compatible.

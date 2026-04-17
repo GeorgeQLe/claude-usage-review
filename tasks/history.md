@@ -1,5 +1,13 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 4.2: Electron Provider Shell Models
+
+Implemented the shared Electron provider shell contract for Phase 4. Provider settings now persist enablement, setup prompt dismissal, adapter mode, auth mode, plan, profile label, last refresh timestamp, and stale thresholds with backward-compatible defaults. Added privacy-safe provider diagnostics validation, provider confidence helpers with hard downgrades that prevent passive Codex/Gemini sources from claiming exact quota confidence, and a provider coordinator that normalizes Claude/Codex/Gemini cards, marks stale cards, preserves manual tray override and pin state, and skips degraded providers when healthy alternatives are available.
+
+IPC provider diagnostics and refresh actions now route through injected provider dependencies instead of always using placeholders. Settings provider rows now render derived confidence/status text from provider cards and expose plan/auth controls plus refresh/diagnostics actions while preserving the existing settings persistence flow. Codex and Gemini adapter modules remain intentionally unimplemented for Steps 4.3-4.5.
+
+Validation: focused `npm test -- --run src/main/providers/providerCoordinator.test.ts src/shared/confidence/providerConfidence.test.ts src/shared/schemas/provider.test.ts src/main/ipc.test.ts src/foundation-renderer.test.tsx` passed with 5 files and 20 tests. `npm run typecheck` passed from `electron-app/`. No warnings were emitted. Full `npm test -- --run` and `npm run build` were not run because the Phase 4 Codex/Gemini adapter red tests are intentionally reserved for later steps.
+
 ## 2026-04-17 — Step 4.1: Electron Provider Shell Red Tests
 
 Added the Phase 4 red-test suite for the Electron provider shell and passive Codex/Gemini adapters. Coverage now specifies shared provider normalization, confidence explanations and exact-confidence downgrade guards, tray rotation/manual override/pinning behavior, stale/degraded card mapping, Codex install/auth detection, Codex `history.jsonl` bookmarks, Codex rollout session parsing, Gemini install/auth detection, Gemini chat session parsing, Gemini `/stats` summary parsing, provider settings schemas, IPC provider diagnostics/refresh routing, and renderer provider settings rows. Fixture tests use temporary directories and assert that prompts, auth tokens, cookies, OAuth credentials, API keys, and raw chat/session bodies are not emitted.
