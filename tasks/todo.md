@@ -29,9 +29,12 @@
 - [ ] Step 4.3: [automated] Implement Codex passive adapter under `electron-app/src/main/providers/codex/`: `CODEX_HOME` resolution, install/auth presence detection, `history.jsonl` incremental bookmarks, recursive `sessions/YYYY/MM/DD/rollout-*.jsonl` parsing, local log limit-hit detection, cooldown state, and privacy-safe derived events.
 
   **Implementation plan for Step 4.3:**
-  - Create Codex detector, parsers, bookmark persistence, adapter state, and fixtures under `electron-app/src/main/providers/codex/`.
-  - Read `auth.json` only for auth presence and safe account labels; never emit raw auth JSON, tokens, cookies, prompts, stdout, or raw session payloads.
-  - Persist only derived parse bookmarks and sanitized event summaries needed for confidence and stale/degraded state.
+  - Start from the red suites in `electron-app/src/main/providers/codex/detector.test.ts`, `electron-app/src/main/providers/codex/history.test.ts`, `electron-app/src/main/providers/codex/sessions.test.ts`, and `electron-app/src/main/providers/codex/adapter.test.ts`. Keep Gemini tests out of scope for this step.
+  - Create Codex modules under `electron-app/src/main/providers/codex/`: home resolution/detection, `config.toml`/`auth.json` presence parsing, `history.jsonl` parsing, recursive `sessions/YYYY/MM/DD/rollout-*.jsonl` parsing, bookmark persistence, adapter snapshot assembly, and small fixture builders if needed by tests.
+  - Resolve `CODEX_HOME` first, then fall back to `~/.codex`. Treat install/auth as presence and safe account labels only; never emit raw auth JSON, tokens, cookies, prompts, stdout, or raw session payloads.
+  - Persist only derived parse bookmarks and sanitized event summaries needed for confidence and stale/degraded state. Bookmarks should be byte-offset based for `history.jsonl` and resilient to truncation or malformed JSONL.
+  - Return provider cards compatible with the Step 4.2 coordinator/settings contracts: passive adapter mode, no exact quota confidence, useful degraded/stale detail text, and privacy-safe diagnostics.
+  - Validate with focused Codex provider tests first, then `npm run typecheck` from `electron-app/`. Full Phase 4 tests may still fail on Gemini adapter and `/stats` work until Steps 4.4-4.5.
 
 - [ ] Step 4.4: [automated] Implement Gemini passive adapter under `electron-app/src/main/providers/gemini/`: `GEMINI_HOME`/`~/.gemini` resolution, settings/auth-mode detection, `oauth_creds.json` presence, `tmp/**/chats/session-*.json` parsing, token/model extraction, rate pressure, and local request windows.
 
