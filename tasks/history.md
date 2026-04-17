@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-17 — Step 4.1: Electron Provider Shell Red Tests
+
+Added the Phase 4 red-test suite for the Electron provider shell and passive Codex/Gemini adapters. Coverage now specifies shared provider normalization, confidence explanations and exact-confidence downgrade guards, tray rotation/manual override/pinning behavior, stale/degraded card mapping, Codex install/auth detection, Codex `history.jsonl` bookmarks, Codex rollout session parsing, Gemini install/auth detection, Gemini chat session parsing, Gemini `/stats` summary parsing, provider settings schemas, IPC provider diagnostics/refresh routing, and renderer provider settings rows. Fixture tests use temporary directories and assert that prompts, auth tokens, cookies, OAuth credentials, API keys, and raw chat/session bodies are not emitted.
+
+Validation: focused `npm test -- --run src/main/providers/providerCoordinator.test.ts src/shared/confidence/providerConfidence.test.ts src/main/providers/codex/detector.test.ts src/main/providers/codex/history.test.ts src/main/providers/codex/sessions.test.ts src/main/providers/codex/adapter.test.ts src/main/providers/gemini/detector.test.ts src/main/providers/gemini/sessions.test.ts src/main/providers/gemini/adapter.test.ts src/main/providers/gemini/stats.test.ts src/shared/schemas/provider.test.ts src/main/ipc.test.ts src/foundation-renderer.test.tsx` failed as expected for the red phase with 24 failures: missing Phase 4 production modules, missing provider schema exports, placeholder IPC provider routing, and placeholder Settings provider UI. `npm run typecheck` passed from `electron-app/`. No unexpected warnings were emitted.
+
 ## 2026-04-17 — Step 3.10: Electron Product UI Parity Verification
 
 Completed the Phase 3 verification gate for the Electron Product UI Parity work. The standalone typecheck, full test suite, aggregate production build, and Electron smoke harness all passed. Phase 3 is archived in `tasks/phases/phase-3.md`, `tasks/roadmap.md` now marks Phase 3 complete, and `tasks/todo.md` now starts Phase 4 with a just-in-time TDD plan for the provider shell and passive Codex/Gemini adapters.

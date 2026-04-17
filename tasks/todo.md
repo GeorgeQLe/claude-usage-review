@@ -6,7 +6,7 @@
 > Test strategy: tdd
 
 ## Tests First
-- [ ] Step 4.1: [automated] Add failing tests for shared provider normalization, tray rotation/manual override/pinning, stale/degraded card mapping, Codex detection and parsing, Codex bookmarks, Gemini detection and parsing, Gemini `/stats` summary parsing, confidence engines, and provider settings persistence.
+- [x] Step 4.1: [automated] Add failing tests for shared provider normalization, tray rotation/manual override/pinning, stale/degraded card mapping, Codex detection and parsing, Codex bookmarks, Gemini detection and parsing, Gemini `/stats` summary parsing, confidence engines, and provider settings persistence.
 
   **Implementation plan for Step 4.1:**
   - Add shared provider-shell tests first. Cover normalized provider cards, provider-specific confidence explanations, stale/degraded state mapping, tray rotation order, degraded-provider skipping when alternatives exist, manual override behavior, pinning behavior, and clear fallback text for missing/low-confidence providers. Expected files: `electron-app/src/main/providers/providerCoordinator.test.ts`, `electron-app/src/shared/confidence/providerConfidence.test.ts`, and focused additions to `electron-app/src/foundation-main.test.ts` or `electron-app/src/main/tray.test.ts` if a dedicated tray test file exists by then.
@@ -24,6 +24,7 @@
   - Add provider confidence helpers with plain-language explanations and hard guards that keep Codex/Gemini from claiming exact confidence without a future exact source.
   - Add a coordinator that merges Claude, Codex, and Gemini provider snapshots into `UsageState`, derives stale/degraded/missing cards, orders tray rotation candidates, skips degraded providers when healthy alternatives exist, and preserves manual override/pin state.
   - Keep Claude exact usage behavior unchanged and avoid moving Claude credentials or polling into the new provider shell.
+  - Start from the Step 4.1 red suites now present in `electron-app/src/main/providers/providerCoordinator.test.ts`, `electron-app/src/shared/confidence/providerConfidence.test.ts`, `electron-app/src/shared/schemas/provider.test.ts`, `electron-app/src/main/ipc.test.ts`, and `electron-app/src/foundation-renderer.test.tsx`. For Step 4.2, make only the shared model/coordinator/confidence/settings-schema portion green; Codex/Gemini adapter tests under `electron-app/src/main/providers/{codex,gemini}/` should remain red until Steps 4.3-4.5.
 
 - [ ] Step 4.3: [automated] Implement Codex passive adapter under `electron-app/src/main/providers/codex/`: `CODEX_HOME` resolution, install/auth presence detection, `history.jsonl` incremental bookmarks, recursive `sessions/YYYY/MM/DD/rollout-*.jsonl` parsing, local log limit-hit detection, cooldown state, and privacy-safe derived events.
 
