@@ -5,6 +5,7 @@ import {
   ErrorState,
   GitHubSettingsForm,
   LoadingState,
+  MigrationPanel,
   ProviderList,
   SettingsControls,
   WarningBanner,
@@ -24,7 +25,7 @@ export function OnboardingRoute(): React.JSX.Element {
     return <ErrorState message={resource.error} onRetry={() => void resource.reload()} />;
   }
 
-  const { accounts, githubHeatmap, settings, usageHistory, usageState } = resource.snapshot;
+  const { accounts, githubHeatmap, migrationRecords, settings, usageHistory, usageState } = resource.snapshot;
   const activeAccount = accounts.find((account) => account.isActive) ?? null;
 
   return (
@@ -33,6 +34,17 @@ export function OnboardingRoute(): React.JSX.Element {
       <section className="setup-steps">
         <article className="setup-step">
           <span className="step-number">1</span>
+          <div>
+            <h2>Import existing metadata</h2>
+            <MigrationPanel
+              records={migrationRecords}
+              onRunImport={resource.runMigrationImport}
+              onScanSources={resource.scanMigrationSources}
+            />
+          </div>
+        </article>
+        <article className="setup-step">
+          <span className="step-number">2</span>
           <div>
             <h2>Choose a local account</h2>
             <AccountManager
@@ -45,7 +57,7 @@ export function OnboardingRoute(): React.JSX.Element {
           </div>
         </article>
         <article className="setup-step">
-          <span className="step-number">2</span>
+          <span className="step-number">3</span>
           <div>
             <h2>Add Claude credentials</h2>
             <ClaudeCredentialForm
@@ -56,7 +68,7 @@ export function OnboardingRoute(): React.JSX.Element {
           </div>
         </article>
         <article className="setup-step">
-          <span className="step-number">3</span>
+          <span className="step-number">4</span>
           <div>
             <h2>Add GitHub contributions</h2>
             <p className="muted">This can stay off until you want contribution activity beside usage.</p>
@@ -68,14 +80,14 @@ export function OnboardingRoute(): React.JSX.Element {
           </div>
         </article>
         <article className="setup-step">
-          <span className="step-number">4</span>
+          <span className="step-number">5</span>
           <div>
             <h2>Choose defaults</h2>
             <SettingsControls settings={settings} onUpdateSettings={resource.updateSettings} />
           </div>
         </article>
         <article className="setup-step">
-          <span className="step-number">5</span>
+          <span className="step-number">6</span>
           <div>
             <h2>Optional Accuracy Mode</h2>
             <p className="muted">
@@ -85,7 +97,7 @@ export function OnboardingRoute(): React.JSX.Element {
           </div>
         </article>
         <article className="setup-step">
-          <span className="step-number">6</span>
+          <span className="step-number">7</span>
           <div>
             <h2>Review provider status</h2>
             <ProviderList

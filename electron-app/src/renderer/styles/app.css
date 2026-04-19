@@ -528,6 +528,40 @@ h5 {
   gap: 8px;
 }
 
+.migration-panel,
+.migration-copy,
+.migration-candidates,
+.migration-records,
+.migration-row-main {
+  display: grid;
+  gap: 10px;
+}
+
+.migration-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid #d6ddd6;
+  border-radius: 8px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.migration-message-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+  color: #515a61;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.migration-message-list-warning {
+  color: #5a130d;
+}
+
 .form-status {
   color: #1c6b5d;
   font-size: 13px;
@@ -688,6 +722,7 @@ h5 {
   .window-header,
   .provider-title-row,
   .list-row,
+  .migration-row,
   .account-action-row {
     align-items: stretch;
     flex-direction: column;
@@ -700,6 +735,7 @@ h5 {
     .form-grid,
     .checkbox-grid,
     .inline-form,
+    .migration-row,
     .account-action-row {
     grid-template-columns: 1fr;
   }

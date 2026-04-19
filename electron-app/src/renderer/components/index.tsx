@@ -4,6 +4,11 @@ import type {
   ClaudeConnectionTestResult,
   GitHubContributionDay,
   GitHubHeatmapResult,
+  MigrationCandidateSummary,
+  MigrationImportUiResult,
+  MigrationMetadataCounts,
+  MigrationRecordsResult,
+  MigrationScanResult,
   SaveGitHubSettingsPayload,
   UsageHistoryPoint,
   UsageHistoryResult,
@@ -21,6 +26,7 @@ export interface RendererSnapshot {
   readonly accounts: readonly AccountSummary[];
   readonly usageHistory: UsageHistoryResult;
   readonly githubHeatmap: GitHubHeatmapResult;
+  readonly migrationRecords: MigrationRecordsResult;
 }
 
 type SnapshotState =
@@ -40,6 +46,8 @@ export type RendererSnapshotResource = SnapshotState & {
   readonly saveGitHubSettings: (payload: SaveGitHubSettingsPayload) => Promise<void>;
   readonly refreshGitHubHeatmap: () => Promise<void>;
   readonly updateSettings: (patch: AppSettingsPatch) => Promise<void>;
+  readonly scanMigrationSources: () => Promise<MigrationScanResult>;
+  readonly runMigrationImport: (candidateId: string) => Promise<MigrationImportUiResult>;
   readonly isRefreshing: boolean;
 };
 
@@ -59,15 +67,16 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
   }, []);
 
   const loadSnapshot = useCallback(async () => {
-    const [usageState, settings, accounts, githubHeatmap] = await Promise.all([
+    const [usageState, settings, accounts, githubHeatmap, migrationRecords] = await Promise.all([
       window.claudeUsage.getUsageState(),
       window.claudeUsage.getSettings(),
       window.claudeUsage.getAccounts(),
-      window.claudeUsage.getGitHubHeatmap()
+      window.claudeUsage.getGitHubHeatmap(),
+      window.claudeUsage.getMigrationRecords()
     ]);
     const usageHistory = await loadUsageHistory(accounts);
 
-    return { usageState, settings, accounts, usageHistory, githubHeatmap };
+    return { usageState, settings, accounts, usageHistory, githubHeatmap, migrationRecords };
   }, [loadUsageHistory]);
 
   const updateAccounts = useCallback(async (accounts: readonly AccountSummary[]) => {
@@ -229,6 +238,37 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
     );
   }, []);
 
+  const scanMigrationSources = useCallback(() => window.claudeUsage.scanMigrationSources(), []);
+
+  const runMigrationImport = useCallback(
+    async (candidateId: string) => {
+      const result = await window.claudeUsage.runMigrationImport(candidateId);
+      const [accounts, settings, migrationRecords] = await Promise.all([
+        window.claudeUsage.getAccounts(),
+        window.claudeUsage.getSettings(),
+        window.claudeUsage.getMigrationRecords()
+      ]);
+      const usageHistory = await loadUsageHistory(accounts);
+      setState((current) =>
+        current.status === "ready"
+          ? {
+              status: "ready",
+              snapshot: {
+                ...current.snapshot,
+                accounts,
+                migrationRecords,
+                settings,
+                usageHistory
+              },
+              error: null
+            }
+          : current
+      );
+      return result;
+    },
+    [loadUsageHistory]
+  );
+
   useEffect(() => {
     void reload();
   }, [reload]);
@@ -275,6 +315,8 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
       saveGitHubSettings,
       refreshGitHubHeatmap,
       updateSettings,
+      scanMigrationSources,
+      runMigrationImport,
       isRefreshing
     }),
     [
@@ -287,9 +329,11 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
       refreshGitHubHeatmap,
       saveClaudeCredentials,
       saveGitHubSettings,
+      scanMigrationSources,
       setActiveAccount,
       state,
       testClaudeConnection,
+      runMigrationImport,
       updateSettings
     ]
   );
@@ -1136,6 +1180,108 @@ export function GitHubHeatmapPanel({ heatmap }: { readonly heatmap: GitHubHeatma
   );
 }
 
+export function MigrationPanel({
+  records,
+  onScanSources,
+  onRunImport
+}: {
+  readonly records: MigrationRecordsResult;
+  readonly onScanSources: () => Promise<MigrationScanResult>;
+  readonly onRunImport: (candidateId: string) => Promise<MigrationImportUiResult>;
+}): React.JSX.Element {
+  const [candidates, setCandidates] = useState<readonly MigrationCandidateSummary[]>([]);
+  const [status, setStatus] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+  const latestRecord = records.records[0] ?? null;
+
+  const scanSources = async () => {
+    try {
+      setBusyAction("scan");
+      const result = await onScanSources();
+      setCandidates(result.candidates);
+      setStatus(
+        result.candidates.length === 0
+          ? "No Swift or Tauri app metadata was found."
+          : `${result.candidates.length} migration source${result.candidates.length === 1 ? "" : "s"} found.`
+      );
+    } catch (error) {
+      setStatus(getErrorMessage(error));
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const runImport = async (candidate: MigrationCandidateSummary) => {
+    try {
+      setBusyAction(candidate.candidateId);
+      const result = await onRunImport(candidate.candidateId);
+      setStatus(formatMigrationResultStatus(result));
+    } catch (error) {
+      setStatus(getErrorMessage(error));
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  return (
+    <section className="migration-panel" aria-label="Migration">
+      <div className="migration-copy">
+        <h2>Import app metadata</h2>
+        <p className="muted">
+          Account labels, org IDs, display preferences, provider settings, overlay preferences, and compatible history
+          can be imported. Secrets stay empty until you enter them again.
+        </p>
+      </div>
+      <div className="button-row">
+        <button disabled={busyAction !== null} onClick={() => void scanSources()} type="button">
+          {busyAction === "scan" ? "Scanning" : "Scan for app data"}
+        </button>
+      </div>
+      {candidates.length > 0 ? (
+        <div className="migration-candidates">
+          {candidates.map((candidate) => (
+            <article className="migration-row" key={candidate.candidateId}>
+              <div className="migration-row-main">
+                <div className="provider-title-row">
+                  <div>
+                    <h3>{candidate.displayName}</h3>
+                    <p className="muted">{formatMigrationMetadataCounts(candidate.metadataCounts)}</p>
+                  </div>
+                  <StatusPill tone={candidate.status === "ready" ? "active" : "warning"}>
+                    {candidate.status === "ready" ? "Ready" : "Review"}
+                  </StatusPill>
+                </div>
+                <MigrationSecretList categories={candidate.skippedSecretCategories} />
+                <MigrationMessageList messages={candidate.warnings} tone="warning" />
+                {candidate.error ? <p className="form-status">{candidate.error}</p> : null}
+              </div>
+              <button
+                disabled={busyAction !== null || candidate.status !== "ready"}
+                onClick={() => void runImport(candidate)}
+                type="button"
+              >
+                {busyAction === candidate.candidateId ? "Importing" : "Import metadata"}
+              </button>
+            </article>
+          ))}
+        </div>
+      ) : null}
+      {latestRecord ? (
+        <section className="migration-records" aria-label="Recent migrations">
+          <h3>Recent import</h3>
+          <p className="muted">
+            {latestRecord.displayName}: {formatToken(latestRecord.status)} at {formatDateTime(latestRecord.importedAt)}
+          </p>
+          <p className="muted">{formatMigrationMetadataCounts(latestRecord.metadataCounts)}</p>
+          <MigrationSecretList categories={latestRecord.skippedSecretCategories} />
+          <MigrationMessageList messages={latestRecord.failures} tone="warning" />
+        </section>
+      ) : null}
+      {status ? <p className="form-status">{status}</p> : null}
+    </section>
+  );
+}
+
 export function StatusPill({
   children,
   tone
@@ -1527,6 +1673,91 @@ function formatGitHubStatus(heatmap: GitHubHeatmapResult): string {
   }
 
   return "Ready to refresh";
+}
+
+function MigrationSecretList({
+  categories
+}: {
+  readonly categories: readonly MigrationCandidateSummary["skippedSecretCategories"][number][];
+}): React.JSX.Element | null {
+  if (categories.length === 0) {
+    return null;
+  }
+
+  return (
+    <p className="muted">
+      Re-enter {categories.map(formatSecretCategory).join(", ")} after import.
+    </p>
+  );
+}
+
+function MigrationMessageList({
+  messages,
+  tone
+}: {
+  readonly messages: readonly string[];
+  readonly tone: "warning";
+}): React.JSX.Element | null {
+  if (messages.length === 0) {
+    return null;
+  }
+
+  return (
+    <ul className={`migration-message-list migration-message-list-${tone}`}>
+      {messages.map((message) => (
+        <li key={message}>{message}</li>
+      ))}
+    </ul>
+  );
+}
+
+function formatMigrationResultStatus(result: MigrationImportUiResult): string {
+  const counts = formatMigrationMetadataCounts(result.metadataCounts);
+  if (result.status === "failed") {
+    return result.failures[0] ?? "Import failed.";
+  }
+
+  if (result.status === "skipped") {
+    return `No new metadata imported from ${result.displayName}.`;
+  }
+
+  return `${result.displayName} imported. ${counts}.`;
+}
+
+function formatMigrationMetadataCounts(counts: MigrationMetadataCounts): string {
+  const labels = [
+    formatCount(counts.accounts, "account"),
+    formatCount(counts.historySnapshots, "history snapshot"),
+    formatCount(counts.appSettings, "app setting group"),
+    formatCount(counts.providerSettings, "provider setting")
+  ];
+
+  return labels.join(", ");
+}
+
+function formatCount(count: number, singular: string): string {
+  return `${count} ${singular}${count === 1 ? "" : "s"}`;
+}
+
+function formatSecretCategory(category: MigrationCandidateSummary["skippedSecretCategories"][number]): string {
+  switch (category) {
+    case "claude-session-key":
+      return "Claude session keys";
+    case "github-token":
+      return "GitHub tokens";
+    case "provider-auth-token":
+      return "provider auth tokens";
+    case "api-key":
+      return "API keys";
+    case "cookie":
+      return "cookies";
+    case "raw-provider-session":
+      return "raw provider sessions";
+    case "raw-provider-prompt":
+      return "raw provider prompts";
+    case "raw-provider-output":
+      return "raw provider output";
+  }
 }
 
 function getGitHubEmptyState(heatmap: GitHubHeatmapResult): string {

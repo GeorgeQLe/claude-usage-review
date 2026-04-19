@@ -28,6 +28,9 @@ export const ipcChannelNames = {
   runProviderDetection: "providers:run-detection",
   generateWrapper: "wrappers:generate",
   verifyWrapper: "wrappers:verify",
+  scanMigrationSources: "migration:scan-sources",
+  runMigrationImport: "migration:run-import",
+  getMigrationRecords: "migration:get-records",
   exportDiagnostics: "diagnostics:export"
 } as const;
 
@@ -140,6 +143,21 @@ export interface PreloadInvokeMap {
     readonly channel: typeof ipcChannelNames.verifyWrapper;
     readonly args: readonly [payload: ProviderCommandPayload];
     readonly result: WrapperVerificationResult;
+  };
+  readonly scanMigrationSources: {
+    readonly channel: typeof ipcChannelNames.scanMigrationSources;
+    readonly args: readonly [];
+    readonly result: MigrationScanResult;
+  };
+  readonly runMigrationImport: {
+    readonly channel: typeof ipcChannelNames.runMigrationImport;
+    readonly args: readonly [payload: RunMigrationImportPayload];
+    readonly result: MigrationImportUiResult;
+  };
+  readonly getMigrationRecords: {
+    readonly channel: typeof ipcChannelNames.getMigrationRecords;
+    readonly args: readonly [];
+    readonly result: MigrationRecordsResult;
   };
   readonly exportDiagnostics: {
     readonly channel: typeof ipcChannelNames.exportDiagnostics;
@@ -269,6 +287,74 @@ export interface WrapperVerificationResult {
   readonly verified: boolean;
   readonly message: string;
   readonly wrapperVersion?: string;
+}
+
+export type MigrationSourceKind = "swift" | "tauri";
+
+export type SkippedSecretCategory =
+  | "claude-session-key"
+  | "github-token"
+  | "provider-auth-token"
+  | "api-key"
+  | "cookie"
+  | "raw-provider-session"
+  | "raw-provider-prompt"
+  | "raw-provider-output";
+
+export interface MigrationMetadataCounts {
+  readonly accounts: number;
+  readonly historySnapshots: number;
+  readonly appSettings: number;
+  readonly providerSettings: number;
+}
+
+export interface MigrationCandidateSummary {
+  readonly candidateId: string;
+  readonly sourceKind: MigrationSourceKind;
+  readonly displayName: string;
+  readonly status: "ready" | "error";
+  readonly metadataCounts: MigrationMetadataCounts;
+  readonly skippedSecretCategories: readonly SkippedSecretCategory[];
+  readonly warnings: readonly string[];
+  readonly error: string | null;
+}
+
+export interface MigrationScanResult {
+  readonly scannedAt: string;
+  readonly candidates: readonly MigrationCandidateSummary[];
+}
+
+export interface RunMigrationImportPayload {
+  readonly candidateId: string;
+}
+
+export interface MigrationRecordUiSummary {
+  readonly id: string;
+  readonly sourceKind: MigrationSourceKind;
+  readonly displayName: string;
+  readonly status: "pending" | "imported" | "skipped" | "failed";
+  readonly importedAt: string;
+  readonly metadataCounts: MigrationMetadataCounts;
+  readonly skippedSecretCategories: readonly SkippedSecretCategory[];
+  readonly warnings: readonly string[];
+  readonly failures: readonly string[];
+}
+
+export interface MigrationImportUiResult {
+  readonly sourceKind: MigrationSourceKind;
+  readonly displayName: string;
+  readonly status: "imported" | "skipped" | "failed";
+  readonly importedAt: string;
+  readonly metadataCounts: MigrationMetadataCounts;
+  readonly skippedSecretCategories: readonly SkippedSecretCategory[];
+  readonly warnings: readonly string[];
+  readonly failures: readonly string[];
+  readonly record: MigrationRecordUiSummary;
+}
+
+export interface MigrationRecordsResult {
+  readonly records: readonly MigrationRecordUiSummary[];
+  readonly generatedAt: string;
 }
 
 export interface DiagnosticsExportResult {

@@ -7,6 +7,9 @@ import type {
   DiagnosticsExportResult,
   GitHubHeatmapResult,
   GetUsageHistoryPayload,
+  MigrationImportUiResult,
+  MigrationRecordsResult,
+  MigrationScanResult,
   ProviderDetectionResult,
   ProviderDiagnosticsResult,
   SaveGitHubSettingsPayload,
@@ -47,6 +50,9 @@ export interface ClaudeUsageApi {
   runProviderDetection: (providerId: ProviderId) => Promise<ProviderDetectionResult>;
   generateWrapper: (providerId: ProviderId) => Promise<WrapperSetupResult>;
   verifyWrapper: (providerId: ProviderId) => Promise<WrapperVerificationResult>;
+  scanMigrationSources: () => Promise<MigrationScanResult>;
+  runMigrationImport: (candidateId: string) => Promise<MigrationImportUiResult>;
+  getMigrationRecords: () => Promise<MigrationRecordsResult>;
   exportDiagnostics: () => Promise<DiagnosticsExportResult>;
 }
 
@@ -72,6 +78,9 @@ const preloadInvokeChannels = {
   runProviderDetection: ipcChannelNames.runProviderDetection,
   generateWrapper: ipcChannelNames.generateWrapper,
   verifyWrapper: ipcChannelNames.verifyWrapper,
+  scanMigrationSources: ipcChannelNames.scanMigrationSources,
+  runMigrationImport: ipcChannelNames.runMigrationImport,
+  getMigrationRecords: ipcChannelNames.getMigrationRecords,
   exportDiagnostics: ipcChannelNames.exportDiagnostics
 } as const satisfies {
   readonly [Key in PreloadInvokeKey]: PreloadInvokeMap[Key]["channel"];
@@ -125,6 +134,9 @@ export function createClaudeUsageApi(): ClaudeUsageApi {
     runProviderDetection: (providerId) => invoke("runProviderDetection", { providerId }),
     generateWrapper: (providerId) => invoke("generateWrapper", { providerId }),
     verifyWrapper: (providerId) => invoke("verifyWrapper", { providerId }),
+    scanMigrationSources: () => invoke("scanMigrationSources"),
+    runMigrationImport: (candidateId) => invoke("runMigrationImport", { candidateId }),
+    getMigrationRecords: () => invoke("getMigrationRecords"),
     exportDiagnostics: () => invoke("exportDiagnostics")
   };
 }

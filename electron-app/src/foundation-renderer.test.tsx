@@ -218,6 +218,41 @@ describe("foundation renderer routes", () => {
     expect(document.body.textContent).not.toContain("ghp_synthetic_secret");
   });
 
+  it("scans and imports migration metadata without rendering source paths or secrets", async () => {
+    const { container } = await renderRoute(<SettingsRoute />);
+
+    expect(document.body.textContent).toContain("Import app metadata");
+    expect(document.body.textContent).toContain("Recent import");
+    expect(document.body.textContent).not.toContain("/Users/georgele/Library");
+
+    await act(async () => {
+      findButton(container, "Scan for app data")?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(window.claudeUsage.scanMigrationSources).toHaveBeenCalled();
+    expect(document.body.textContent).toContain("Swift ClaudeUsage app");
+    expect(document.body.textContent).toContain("1 account");
+    expect(document.body.textContent).toContain("Re-enter Claude session keys, GitHub tokens");
+    expect(document.body.textContent).not.toContain("sk-ant");
+    expect(document.body.textContent).not.toContain("ghp_");
+    expect(document.body.textContent).not.toContain("config.json");
+
+    await act(async () => {
+      findButton(container, "Import metadata")?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(window.claudeUsage.runMigrationImport).toHaveBeenCalledWith("swift-1");
+    expect(document.body.textContent).toContain("Swift ClaudeUsage app imported");
+    expect(document.body.textContent).not.toMatch(/session[_-]?key|access[_-]?token|cookie|ghp_|sk-ant/iu);
+  });
+
   it("renders provider settings rows from derived status only and exposes refresh/diagnostics actions", async () => {
     const { container } = await renderRoute(<SettingsRoute />);
 
@@ -409,6 +444,7 @@ function createMockPreloadApi() {
     getAccounts: vi.fn(async () => mockAccounts),
     getProviderDiagnostics: vi.fn(),
     getGitHubHeatmap: vi.fn(async () => mockGitHubHeatmap),
+    getMigrationRecords: vi.fn(async () => mockMigrationRecords),
     getSettings: vi.fn(async () => mockSettings),
     getUsageHistory: vi.fn(async () => mockUsageHistory),
     getUsageState: vi.fn(async () => mockUsageState),
@@ -420,6 +456,7 @@ function createMockPreloadApi() {
     removeAccount: vi.fn(async () => mockAccounts),
     renameAccount: vi.fn(async () => mockAccounts),
     runProviderDetection: vi.fn(),
+    scanMigrationSources: vi.fn(async () => mockMigrationScan),
     saveClaudeCredentials: vi.fn(async () => [
       {
         ...mockAccounts[0],
@@ -430,6 +467,7 @@ function createMockPreloadApi() {
     ]),
     setActiveAccount: vi.fn(async () => mockAccounts),
     saveGitHubSettings: vi.fn(async () => mockGitHubHeatmap),
+    runMigrationImport: vi.fn(async () => mockMigrationImportResult),
     hideOverlay: vi.fn(async () => undefined),
     openPopover: vi.fn(async () => undefined),
     subscribeUsageUpdated: vi.fn(() => () => undefined),
@@ -648,3 +686,61 @@ const configuredGitHubHeatmap: GitHubHeatmapResult = {
     }
   ]
 };
+
+const mockMigrationScan = {
+  scannedAt: "2026-04-15T12:00:00.000Z",
+  candidates: [
+    {
+      candidateId: "swift-1",
+      displayName: "Swift ClaudeUsage app",
+      error: null,
+      metadataCounts: {
+        accounts: 1,
+        appSettings: 1,
+        historySnapshots: 2,
+        providerSettings: 1
+      },
+      skippedSecretCategories: ["claude-session-key", "github-token"],
+      sourceKind: "swift",
+      status: "ready",
+      warnings: []
+    }
+  ]
+} as const;
+
+const mockMigrationImportResult = {
+  displayName: "Swift ClaudeUsage app",
+  failures: [],
+  importedAt: "2026-04-15T12:00:00.000Z",
+  metadataCounts: {
+    accounts: 1,
+    appSettings: 1,
+    historySnapshots: 2,
+    providerSettings: 1
+  },
+  record: {
+    displayName: "Swift ClaudeUsage app",
+    failures: [],
+    id: "migration-1",
+    importedAt: "2026-04-15T12:00:00.000Z",
+    metadataCounts: {
+      accounts: 1,
+      appSettings: 1,
+      historySnapshots: 2,
+      providerSettings: 1
+    },
+    skippedSecretCategories: ["claude-session-key", "github-token"],
+    sourceKind: "swift",
+    status: "imported",
+    warnings: []
+  },
+  skippedSecretCategories: ["claude-session-key", "github-token"],
+  sourceKind: "swift",
+  status: "imported",
+  warnings: []
+} as const;
+
+const mockMigrationRecords = {
+  generatedAt: "2026-04-15T12:00:00.000Z",
+  records: [mockMigrationImportResult.record]
+} as const;

@@ -122,6 +122,75 @@ export const wrapperVerificationResultSchema = z.object({
   wrapperVersion: z.string().min(1).optional()
 });
 
+export const migrationSourceKindSchema = z.enum(["swift", "tauri"]);
+
+export const skippedSecretCategorySchema = z.enum([
+  "claude-session-key",
+  "github-token",
+  "provider-auth-token",
+  "api-key",
+  "cookie",
+  "raw-provider-session",
+  "raw-provider-prompt",
+  "raw-provider-output"
+]);
+
+export const migrationMetadataCountsSchema = z.object({
+  accounts: z.number().int().min(0),
+  historySnapshots: z.number().int().min(0),
+  appSettings: z.number().int().min(0),
+  providerSettings: z.number().int().min(0)
+});
+
+export const migrationCandidateSummarySchema = z.object({
+  candidateId: z.string().min(1),
+  sourceKind: migrationSourceKindSchema,
+  displayName: z.string().min(1),
+  status: z.enum(["ready", "error"]),
+  metadataCounts: migrationMetadataCountsSchema,
+  skippedSecretCategories: z.array(skippedSecretCategorySchema),
+  warnings: z.array(z.string()),
+  error: z.string().nullable()
+});
+
+export const migrationScanResultSchema = z.object({
+  scannedAt: z.string().datetime(),
+  candidates: z.array(migrationCandidateSummarySchema)
+});
+
+export const runMigrationImportPayloadSchema = z.object({
+  candidateId: z.string().min(1)
+});
+
+export const migrationRecordUiSummarySchema = z.object({
+  id: z.string().min(1),
+  sourceKind: migrationSourceKindSchema,
+  displayName: z.string().min(1),
+  status: z.enum(["pending", "imported", "skipped", "failed"]),
+  importedAt: z.string().datetime(),
+  metadataCounts: migrationMetadataCountsSchema,
+  skippedSecretCategories: z.array(skippedSecretCategorySchema),
+  warnings: z.array(z.string()),
+  failures: z.array(z.string())
+});
+
+export const migrationImportUiResultSchema = z.object({
+  sourceKind: migrationSourceKindSchema,
+  displayName: z.string().min(1),
+  status: z.enum(["imported", "skipped", "failed"]),
+  importedAt: z.string().datetime(),
+  metadataCounts: migrationMetadataCountsSchema,
+  skippedSecretCategories: z.array(skippedSecretCategorySchema),
+  warnings: z.array(z.string()),
+  failures: z.array(z.string()),
+  record: migrationRecordUiSummarySchema
+});
+
+export const migrationRecordsResultSchema = z.object({
+  records: z.array(migrationRecordUiSummarySchema),
+  generatedAt: z.string().datetime()
+});
+
 export const diagnosticsExportResultSchema = z.object({
   generatedAt: z.string().datetime(),
   summary: z.string(),

@@ -4,6 +4,7 @@ import {
   ErrorState,
   GitHubSettingsForm,
   LoadingState,
+  MigrationPanel,
   SettingsControls,
   SettingsSummary,
   WarningBanner,
@@ -22,7 +23,7 @@ export function SettingsRoute(): React.JSX.Element {
     return <ErrorState message={resource.error} onRetry={() => void resource.reload()} />;
   }
 
-  const { accounts, githubHeatmap, settings, usageState } = resource.snapshot;
+  const { accounts, githubHeatmap, migrationRecords, settings, usageState } = resource.snapshot;
   const activeAccount = accounts.find((account) => account.isActive) ?? null;
 
   return (
@@ -63,6 +64,13 @@ export function SettingsRoute(): React.JSX.Element {
           onRemove={resource.removeAccount}
           onRename={resource.renameAccount}
           onSwitch={resource.setActiveAccount}
+        />
+      </section>
+      <section className="panel">
+        <MigrationPanel
+          records={migrationRecords}
+          onRunImport={resource.runMigrationImport}
+          onScanSources={resource.scanMigrationSources}
         />
       </section>
     </WindowFrame>

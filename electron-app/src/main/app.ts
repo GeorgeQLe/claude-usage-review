@@ -2,14 +2,30 @@ import { app } from "electron";
 import { AppWindowManager } from "./windows.js";
 import { runElectronSmokeSuite } from "./smoke.js";
 import { syncLaunchAtLogin, TrayController, type TrayFallbackStatus } from "./tray.js";
-import { registerIpcHandlers, type IpcRegistration } from "./ipc.js";
+import { registerIpcHandlers, type IpcMigrationDependencies, type IpcRegistration } from "./ipc.js";
 import { createLocalNotificationService, type LocalNotificationService } from "./services/notifications.js";
 import { getSecretStorageStatus } from "./storage/secrets.js";
+import { openAppDatabase, createMigrationRecordStore, type OpenedAppDatabase } from "./storage/index.js";
+import {
+  createMigrationService,
+  discoverMigrationSources,
+  type MigrationImportPlan,
+  type MigrationImportResult,
+  type MigrationSourceCandidate
+} from "./migration/index.js";
 import { createWrapperGenerationService } from "./wrappers/generator.js";
 import { createWrapperVerificationService } from "./wrappers/verification.js";
 import { createDefaultAppSettings, mergeAppSettings } from "../shared/settings/defaults.js";
 import { appSettingsSchema } from "../shared/schemas/settings.js";
 import { usageStateSchema } from "../shared/schemas/usage.js";
+import type {
+  MigrationCandidateSummary,
+  MigrationImportUiResult,
+  MigrationMetadataCounts,
+  MigrationRecordUiSummary,
+  MigrationRecordsResult,
+  MigrationScanResult
+} from "../shared/types/ipc.js";
 import type { ProviderId } from "../shared/types/provider.js";
 import type { AppSettings, AppSettingsPatch } from "../shared/types/settings.js";
 import type { UsageState } from "../shared/types/usage.js";
@@ -22,6 +38,7 @@ let windowManager: AppWindowManager | null = null;
 let trayController: TrayController | null = null;
 let ipcRegistration: IpcRegistration | null = null;
 let notificationService: LocalNotificationService | null = null;
+let openedDatabase: OpenedAppDatabase | null = null;
 let isQuitting = false;
 let settings = appSettingsSchema.parse(createDefaultAppSettings());
 let usageState = createInitialUsageState();
@@ -42,6 +59,7 @@ if (!hasSingleInstanceLock) {
     trayController?.dispose();
     windowManager?.dispose();
     ipcRegistration?.dispose();
+    openedDatabase?.close();
   });
   app.on("window-all-closed", () => {
     if (isQuitting || !trayController?.getFallbackStatus().available) {
@@ -59,6 +77,7 @@ if (!hasSingleInstanceLock) {
 }
 
 async function startApp(): Promise<void> {
+  openedDatabase = openAppDatabase();
   notificationService = createLocalNotificationService();
   const wrapperGenerationService = createWrapperGenerationService({
     appUserDataDir: app.getPath("userData")
@@ -97,6 +116,7 @@ async function startApp(): Promise<void> {
       generateWrapper: wrapperGenerationService.generateWrapper,
       verifyWrapper: wrapperVerificationService.verifyWrapper
     },
+    migration: createMigrationIpcDependencies(),
     windows: {
       openPopover: () => {
         void windowManager?.showPopover();
@@ -153,6 +173,71 @@ async function startApp(): Promise<void> {
   await windowManager.showPopover();
 }
 
+function createMigrationIpcDependencies(): IpcMigrationDependencies {
+  if (!openedDatabase) {
+    throw new Error("Database must be open before migration IPC is registered.");
+  }
+
+  const database = openedDatabase.database;
+  const recordStore = createMigrationRecordStore({ database });
+  let cachedCandidates = new Map<string, MigrationSourceCandidate>();
+
+  const createCurrentMigrationService = () =>
+    createMigrationService({
+      database,
+      currentSettings: settings
+    });
+
+  return {
+    scanSources: (): MigrationScanResult => {
+      const candidates = discoverMigrationSources({
+        homeDir: app.getPath("home"),
+        xdgConfigHome: process.env.XDG_CONFIG_HOME
+      });
+      cachedCandidates = new Map();
+
+      return {
+        scannedAt: new Date().toISOString(),
+        candidates: candidates.map((candidate, index) => {
+          const candidateId = `${candidate.kind}-${index + 1}`;
+          cachedCandidates.set(candidateId, candidate);
+          try {
+            const plan = createCurrentMigrationService().buildImportPlan(candidate);
+            return createMigrationCandidateSummary(candidateId, plan);
+          } catch (error) {
+            return createMigrationCandidateSummary(candidateId, null, candidate, error);
+          }
+        })
+      };
+    },
+    runImport: (candidateId: string): MigrationImportUiResult => {
+      const candidate = cachedCandidates.get(candidateId);
+      if (!candidate) {
+        throw new Error("Scan migration sources before running an import.");
+      }
+
+      const migrationService = createCurrentMigrationService();
+      let plan: MigrationImportPlan;
+      try {
+        plan = migrationService.buildImportPlan(candidate);
+      } catch (error) {
+        return createFailedMigrationImportResult(candidate, error);
+      }
+
+      const result = migrationService.runImportPlan(plan);
+      if (result.failures.length === 0 && hasSettingsPatch(plan)) {
+        updateSettings(plan.appSettings);
+      }
+
+      return createMigrationImportUiResult(result);
+    },
+    listRecords: (): MigrationRecordsResult => ({
+      generatedAt: new Date().toISOString(),
+      records: recordStore.listMigrationRecords().map(createMigrationRecordUiSummary)
+    })
+  };
+}
+
 function updateSettings(patch: AppSettingsPatch): AppSettings {
   const previousLaunchAtLogin = settings.launchAtLogin;
   const overlayPatchKeys = patch.overlay ? Object.keys(patch.overlay) : [];
@@ -169,6 +254,142 @@ function updateSettings(patch: AppSettingsPatch): AppSettings {
   trayController?.updateState({ settings });
 
   return settings;
+}
+
+function createMigrationCandidateSummary(
+  candidateId: string,
+  plan: MigrationImportPlan | null,
+  candidate?: MigrationSourceCandidate,
+  error?: unknown
+): MigrationCandidateSummary {
+  const sourceKind = plan?.sourceKind ?? candidate?.kind ?? "swift";
+
+  return {
+    candidateId,
+    sourceKind,
+    displayName: formatMigrationSourceName(sourceKind),
+    status: plan ? "ready" : "error",
+    metadataCounts: plan ? countMigrationPlanMetadata(plan) : emptyMigrationMetadataCounts(),
+    skippedSecretCategories: plan?.skippedSecretCategories ?? [],
+    warnings: plan?.warnings ?? [],
+    error: error ? getErrorMessage(error) : null
+  };
+}
+
+function createMigrationImportUiResult(result: MigrationImportResult): MigrationImportUiResult {
+  return {
+    sourceKind: result.sourceKind,
+    displayName: formatMigrationSourceName(result.sourceKind),
+    status: result.record.status === "pending" ? "skipped" : result.record.status,
+    importedAt: result.record.importedAt,
+    metadataCounts: result.imported,
+    skippedSecretCategories: result.skippedSecretCategories,
+    warnings: result.warnings,
+    failures: result.failures,
+    record: createMigrationRecordUiSummary(result.record)
+  };
+}
+
+function createFailedMigrationImportResult(
+  candidate: MigrationSourceCandidate,
+  error: unknown
+): MigrationImportUiResult {
+  if (!openedDatabase) {
+    throw new Error("Database must be open before migration failures are recorded.");
+  }
+
+  const sourceKind = candidate.kind;
+  const failures = [getErrorMessage(error)];
+  const record = createMigrationRecordStore({ database: openedDatabase.database }).recordMigration({
+    source: sourceKind,
+    status: "failed",
+    summary: {
+      sourceKind,
+      sourcePath: candidate.sourcePath,
+      imported: emptyMigrationMetadataCounts(),
+      skippedSecretCategories: [],
+      warnings: [],
+      failures
+    }
+  });
+
+  return {
+    sourceKind,
+    displayName: formatMigrationSourceName(sourceKind),
+    status: "failed",
+    importedAt: record.importedAt,
+    metadataCounts: emptyMigrationMetadataCounts(),
+    skippedSecretCategories: [],
+    warnings: [],
+    failures,
+    record: createMigrationRecordUiSummary(record)
+  };
+}
+
+function createMigrationRecordUiSummary(
+  record: MigrationImportResult["record"]
+): MigrationRecordUiSummary {
+  return {
+    id: record.id,
+    sourceKind: record.source,
+    displayName: formatMigrationSourceName(record.source),
+    status: record.status,
+    importedAt: record.importedAt,
+    metadataCounts: record.summary.imported,
+    skippedSecretCategories: normalizeSkippedSecretCategories(record.summary.skippedSecretCategories),
+    warnings: record.summary.warnings,
+    failures: record.summary.failures
+  };
+}
+
+function countMigrationPlanMetadata(plan: MigrationImportPlan): MigrationMetadataCounts {
+  const { providers: _providers, ...appPatch } = plan.appSettings;
+  const providerSettings = plan.appSettings.providers ? Object.keys(plan.appSettings.providers).length : 0;
+
+  return {
+    accounts: plan.accounts.length,
+    historySnapshots: plan.historySnapshots.length,
+    appSettings: Object.keys(appPatch).length > 0 ? 1 : 0,
+    providerSettings
+  };
+}
+
+function emptyMigrationMetadataCounts(): MigrationMetadataCounts {
+  return {
+    accounts: 0,
+    historySnapshots: 0,
+    appSettings: 0,
+    providerSettings: 0
+  };
+}
+
+function hasSettingsPatch(plan: MigrationImportPlan): boolean {
+  return Object.keys(plan.appSettings).length > 0;
+}
+
+function normalizeSkippedSecretCategories(categories: readonly string[]): MigrationRecordUiSummary["skippedSecretCategories"] {
+  const allowed = new Set<MigrationRecordUiSummary["skippedSecretCategories"][number]>([
+    "claude-session-key",
+    "github-token",
+    "provider-auth-token",
+    "api-key",
+    "cookie",
+    "raw-provider-session",
+    "raw-provider-prompt",
+    "raw-provider-output"
+  ]);
+
+  return categories.filter((category): category is MigrationRecordUiSummary["skippedSecretCategories"][number] =>
+    allowed.has(category as MigrationRecordUiSummary["skippedSecretCategories"][number])
+  );
+}
+
+function formatMigrationSourceName(sourceKind: MigrationSourceCandidate["kind"]): string {
+  return sourceKind === "swift" ? "Swift ClaudeUsage app" : "Tauri ClaudeUsage app";
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function reportTrayFallback(status: TrayFallbackStatus): void {

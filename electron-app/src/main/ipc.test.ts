@@ -205,6 +205,95 @@ describe("Phase 2 IPC command contract", () => {
     expect(JSON.stringify({ setup, verification })).not.toMatch(/prompt|stdout|raw stderr|access[_-]?token|session[_-]?key|cookie/iu);
   });
 
+  it("routes migration scan, import, and record reads through sanitized migration dependencies", async () => {
+    const { ipcChannelNames, registerIpcHandlers } = await import("./ipc.js");
+    const migration = {
+      scanSources: vi.fn(() => ({
+        scannedAt: "2026-04-17T15:00:00.000Z",
+        candidates: [
+          {
+            candidateId: "swift-1",
+            displayName: "Swift ClaudeUsage app",
+            error: null,
+            metadataCounts: {
+              accounts: 1,
+              appSettings: 1,
+              historySnapshots: 2,
+              providerSettings: 1
+            },
+            skippedSecretCategories: ["claude-session-key", "github-token"],
+            sourceKind: "swift",
+            status: "ready",
+            warnings: ["Provider token was skipped."]
+          }
+        ]
+      })),
+      runImport: vi.fn((candidateId: string) => ({
+        displayName: "Swift ClaudeUsage app",
+        failures: [],
+        importedAt: "2026-04-17T15:01:00.000Z",
+        metadataCounts: {
+          accounts: 1,
+          appSettings: 1,
+          historySnapshots: 2,
+          providerSettings: 1
+        },
+        record: {
+          displayName: "Swift ClaudeUsage app",
+          failures: [],
+          id: `migration-${candidateId}`,
+          importedAt: "2026-04-17T15:01:00.000Z",
+          metadataCounts: {
+            accounts: 1,
+            appSettings: 1,
+            historySnapshots: 2,
+            providerSettings: 1
+          },
+          skippedSecretCategories: ["claude-session-key", "github-token"],
+          sourceKind: "swift",
+          status: "imported",
+          warnings: []
+        },
+        skippedSecretCategories: ["claude-session-key", "github-token"],
+        sourceKind: "swift",
+        status: "imported",
+        warnings: []
+      })),
+      listRecords: vi.fn(() => ({
+        generatedAt: "2026-04-17T15:02:00.000Z",
+        records: []
+      }))
+    };
+
+    (registerIpcHandlers as (dependencies: unknown) => unknown)({ migration });
+
+    const scan = await invoke(ipcChannelNames.scanMigrationSources);
+    const imported = await invoke(ipcChannelNames.runMigrationImport, { candidateId: "swift-1" });
+    const records = await invoke(ipcChannelNames.getMigrationRecords);
+
+    expect(migration.scanSources).toHaveBeenCalled();
+    expect(migration.runImport).toHaveBeenCalledWith("swift-1");
+    expect(migration.listRecords).toHaveBeenCalled();
+    expect(scan).toMatchObject({
+      candidates: [
+        {
+          candidateId: "swift-1",
+          sourceKind: "swift"
+        }
+      ]
+    });
+    expect(imported).toMatchObject({
+      displayName: "Swift ClaudeUsage app",
+      status: "imported"
+    });
+    expect(records).toMatchObject({
+      records: []
+    });
+    expect(JSON.stringify({ scan, imported, records })).not.toMatch(
+      /\/Users\/|config\.json|sk-ant|ghp_|access[_-]?token|cookie|raw provider prompt/iu
+    );
+  });
+
   it("exports derived provider diagnostics placeholders without raw provider content", async () => {
     const { ipcChannelNames, registerIpcHandlers } = await import("./ipc.js");
 

@@ -10,7 +10,11 @@ import {
   providerCommandPayloadSchema,
   providerDetectionResultSchema,
   providerDiagnosticsResultSchema,
+  migrationImportUiResultSchema,
+  migrationRecordsResultSchema,
+  migrationScanResultSchema,
   renameAccountPayloadSchema,
+  runMigrationImportPayloadSchema,
   saveClaudeCredentialsPayloadSchema,
   saveGitHubSettingsPayloadSchema,
   testClaudeConnectionPayloadSchema,
@@ -29,6 +33,9 @@ import type {
   DiagnosticsExportResult,
   GitHubHeatmapResult,
   GetUsageHistoryPayload,
+  MigrationImportUiResult,
+  MigrationRecordsResult,
+  MigrationScanResult,
   ProviderDetectionResult,
   ProviderDiagnosticsResult,
   SaveGitHubSettingsPayload,
@@ -109,6 +116,12 @@ export interface IpcWrapperDependencies {
   readonly verifyWrapper?: (providerId: ProviderId) => MaybePromise<WrapperVerificationResult>;
 }
 
+export interface IpcMigrationDependencies {
+  readonly scanSources?: () => MaybePromise<MigrationScanResult>;
+  readonly runImport?: (candidateId: string) => MaybePromise<MigrationImportUiResult>;
+  readonly listRecords?: () => MaybePromise<MigrationRecordsResult>;
+}
+
 export interface IpcWindowDependencies {
   readonly openPopover?: () => MaybePromise<void>;
   readonly hideOverlay?: () => MaybePromise<void>;
@@ -125,6 +138,7 @@ export interface IpcHandlerDependencies {
   readonly github?: IpcGitHubDependencies;
   readonly providers?: IpcProviderDependencies;
   readonly wrappers?: IpcWrapperDependencies;
+  readonly migration?: IpcMigrationDependencies;
   readonly windows?: IpcWindowDependencies;
 }
 
@@ -152,6 +166,9 @@ const registeredInvokeChannels = [
   ipcChannelNames.runProviderDetection,
   ipcChannelNames.generateWrapper,
   ipcChannelNames.verifyWrapper,
+  ipcChannelNames.scanMigrationSources,
+  ipcChannelNames.runMigrationImport,
+  ipcChannelNames.getMigrationRecords,
   ipcChannelNames.exportDiagnostics
 ] as const satisfies readonly IpcChannelName[];
 
@@ -214,6 +231,11 @@ export function registerIpcHandlers(dependencies: IpcHandlerDependencies = {}): 
   ipcMain.handle(ipcChannelNames.verifyWrapper, (_event, payload: unknown) =>
     state.verifyWrapper(parsePayload(providerCommandPayloadSchema, payload).providerId)
   );
+  ipcMain.handle(ipcChannelNames.scanMigrationSources, () => state.scanMigrationSources());
+  ipcMain.handle(ipcChannelNames.runMigrationImport, (_event, payload: unknown) =>
+    state.runMigrationImport(parsePayload(runMigrationImportPayloadSchema, payload).candidateId)
+  );
+  ipcMain.handle(ipcChannelNames.getMigrationRecords, () => state.getMigrationRecords());
   ipcMain.handle(ipcChannelNames.exportDiagnostics, () => state.exportDiagnostics());
 
   return {
@@ -419,6 +441,27 @@ function createIpcState(dependencies: IpcHandlerDependencies) {
 
       return placeholder.verifyWrapper(providerId);
     },
+    scanMigrationSources: async (): Promise<MigrationScanResult> => {
+      if (dependencies.migration?.scanSources) {
+        return validateMigrationScanResult(await dependencies.migration.scanSources());
+      }
+
+      return placeholder.scanMigrationSources();
+    },
+    runMigrationImport: async (candidateId: string): Promise<MigrationImportUiResult> => {
+      if (dependencies.migration?.runImport) {
+        return validateMigrationImportUiResult(await dependencies.migration.runImport(candidateId));
+      }
+
+      return placeholder.runMigrationImport(candidateId);
+    },
+    getMigrationRecords: async (): Promise<MigrationRecordsResult> => {
+      if (dependencies.migration?.listRecords) {
+        return validateMigrationRecordsResult(await dependencies.migration.listRecords());
+      }
+
+      return placeholder.getMigrationRecords();
+    },
     exportDiagnostics: async (): Promise<DiagnosticsExportResult> => {
       if (dependencies.usageState?.getUsageState) {
         return validateDiagnosticsExportResult(
@@ -596,6 +639,38 @@ function createPlaceholderIpcState() {
         verified: false,
         message: "Wrapper verification is not connected in the foundation IPC skeleton."
       }),
+    scanMigrationSources: (): MigrationScanResult =>
+      validateMigrationScanResult({
+        scannedAt: new Date().toISOString(),
+        candidates: []
+      }),
+    runMigrationImport: (candidateId: string): MigrationImportUiResult =>
+      validateMigrationImportUiResult({
+        sourceKind: "swift",
+        displayName: "Unknown migration source",
+        status: "failed",
+        importedAt: new Date().toISOString(),
+        metadataCounts: emptyMigrationMetadataCounts(),
+        skippedSecretCategories: [],
+        warnings: [],
+        failures: [`Migration source is not connected for candidate ${candidateId}.`],
+        record: {
+          id: `placeholder-${candidateId}`,
+          sourceKind: "swift",
+          displayName: "Unknown migration source",
+          status: "failed",
+          importedAt: new Date().toISOString(),
+          metadataCounts: emptyMigrationMetadataCounts(),
+          skippedSecretCategories: [],
+          warnings: [],
+          failures: [`Migration source is not connected for candidate ${candidateId}.`]
+        }
+      }),
+    getMigrationRecords: (): MigrationRecordsResult =>
+      validateMigrationRecordsResult({
+        generatedAt: new Date().toISOString(),
+        records: []
+      }),
     exportDiagnostics: (): DiagnosticsExportResult => validateDiagnosticsExportResult(createProviderDiagnosticsExport(usageState))
   };
 }
@@ -761,8 +836,29 @@ function validateWrapperVerificationResult(value: unknown): WrapperVerificationR
   return wrapperVerificationResultSchema.parse(value);
 }
 
+function validateMigrationScanResult(value: unknown): MigrationScanResult {
+  return migrationScanResultSchema.parse(value);
+}
+
+function validateMigrationImportUiResult(value: unknown): MigrationImportUiResult {
+  return migrationImportUiResultSchema.parse(value);
+}
+
+function validateMigrationRecordsResult(value: unknown): MigrationRecordsResult {
+  return migrationRecordsResultSchema.parse(value);
+}
+
 function validateDiagnosticsExportResult(value: unknown): DiagnosticsExportResult {
   return diagnosticsExportResultSchema.parse(value);
+}
+
+function emptyMigrationMetadataCounts(): MigrationImportUiResult["metadataCounts"] {
+  return {
+    accounts: 0,
+    historySnapshots: 0,
+    appSettings: 0,
+    providerSettings: 0
+  };
 }
 
 function createProviderDiagnosticsExport(usageState: UsageState): DiagnosticsExportResult {
