@@ -1,5 +1,15 @@
 # ClaudeUsage — Session History
 
+## 2026-04-19 - Ship-End: Business-App Pack Registration
+
+Wrapped the roadmap session with `--no-deploy`. The remaining dirty tree was the project-local business-app pack registration: `.agents/project.json` plus Claude and Codex skill symlinks under `.claude/skills/` and `.codex/skills/`. No secret-looking values were found in the pack registration scan. Marked the `$ship-end --no-deploy` queue item complete in `tasks/todo.md`; the documentation scan, manual validation follow-ups, and unspecced idea triage remain queued.
+
+Validation:
+- `rg -n "(?i)(secret|token|key|password|credential|session|cookie|oauth|sk-ant|api[_-]?key|bearer)" .agents .claude .codex`: no matches in tracked pack registration candidates.
+- `git diff --check`: passed for the docs/config wrap-up.
+- Automated product test/build suites were not rerun because this wrap-up only tracks project configuration symlinks and task documentation; the latest product verification remains the 2026-04-19 Phase 6 and 2026-04-17 Phase 7 gates recorded below.
+- Deploy skipped because the user invoked `$ship-end --no-deploy`.
+
 ## 2026-04-19 - Step 6.8: Electron Plan And Status Documentation
 
 Updated the final Phase 6 documentation and task state now that Electron reached the migration, diagnostics, and packaging gate. The root README and cross-platform parity doc now state the current automated status: Electron is the Windows/Linux path, typecheck/full tests/build/smoke/package-config/host macOS package validation passed, and real Windows/Linux package validation plus live credential smoke testing remain human follow-ups. Phase 6 is archived in `tasks/phases/phase-6-migration-diagnostics-packaging.md`, and `tasks/roadmap.md` now marks the migration, diagnostics, and packaging phase complete.
