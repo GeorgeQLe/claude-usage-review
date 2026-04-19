@@ -43,7 +43,7 @@
   - Update Settings with a diagnostics section that can render a summary and export/copy redacted JSON without exposing session keys, GitHub tokens, provider auth tokens, raw prompts, CLI stdout, cookies, or raw stderr.
   - Validate with focused diagnostics, IPC, schema, and renderer tests, plus `npm run typecheck` from `electron-app/`.
 
-- [ ] Step 6.4: [automated] Configure Electron Builder targets for Windows NSIS, Windows portable, Linux AppImage, Linux `deb`, and optional unsigned macOS dev/parity builds in `electron-app/electron-builder.yml`.
+- [x] Step 6.4: [automated] Configure Electron Builder targets for Windows NSIS, Windows portable, Linux AppImage, Linux `deb`, and optional unsigned macOS dev/parity builds in `electron-app/electron-builder.yml`.
 
   **Implementation plan for Step 6.4:**
   - Audit the existing `electron-app/electron-builder.yml`; it already declares Windows `nsis`/`portable`, Linux `AppImage`/`deb`, and macOS `dir` targets.

@@ -1,5 +1,6 @@
 appId: com.claudeusage.electron
 productName: ClaudeUsage
+copyright: Copyright (c) 2026 ClaudeUsage contributors
 directories:
   output: release
   buildResources: build
@@ -8,15 +9,71 @@ files:
   - dist-electron/**/*
   - package.json
 asar: true
+publish: null
 mac:
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+  category: public.app-category.productivity
+  identity: null
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  forceCodeSigning: false
   target:
     - dir
 win:
+  artifactName: ${productName}-${version}-windows-${arch}.${ext}
+  executableName: ClaudeUsage
+  requestedExecutionLevel: asInvoker
   target:
     - nsis
     - portable
+nsis:
+  artifactName: ${productName}-${version}-windows-installer-${arch}.${ext}
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: ClaudeUsage
+  differentialPackage: false
+portable:
+  artifactName: ${productName}-${version}-windows-portable-${arch}.${ext}
 linux:
+  artifactName: ${productName}-${version}-linux-${arch}.${ext}
+  executableName: claude-usage
   target:
     - AppImage
     - deb
   category: Utility
+  packageCategory: utils
+  synopsis: AI usage monitor for Claude, Codex, and Gemini
+  description: Cross-platform Electron app for monitoring Claude, Codex, and Gemini CLI usage on Windows and Linux.
+  maintainer: ClaudeUsage contributors
+  desktop:
+    entry:
+      Name: ClaudeUsage
+      Comment: Monitor Claude, Codex, and Gemini CLI usage
+      Keywords: Claude;Codex;Gemini;AI;Usage;
+      StartupWMClass: ClaudeUsage
+appImage:
+  artifactName: ${productName}-${version}-linux-${arch}.AppImage
+  category: Utility
+  synopsis: AI usage monitor for Claude, Codex, and Gemini
+  description: Cross-platform Electron app for monitoring Claude, Codex, and Gemini CLI usage on Windows and Linux.
+deb:
+  artifactName: ${productName}_${version}_${arch}.deb
+  packageName: claude-usage
+  packageCategory: utils
+  priority: optional
+  maintainer: ClaudeUsage contributors
+  synopsis: AI usage monitor for Claude, Codex, and Gemini
+  description: Cross-platform Electron app for monitoring Claude, Codex, and Gemini CLI usage on Windows and Linux.
+  depends:
+    - libgtk-3-0
+    - libnotify4
+    - libnss3
+    - libxss1
+    - libxtst6
+    - xdg-utils
+    - libatspi2.0-0
+    - libuuid1
+    - libsecret-1-0

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Cross-platform Electron shell for ClaudeUsage on Windows and Linux.",
+  "author": "ClaudeUsage contributors",
   "type": "module",
   "main": "dist-electron/main/app.js",
   "scripts": {

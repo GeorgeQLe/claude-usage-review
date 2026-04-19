@@ -1,5 +1,17 @@
 # ClaudeUsage — Session History
 
+## 2026-04-19 - Step 6.4: Electron Packaging Config
+
+Configured Electron Builder packaging metadata for the Electron Windows/Linux path. The builder config now keeps Windows NSIS and portable targets, Linux AppImage and `deb` targets, and an unsigned macOS `dir` parity target with explicit artifact names, package metadata, Linux desktop metadata, Debian dependencies, Windows installer settings, and publishing disabled. The Electron package metadata now declares the package author so builder output no longer warns about a missing author.
+
+Added focused regression coverage for `electron-app/electron-builder.yml` so target families, unsigned macOS parity behavior, package metadata, and no-publish expectations remain explicit.
+
+Validation:
+- `npm test -- --run src/package-config.test.ts` in `electron-app/`: 2 tests passed.
+- `npm run build` in `electron-app/`: passed, including nested typecheck, all 34 Vitest files / 141 tests, main build, preload build, and renderer build.
+- `./node_modules/.bin/electron-builder --config electron-builder.yml --dir` in `electron-app/`: passed for host macOS `dir` output after the Electron runtime download was approved.
+- Accepted warnings: Node's experimental SQLite warning during storage/integration tests, Electron Builder's internal `[DEP0190]` child-process warning, default Electron icon because no build icon asset exists yet, and unsigned macOS signing warnings because `identity: null` is deliberate for the Step 6.4 dev/parity target.
+
 ## 2026-04-19 - Step 6.3: Electron Diagnostics Export
 
 Implemented the Electron diagnostics export path and Settings diagnostics view. The new main-process diagnostics service assembles app/platform/version metadata, safeStorage backend status, provider state, refresh timestamps, wrapper summaries, parse bookmarks, migration records, and recent diagnostics events from local state and SQLite. Diagnostics output keeps raw paths out of renderer state by using source basenames, and all export strings are redacted for Claude session keys, GitHub tokens, provider auth tokens, API keys, cookies, raw prompts, raw stdout, raw stderr, and raw chat bodies before crossing IPC.
