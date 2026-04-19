@@ -113,13 +113,19 @@
   - Focused validation passed: `npm test -- --run src/foundation-renderer.test.tsx`, `npm test -- --run src/foundation-renderer.test.tsx src/foundation-schemas.test.ts src/shared/schemas/provider.test.ts`, and `npm run typecheck` from `electron-app/`.
 
 ## Green
-- [ ] Step 5.7: [automated] Make all Phase 5 tests pass and add integration coverage for wrapper setup flows, ledger trimming, confidence upgrades, and redacted diagnostics.
+- [x] Step 5.7: [automated] Make all Phase 5 tests pass and add integration coverage for wrapper setup flows, ledger trimming, confidence upgrades, and redacted diagnostics.
 
   **Implementation plan for Step 5.7:**
   - Run focused Phase 5 suites first: wrappers, wrapper storage, IPC/preload schemas, Codex/Gemini adapter confidence, diagnostics, settings, onboarding, and renderer smoke coverage.
   - Fix missing integration edges, then add regressions for wrapper setup instructions, wrapper version mismatch, ledger trimming/bounded reads, confidence upgrades/downgrades, disabled-wrapper fallback, Accuracy Mode disabled/enabled UI states, and diagnostics redaction.
   - Confirm `accuracyModeEnabled` is honored without weakening passive-only support: disabled or unverifiable wrappers must leave provider cards useful and confidence-labeled rather than forcing Accuracy Mode.
   - Run `npm run typecheck` and `npm test -- --run` from `electron-app/`. Accepted warning remains Node's experimental SQLite warning during storage/integration tests if no new warnings appear.
+
+  **Result for Step 5.7:**
+  - Added regression coverage for reversible wrapper setup instructions, missing-native-CLI setup results, PowerShell path rendering, provider/time bounded wrapper event reads, passive fallback when wrapper events are unverified, and diagnostics export redaction for Accuracy Mode entries.
+  - Fixed cross-platform wrapper path generation so Windows wrapper paths and setup commands use Windows separators even when generated under an injected `platform: "win32"` test on macOS/Linux.
+  - Updated Vitest config to exclude generated `dist/` and `dist-electron/` output from source test discovery, preventing stale compiled tests from running alongside source tests.
+  - Validation passed: `npm test -- --run src/main/wrappers/generator.test.ts src/main/wrappers/events.test.ts src/main/providers/codex/adapter.test.ts src/main/providers/gemini/adapter.test.ts src/main/ipc.test.ts`, `npm run typecheck`, and `npm test -- --run` from `electron-app/`. Accepted warning: Node's experimental SQLite warning during storage/integration tests.
 
 - [ ] Step 5.8: [automated] Run Phase 5 verification: `npm run typecheck`, `npm test`, `npm run build`, and wrapper setup renderer smoke tests.
 

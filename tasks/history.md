@@ -1,5 +1,15 @@
 # ClaudeUsage — Session History
 
+## 2026-04-19 - Step 5.7: Accuracy Mode Green Integration Coverage
+
+Completed the Phase 5 green-suite step for Electron Accuracy Mode wrappers. Added regression coverage for reversible wrapper setup commands, missing native CLI setup results, PowerShell setup command path rendering, provider/time bounded wrapper event reads, unverified-wrapper passive fallback for Codex and Gemini, and diagnostics export redaction for Accuracy Mode entries. Fixed wrapper generation to use platform-specific path joins for Windows wrapper paths and setup commands, and tightened Vitest discovery so generated `dist/` and `dist-electron/` test files are not collected alongside source tests.
+
+Validation:
+- `npm test -- --run src/main/wrappers/generator.test.ts src/main/wrappers/events.test.ts src/main/providers/codex/adapter.test.ts src/main/providers/gemini/adapter.test.ts src/main/ipc.test.ts` in `electron-app/`: 25 tests passed.
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm test -- --run` in `electron-app/`: 31 files and 132 tests passed.
+- Accepted warning: Node's experimental SQLite warning during storage/integration tests.
+
 ## 2026-04-19 - Step 5.6: Electron Accuracy Mode Settings And Onboarding UI
 
 Added Accuracy Mode UI for the Electron Codex/Gemini wrapper flow. Provider settings now persist `accuracyModeEnabled` separately from passive provider tracking and adapter mode. The settings route now exposes optional Codex and Gemini Accuracy Mode controls with manual wrapper generation, setup commands and instructions, verification status, troubleshooting, removal guidance, and privacy copy that does not render prompt/stdout/raw-stderr/token/cookie/session-key terms in wrapper setup state. Onboarding now explains that Accuracy Mode is optional, uses manual setup, does not edit shell profiles, and does not store prompts or stdout.
