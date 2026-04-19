@@ -6,6 +6,10 @@
 > Test strategy: tests-after
 > Status: complete on 2026-04-19
 
+## Priority Documentation Todo
+- [ ] `$pack install business-app` - enable the business-app research pack because this repository is a user-facing productivity/menu-bar app and no `.agents/project.json` or project-local pack skills are installed.
+- [ ] `$spec-drift fix all` - reconcile specs with implementation because `specs/electron-cross-platform-ai-usage-monitor.md` was last modified on 2026-04-15, `specs/provider-telemetry-endpoints.md` was last modified on 2026-04-16, and implementation/task history now reflects completed Electron Phase 6 and Swift Provider Telemetry work through 2026-04-19.
+
 ### Execution Profile
 **Parallel mode:** serial
 **Integration owner:** main agent
