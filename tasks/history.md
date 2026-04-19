@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-19 — Step 5.5: Accuracy Mode Confidence Merge
+
+Merged verified Codex and Gemini Accuracy Mode wrapper events into the Electron provider confidence path. The Codex adapter now accepts verified wrapper event summaries, uses them for latest activity and daily request evidence, switches wrapper-backed cards to Accuracy Mode, and caps confidence at `high_confidence` instead of ever claiming exact remaining quota. The Gemini adapter now merges verified wrapper invocations with passive session counts and profile headroom while preserving `/stats` as the provider-supplied high-confidence source. Shared confidence copy now distinguishes Accuracy Mode wrapper evidence from passive local activity, and diagnostics export entries include passive versus Accuracy Mode status without raw prompts, stdout, stderr, tokens, cookies, or provider auth material.
+
+Validation: focused `npm test -- --run src/main/providers/codex/adapter.test.ts src/main/providers/gemini/adapter.test.ts src/shared/confidence/providerConfidence.test.ts src/main/ipc.test.ts` passed with 4 files and 19 tests. `npm run typecheck` passed from `electron-app/`. Full Phase 5 test/build remain intentionally deferred because the Step 5.6 Accuracy Mode UI red suites are still assigned to the next step.
+
 ## 2026-04-18 — Step 5.4: Accuracy Mode Wrapper Event Ledger
 
 Implemented the Electron wrapper event ledger for Codex and Gemini Accuracy Mode. The new SQLite store records wrapper invocation starts and finishes in the existing `wrapper_events` table, enforces provider/invocation uniqueness, derives durations from start/end timestamps, persists only derived command mode/model/exit status/limit-hit/wrapper-version metadata, supports provider/time bounded recent-event reads, and returns privacy-safe summaries without prompt text, stdout, raw stderr, tokens, cookies, or provider auth material. Added a stderr-only limit scanner for Codex/Gemini rate limits, quota exhaustion, cooldowns, lockouts, reset hints, and ISO reset timestamps with redacted diagnostics.

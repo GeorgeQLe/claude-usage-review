@@ -79,7 +79,7 @@
   - Focused validation passed: `npm test -- --run src/foundation-storage.test.ts src/main/wrappers/events.test.ts src/main/wrappers/stderrScanner.test.ts` and `npm run typecheck` from `electron-app/`. Accepted warning: Node's experimental SQLite warning during storage tests.
   - Full Phase 5 test/build remain intentionally deferred because Step 5.5 provider confidence wiring and Step 5.6 Accuracy Mode UI red suites are still assigned to later steps.
 
-- [ ] Step 5.5: [automated] Merge wrapper events into Codex/Gemini confidence engines and provider cards without weakening passive-only support.
+- [x] Step 5.5: [automated] Merge wrapper events into Codex/Gemini confidence engines and provider cards without weakening passive-only support.
 
   **Implementation plan for Step 5.5:**
   - Extend Codex and Gemini adapters to accept recent wrapper event summaries from the ledger alongside the existing passive adapter snapshots.
@@ -88,6 +88,13 @@
   - Preserve passive fallback when wrappers are disabled, missing, stale, degraded, or unverifiable. Existing passive cards should remain useful and confidence-labeled.
   - Update diagnostics export placeholders to include wrapper status and derived event summaries only, with redaction tests for unsafe terms.
   - Validate with focused Codex/Gemini adapter, confidence, diagnostics, and IPC tests, then `npm run typecheck` from `electron-app/`.
+
+  **Result for Step 5.5:**
+  - Extended the Codex and Gemini Electron adapters with verified wrapper event readers that merge app-owned wrapper invocation evidence into provider cards without coupling the adapters to raw SQLite records.
+  - Codex wrapper events now upgrade the card to Accuracy Mode and `high_confidence` while still preventing any `exact` quota claim. Passive-only Codex fallback remains estimated.
+  - Gemini wrapper events now merge with passive session counts and profile headroom, keep `/stats` as the provider-supplied accuracy source, and switch verified wrapper-backed cards to Accuracy Mode with Accuracy Mode confidence copy.
+  - Diagnostics export entries now include passive versus Accuracy Mode status while preserving derived-status-only redaction.
+  - Focused validation passed: `npm test -- --run src/main/providers/codex/adapter.test.ts src/main/providers/gemini/adapter.test.ts src/shared/confidence/providerConfidence.test.ts src/main/ipc.test.ts` and `npm run typecheck` from `electron-app/`. Full Phase 5 test/build remain intentionally deferred because Step 5.6 Accuracy Mode UI red suites are still assigned to the next step.
 
 - [ ] Step 5.6: [automated] Add Accuracy Mode UI in settings/onboarding: opt-in toggles, setup commands, verification status, privacy copy, troubleshooting, and removal instructions.
 
