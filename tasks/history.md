@@ -1,5 +1,14 @@
 # ClaudeUsage — Session History
 
+## 2026-04-19 - Step 5.6: Electron Accuracy Mode Settings And Onboarding UI
+
+Added Accuracy Mode UI for the Electron Codex/Gemini wrapper flow. Provider settings now persist `accuracyModeEnabled` separately from passive provider tracking and adapter mode. The settings route now exposes optional Codex and Gemini Accuracy Mode controls with manual wrapper generation, setup commands and instructions, verification status, troubleshooting, removal guidance, and privacy copy that does not render prompt/stdout/raw-stderr/token/cookie/session-key terms in wrapper setup state. Onboarding now explains that Accuracy Mode is optional, uses manual setup, does not edit shell profiles, and does not store prompts or stdout.
+
+Validation:
+- `npm test -- --run src/foundation-renderer.test.tsx` in `electron-app/`: 12 tests passed.
+- `npm test -- --run src/foundation-renderer.test.tsx src/foundation-schemas.test.ts src/shared/schemas/provider.test.ts` in `electron-app/`: 20 tests passed.
+- `npm run typecheck` in `electron-app/`: passed.
+
 ## 2026-04-19 — Step 5.5: Accuracy Mode Confidence Merge
 
 Merged verified Codex and Gemini Accuracy Mode wrapper events into the Electron provider confidence path. The Codex adapter now accepts verified wrapper event summaries, uses them for latest activity and daily request evidence, switches wrapper-backed cards to Accuracy Mode, and caps confidence at `high_confidence` instead of ever claiming exact remaining quota. The Gemini adapter now merges verified wrapper invocations with passive session counts and profile headroom while preserving `/stats` as the provider-supplied high-confidence source. Shared confidence copy now distinguishes Accuracy Mode wrapper evidence from passive local activity, and diagnostics export entries include passive versus Accuracy Mode status without raw prompts, stdout, stderr, tokens, cookies, or provider auth material.

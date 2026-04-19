@@ -96,7 +96,7 @@
   - Diagnostics export entries now include passive versus Accuracy Mode status while preserving derived-status-only redaction.
   - Focused validation passed: `npm test -- --run src/main/providers/codex/adapter.test.ts src/main/providers/gemini/adapter.test.ts src/shared/confidence/providerConfidence.test.ts src/main/ipc.test.ts` and `npm run typecheck` from `electron-app/`. Full Phase 5 test/build remain intentionally deferred because Step 5.6 Accuracy Mode UI red suites are still assigned to the next step.
 
-- [ ] Step 5.6: [automated] Add Accuracy Mode UI in settings/onboarding: opt-in toggles, setup commands, verification status, privacy copy, troubleshooting, and removal instructions.
+- [x] Step 5.6: [automated] Add Accuracy Mode UI in settings/onboarding: opt-in toggles, setup commands, verification status, privacy copy, troubleshooting, and removal instructions.
 
   **Implementation plan for Step 5.6:**
   - Extend provider settings types/defaults/schemas to persist Accuracy Mode enablement separately from passive provider enablement and any future Provider Telemetry settings.
@@ -105,12 +105,20 @@
   - Ensure renderer state remains secret-free and prompt-free. Settings may show commands/instructions but not raw provider auth, stdout, stderr, prompts, responses, or session contents.
   - Validate with focused renderer/settings/onboarding tests, then `npm run typecheck` from `electron-app/`.
 
+  **Result for Step 5.6:**
+  - Added provider settings persistence for `accuracyModeEnabled`, separate from passive provider enablement and adapter mode.
+  - Added Codex/Gemini Accuracy Mode controls in settings: opt-in toggles, generated setup commands and instructions, verification status, troubleshooting guidance, removal instructions, and manual/no-shell-mutation privacy copy.
+  - Added onboarding copy that keeps Accuracy Mode optional, manually configured, and clear that shell profiles are not edited and prompts/stdout are not stored.
+  - Tightened settings copy so the renderer privacy assertion sees no prompt/stdout/raw-stderr/token/cookie/session-key terms in wrapper setup state.
+  - Focused validation passed: `npm test -- --run src/foundation-renderer.test.tsx`, `npm test -- --run src/foundation-renderer.test.tsx src/foundation-schemas.test.ts src/shared/schemas/provider.test.ts`, and `npm run typecheck` from `electron-app/`.
+
 ## Green
 - [ ] Step 5.7: [automated] Make all Phase 5 tests pass and add integration coverage for wrapper setup flows, ledger trimming, confidence upgrades, and redacted diagnostics.
 
   **Implementation plan for Step 5.7:**
   - Run focused Phase 5 suites first: wrappers, wrapper storage, IPC/preload schemas, Codex/Gemini adapter confidence, diagnostics, settings, onboarding, and renderer smoke coverage.
-  - Fix missing integration edges, then add regressions for wrapper setup instructions, wrapper version mismatch, ledger trimming/bounded reads, confidence upgrades/downgrades, disabled-wrapper fallback, and diagnostics redaction.
+  - Fix missing integration edges, then add regressions for wrapper setup instructions, wrapper version mismatch, ledger trimming/bounded reads, confidence upgrades/downgrades, disabled-wrapper fallback, Accuracy Mode disabled/enabled UI states, and diagnostics redaction.
+  - Confirm `accuracyModeEnabled` is honored without weakening passive-only support: disabled or unverifiable wrappers must leave provider cards useful and confidence-labeled rather than forcing Accuracy Mode.
   - Run `npm run typecheck` and `npm test -- --run` from `electron-app/`. Accepted warning remains Node's experimental SQLite warning during storage/integration tests if no new warnings appear.
 
 - [ ] Step 5.8: [automated] Run Phase 5 verification: `npm run typecheck`, `npm test`, `npm run build`, and wrapper setup renderer smoke tests.
