@@ -63,7 +63,7 @@
   - Focused validation passed: `npm test -- --run src/main/wrappers/verification.test.ts src/main/ipc.test.ts src/foundation-schemas.test.ts` and `npm run typecheck` from `electron-app/`.
   - Expected red validation remains for future Step 5.6 UI work: `npm test -- --run src/foundation-renderer.test.tsx` fails only the existing Accuracy Mode settings/onboarding copy/control assertions.
 
-- [ ] Step 5.4: [automated] Implement wrapper event ledgers in SQLite for Codex and Gemini: invocation ID, start/end, duration, command mode, model, exit status, limit-hit flag, wrapper version, and source provider.
+- [x] Step 5.4: [automated] Implement wrapper event ledgers in SQLite for Codex and Gemini: invocation ID, start/end, duration, command mode, model, exit status, limit-hit flag, wrapper version, and source provider.
 
   **Implementation plan for Step 5.4:**
   - Add a storage module, likely `electron-app/src/main/storage/wrapperEvents.ts`, over the existing `wrapper_events` table from `electron-app/src/main/storage/migrations.ts`.
@@ -71,6 +71,13 @@
   - Add wrapper event parsing helpers that accept only derived wrapper metadata and stderr limit signals. Do not persist prompts, stdout, raw stderr, provider tokens, session keys, GitHub tokens, OAuth credentials, API keys, cookies, or raw chat/session bodies.
   - Add enough fixture coverage for duplicate invocation IDs, malformed wrapper payloads, missing finish records, nonzero exit codes, and limit-hit classification.
   - Validate with focused storage/wrapper event tests and `npm run typecheck` from `electron-app/`.
+
+  **Result for Step 5.4:**
+  - Added `electron-app/src/main/storage/wrapperEvents.ts` over the existing `wrapper_events` table with start/finish recording, provider/invocation uniqueness, duration derivation, exit-status and limit-hit updates, provider/time filtered recent-event reads, and privacy-safe provider summaries.
+  - Added `electron-app/src/main/wrappers/stderrScanner.ts` for stderr-only Codex/Gemini limit, quota, cooldown, reset, and lockout detection. The scanner ignores stdout and redacts diagnostic text before returning it.
+  - Exported the wrapper event store through `electron-app/src/main/storage/index.ts`.
+  - Focused validation passed: `npm test -- --run src/foundation-storage.test.ts src/main/wrappers/events.test.ts src/main/wrappers/stderrScanner.test.ts` and `npm run typecheck` from `electron-app/`. Accepted warning: Node's experimental SQLite warning during storage tests.
+  - Full Phase 5 test/build remain intentionally deferred because Step 5.5 provider confidence wiring and Step 5.6 Accuracy Mode UI red suites are still assigned to later steps.
 
 - [ ] Step 5.5: [automated] Merge wrapper events into Codex/Gemini confidence engines and provider cards without weakening passive-only support.
 

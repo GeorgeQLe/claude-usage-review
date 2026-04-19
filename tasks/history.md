@@ -1,5 +1,11 @@
 # ClaudeUsage — Session History
 
+## 2026-04-18 — Step 5.4: Accuracy Mode Wrapper Event Ledger
+
+Implemented the Electron wrapper event ledger for Codex and Gemini Accuracy Mode. The new SQLite store records wrapper invocation starts and finishes in the existing `wrapper_events` table, enforces provider/invocation uniqueness, derives durations from start/end timestamps, persists only derived command mode/model/exit status/limit-hit/wrapper-version metadata, supports provider/time bounded recent-event reads, and returns privacy-safe summaries without prompt text, stdout, raw stderr, tokens, cookies, or provider auth material. Added a stderr-only limit scanner for Codex/Gemini rate limits, quota exhaustion, cooldowns, lockouts, reset hints, and ISO reset timestamps with redacted diagnostics.
+
+Validation: focused `npm test -- --run src/foundation-storage.test.ts src/main/wrappers/events.test.ts src/main/wrappers/stderrScanner.test.ts` passed with 3 files and 11 tests. `npm run typecheck` passed from `electron-app/`. Accepted warning: Node's experimental SQLite warning during storage tests. Full Phase 5 test/build remain intentionally deferred because Step 5.5 provider confidence wiring and Step 5.6 Accuracy Mode UI red suites are still assigned to later steps.
+
 ## 2026-04-17 — Step 5.3: Accuracy Mode Wrapper Verification
 
 Implemented Electron setup verification for Codex and Gemini Accuracy Mode wrappers. The new verifier resolves the public `codex`/`gemini` command from PATH, compares it to the generated app-owned wrapper path, resolves the native CLI while excluding the wrapper root, detects missing commands, native-CLI-first PATH order, active wrappers, stale wrapper versions, and unverified setups, and runs only harmless `--version` probes through an injectable runner. Runtime IPC now wires `wrappers:verify` to the app user data wrapper directory, and shared IPC schemas/types now expose the Step 5.3 verification statuses.
