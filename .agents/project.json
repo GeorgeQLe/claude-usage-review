@@ -1,0 +1,5 @@
+{
+  "project_type": "business-app",
+  "enabled_packs": ["business-app"],
+  "skill_pack_version": 1
+}
