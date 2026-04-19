@@ -16,6 +16,7 @@ export interface RefreshCodexProviderSnapshotInput {
   readonly detector?: () => Promise<Partial<CodexInstallDetection> & { readonly accountLabel?: string | null }>;
   readonly historyReader?: () => Promise<Partial<ParseCodexHistoryResult>>;
   readonly sessionReader?: () => Promise<Partial<ParseCodexSessionTreeResult>>;
+  readonly wrapperEventReader?: () => Promise<Partial<CodexWrapperEventReadResult>>;
   readonly now?: Date;
   readonly staleAfterMs?: number;
   readonly bookmarks?: Partial<CodexProviderBookmarks>;
@@ -30,6 +31,32 @@ export interface CodexProviderSnapshot {
   readonly diagnostics: readonly string[];
 }
 
+export interface CodexWrapperEventReadResult {
+  readonly events: readonly CodexWrapperEvent[];
+  readonly verified: boolean;
+  readonly diagnostics?: readonly string[];
+}
+
+export interface CodexWrapperEvent {
+  readonly commandMode?: string | null;
+  readonly durationMs?: number | null;
+  readonly exitStatus?: number | null;
+  readonly invocationId?: string;
+  readonly limitHit?: boolean;
+  readonly model?: string | null;
+  readonly providerId: string;
+  readonly startedAt: string;
+  readonly wrapperVersion?: string | null;
+}
+
+interface CodexWrapperSummary {
+  readonly diagnostics: readonly string[];
+  readonly invocationCount: number;
+  readonly latestStartedAt: string | null;
+  readonly limitHitCount: number;
+  readonly verified: boolean;
+}
+
 const defaultStaleAfterMs = 30 * 60 * 1000;
 
 export async function refreshCodexProviderSnapshot(
@@ -40,8 +67,10 @@ export async function refreshCodexProviderSnapshot(
   const detection = await readDetection(input);
   const history = await readHistory(input, detection);
   const sessions = await readSessions(input, detection);
+  const wrapperEvents = await readWrapperEvents(input);
+  const wrapperSummary = summarizeWrapperEvents(wrapperEvents, now);
   const events = sanitizeEvents([...(history.events ?? []), ...(sessions.events ?? [])]);
-  const latestEventAt = latestOccurredAt(events);
+  const latestEventAt = latestOccurredAtFromCandidates([latestOccurredAt(events), wrapperSummary.latestStartedAt]);
   const status = deriveStatus({
     detected: detection.detected === true,
     latestEventAt,
@@ -52,22 +81,37 @@ export async function refreshCodexProviderSnapshot(
   const diagnostics = sanitizeDiagnostics([
     ...(detection.diagnostics ?? []),
     ...(history.diagnostics ?? []),
-    ...(sessions.diagnostics ?? [])
+    ...(sessions.diagnostics ?? []),
+    ...wrapperSummary.diagnostics
   ]);
 
   return {
     card: createCodexCard({
       accountLabel,
-      dailyRequestCount: events.length === 0 ? null : events.length,
+      dailyRequestCount: events.length + wrapperSummary.invocationCount === 0 ? null : events.length + wrapperSummary.invocationCount,
       latestEventAt,
       now,
-      status
+      status,
+      wrapperSummary
     }),
     bookmarks: {
       historyByteOffset: history.bookmark?.byteOffset ?? input.bookmarks?.historyByteOffset ?? 0
     },
     events,
     diagnostics
+  };
+}
+
+async function readWrapperEvents(input: RefreshCodexProviderSnapshotInput): Promise<CodexWrapperEventReadResult> {
+  if (!input.wrapperEventReader) {
+    return { events: [], verified: false, diagnostics: [] };
+  }
+
+  const result = await input.wrapperEventReader();
+  return {
+    events: Array.isArray(result.events) ? result.events : [],
+    verified: result.verified === true,
+    diagnostics: Array.isArray(result.diagnostics) ? result.diagnostics.filter(isNonEmptyString) : []
   };
 }
 
@@ -120,11 +164,15 @@ function createCodexCard(input: {
   readonly latestEventAt: string | null;
   readonly now: Date;
   readonly status: ProviderCard["status"];
+  readonly wrapperSummary: CodexWrapperSummary;
 }): ProviderCard {
+  const hasVerifiedWrapperEvents = input.wrapperSummary.verified && input.wrapperSummary.invocationCount > 0;
   const confidence = deriveProviderConfidence({
     providerId: "codex",
-    requestedConfidence: "estimated",
-    sources: ["local-history", "local-sessions"]
+    requestedConfidence: hasVerifiedWrapperEvents ? "exact" : "estimated",
+    sources: hasVerifiedWrapperEvents
+      ? ["local-history", "local-sessions", "verified-wrapper-events", "stderr-limit-signals"]
+      : ["local-history", "local-sessions"]
   }).confidence;
 
   return {
@@ -141,11 +189,11 @@ function createCodexCard(input: {
     requestsPerMinute: null,
     resetAt: null,
     lastUpdatedAt: input.latestEventAt ?? input.now.toISOString(),
-    adapterMode: "passive",
+    adapterMode: hasVerifiedWrapperEvents ? "accuracy" : "passive",
     confidenceExplanation: explainProviderConfidence({
       providerId: "codex",
       confidence,
-      source: "local-history"
+      source: hasVerifiedWrapperEvents ? "verified-wrapper-events" : "local-history"
     }),
     actions: ["refresh", "diagnostics"]
   };
@@ -205,9 +253,72 @@ function detailForStatus(status: ProviderCard["status"]): string {
   return "Estimated from local Codex activity.";
 }
 
+function summarizeWrapperEvents(wrapperEvents: CodexWrapperEventReadResult, now: Date): CodexWrapperSummary {
+  if (!wrapperEvents.verified) {
+    return {
+      diagnostics: sanitizeDiagnostics(wrapperEvents.diagnostics ?? []),
+      invocationCount: 0,
+      latestStartedAt: null,
+      limitHitCount: 0,
+      verified: false
+    };
+  }
+
+  const events = wrapperEvents.events.filter((event) => event.providerId === "codex");
+  const latestStartedAt = latestStartedAtFromWrapperEvents(events);
+
+  return {
+    diagnostics: sanitizeDiagnostics(wrapperEvents.diagnostics ?? []),
+    invocationCount: countWrapperEventsToday(events, now),
+    latestStartedAt,
+    limitHitCount: events.filter((event) => event.limitHit === true).length,
+    verified: true
+  };
+}
+
+function latestStartedAtFromWrapperEvents(events: readonly CodexWrapperEvent[]): string | null {
+  const latestMs = events.reduce<number | null>((latest, event) => {
+    const next = Date.parse(event.startedAt);
+    if (!Number.isFinite(next)) {
+      return latest;
+    }
+
+    return latest === null || next > latest ? next : latest;
+  }, null);
+
+  return latestMs === null ? null : new Date(latestMs).toISOString();
+}
+
+function countWrapperEventsToday(events: readonly CodexWrapperEvent[], now: Date): number {
+  const dayStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const nowMs = now.getTime();
+
+  return events.filter((event) => {
+    const startedMs = Date.parse(event.startedAt);
+    return Number.isFinite(startedMs) && startedMs >= dayStart && startedMs <= nowMs;
+  }).length;
+}
+
 function latestOccurredAt(events: readonly CodexDerivedEvent[]): string | null {
   const latestMs = events.reduce<number | null>((latest, event) => {
     const next = Date.parse(event.occurredAt);
+    if (!Number.isFinite(next)) {
+      return latest;
+    }
+
+    return latest === null || next > latest ? next : latest;
+  }, null);
+
+  return latestMs === null ? null : new Date(latestMs).toISOString();
+}
+
+function latestOccurredAtFromCandidates(candidates: readonly (string | null)[]): string | null {
+  const latestMs = candidates.reduce<number | null>((latest, value) => {
+    if (!value) {
+      return latest;
+    }
+
+    const next = Date.parse(value);
     if (!Number.isFinite(next)) {
       return latest;
     }
@@ -233,4 +344,8 @@ function sanitizeDiagnostics(messages: readonly string[]): readonly string[] {
   return messages.map((message) =>
     message.replace(/(access[_-]?token|api[_-]?key|authorization|bearer|cookie|session[_-]?key|prompt|response)/giu, "redacted")
   );
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }

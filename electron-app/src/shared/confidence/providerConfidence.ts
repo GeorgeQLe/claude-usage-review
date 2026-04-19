@@ -26,6 +26,10 @@ export function explainProviderConfidence(input: ProviderConfidenceExplanationIn
   }
 
   if (input.providerId === "codex") {
+    if (input.source === "verified-wrapper-events") {
+      return "High confidence from Codex Accuracy Mode wrapper events.";
+    }
+
     if (input.source === "local-history") {
       return "Estimated from local Codex activity.";
     }
@@ -34,6 +38,10 @@ export function explainProviderConfidence(input: ProviderConfidenceExplanationIn
   }
 
   if (input.providerId === "gemini") {
+    if (input.source === "verified-wrapper-events") {
+      return "High confidence from Gemini Accuracy Mode wrapper events.";
+    }
+
     if (input.source === "stats-summary") {
       return "High confidence from Gemini /stats.";
     }
@@ -54,6 +62,14 @@ export function explainProviderConfidence(input: ProviderConfidenceExplanationIn
 
 export function deriveProviderConfidence(input: ProviderConfidenceDerivationInput): ProviderConfidenceDerivation {
   if (input.requestedConfidence === "exact" && passiveProviderIds.has(input.providerId) && !hasExactSource(input.sources)) {
+    if (hasVerifiedWrapperSource(input.sources)) {
+      return {
+        confidence: "high_confidence",
+        downgraded: true,
+        reason: `${formatProviderName(input.providerId)} Accuracy Mode wrapper events improve confidence but cannot prove exact remaining quota.`
+      };
+    }
+
     return {
       confidence: "estimated",
       downgraded: true,
@@ -70,6 +86,10 @@ export function deriveProviderConfidence(input: ProviderConfidenceDerivationInpu
 
 function hasExactSource(sources: readonly string[]): boolean {
   return sources.some((source) => source === "provider-api" || source === "exact-provider-api");
+}
+
+function hasVerifiedWrapperSource(sources: readonly string[]): boolean {
+  return sources.some((source) => source === "verified-wrapper-events");
 }
 
 function formatProviderName(providerId: ProviderId): string {

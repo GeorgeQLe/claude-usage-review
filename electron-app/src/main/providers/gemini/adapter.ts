@@ -15,6 +15,7 @@ export interface GeminiProviderProfile {
 export interface RefreshGeminiProviderSnapshotInput {
   readonly detector?: () => Promise<Partial<GeminiInstallDetection>>;
   readonly sessionReader?: () => Promise<Partial<ParseGeminiSessionTreeResult>>;
+  readonly wrapperEventReader?: () => Promise<Partial<GeminiWrapperEventReadResult>>;
   readonly now?: Date;
   readonly profile?: GeminiProviderProfile;
   readonly statsReader?: () => Promise<Partial<GeminiStatsSummary> | null>;
@@ -31,6 +32,34 @@ export interface GeminiProviderSnapshot {
   readonly diagnostics: readonly string[];
 }
 
+export interface GeminiWrapperEventReadResult {
+  readonly events: readonly GeminiWrapperEvent[];
+  readonly verified: boolean;
+  readonly diagnostics?: readonly string[];
+}
+
+export interface GeminiWrapperEvent {
+  readonly commandMode?: string | null;
+  readonly durationMs?: number | null;
+  readonly exitStatus?: number | null;
+  readonly invocationId?: string;
+  readonly limitHit?: boolean;
+  readonly model?: string | null;
+  readonly providerId: string;
+  readonly startedAt: string;
+  readonly wrapperVersion?: string | null;
+}
+
+interface GeminiWrapperSummary {
+  readonly dailyRequestCount: number;
+  readonly diagnostics: readonly string[];
+  readonly lastObservedAt: string | null;
+  readonly limitHitCount: number;
+  readonly model: string | null;
+  readonly requestsPerMinute: number;
+  readonly verified: boolean;
+}
+
 const defaultStaleAfterMs = 30 * 60 * 1000;
 
 export async function refreshGeminiProviderSnapshot(
@@ -42,16 +71,25 @@ export async function refreshGeminiProviderSnapshot(
   const sessions = await readSessions(input, detection, now);
   const sessionSummary = normalizeSummary(sessions.summary);
   const stats = normalizeStatsSummary(await readStats(input));
-  const summary = mergeSummaries(sessionSummary, stats);
+  const wrapperEvents = await readWrapperEvents(input);
+  const wrapperSummary = summarizeWrapperEvents(wrapperEvents, now);
+  const summary = mergeSummaries(sessionSummary, stats, wrapperSummary);
   const events = sanitizeEvents(sessions.events ?? []);
   const diagnostics = sanitizeDiagnostics([
     ...(detection.diagnostics ?? []),
     ...(sessions.diagnostics ?? []),
-    ...stats.diagnostics
+    ...stats.diagnostics,
+    ...wrapperSummary.diagnostics
   ]);
   const hasReliableStatsSummary = stats.confidence === "high_confidence";
+  const hasVerifiedWrapperEvents = wrapperSummary.verified && wrapperSummary.dailyRequestCount > 0;
   const latestEventAt =
-    summary.lastObservedAt ?? latestOccurredAt(events) ?? (hasReliableStatsSummary ? now.toISOString() : null);
+    latestOccurredAtFromCandidates([
+      summary.lastObservedAt,
+      latestOccurredAt(events),
+      wrapperSummary.lastObservedAt,
+      hasReliableStatsSummary ? now.toISOString() : null
+    ]);
   const status = deriveStatus({
     degraded: detection.degraded === true,
     detected: detection.detected === true,
@@ -59,7 +97,7 @@ export async function refreshGeminiProviderSnapshot(
     now,
     staleAfterMs
   });
-  const confidence = deriveConfidence(status, summary, hasReliableStatsSummary);
+  const confidence = deriveConfidence(status, summary, hasReliableStatsSummary, hasVerifiedWrapperEvents);
   const dailyHeadroom =
     typeof stats.dailyLimit === "number"
       ? Math.max(0, stats.dailyLimit - summary.dailyRequestCount)
@@ -71,6 +109,7 @@ export async function refreshGeminiProviderSnapshot(
     card: createGeminiCard({
       confidence,
       hasReliableStatsSummary,
+      hasVerifiedWrapperEvents,
       latestEventAt,
       now,
       profileLabel: input.profile?.label ?? null,
@@ -81,6 +120,19 @@ export async function refreshGeminiProviderSnapshot(
     dailyHeadroom,
     events,
     diagnostics
+  };
+}
+
+async function readWrapperEvents(input: RefreshGeminiProviderSnapshotInput): Promise<GeminiWrapperEventReadResult> {
+  if (!input.wrapperEventReader) {
+    return { events: [], verified: false, diagnostics: [] };
+  }
+
+  const result = await input.wrapperEventReader();
+  return {
+    events: Array.isArray(result.events) ? result.events : [],
+    verified: result.verified === true,
+    diagnostics: Array.isArray(result.diagnostics) ? result.diagnostics.filter(isNonEmptyString) : []
   };
 }
 
@@ -120,12 +172,19 @@ async function readStats(input: RefreshGeminiProviderSnapshotInput): Promise<Par
   return null;
 }
 
-function mergeSummaries(sessions: GeminiSessionSummary, stats: GeminiStatsSummary): GeminiSessionSummary {
+function mergeSummaries(
+  sessions: GeminiSessionSummary,
+  stats: GeminiStatsSummary,
+  wrapperSummary: GeminiWrapperSummary
+): GeminiSessionSummary {
+  const statsDailyRequestCount = stats.dailyRequestCount ?? null;
+  const baseDailyRequestCount = statsDailyRequestCount ?? sessions.dailyRequestCount;
+
   return {
-    dailyRequestCount: stats.dailyRequestCount ?? sessions.dailyRequestCount,
-    lastObservedAt: sessions.lastObservedAt,
-    model: stats.model ?? sessions.model,
-    requestsPerMinute: sessions.requestsPerMinute,
+    dailyRequestCount: baseDailyRequestCount + wrapperSummary.dailyRequestCount,
+    lastObservedAt: latestOccurredAtFromCandidates([sessions.lastObservedAt, wrapperSummary.lastObservedAt]),
+    model: stats.model ?? wrapperSummary.model ?? sessions.model,
+    requestsPerMinute: sessions.requestsPerMinute + wrapperSummary.requestsPerMinute,
     tokenCount: stats.tokenCount ?? sessions.tokenCount
   };
 }
@@ -145,6 +204,7 @@ function normalizeStatsSummary(summary: Partial<GeminiStatsSummary> | null | und
 function createGeminiCard(input: {
   readonly confidence: ProviderCard["confidence"];
   readonly hasReliableStatsSummary: boolean;
+  readonly hasVerifiedWrapperEvents: boolean;
   readonly latestEventAt: string | null;
   readonly now: Date;
   readonly profileLabel: string | null;
@@ -166,11 +226,15 @@ function createGeminiCard(input: {
     requestsPerMinute: input.summary.requestsPerMinute,
     resetAt: input.resetAt,
     lastUpdatedAt: input.latestEventAt ?? input.now.toISOString(),
-    adapterMode: input.hasReliableStatsSummary ? "accuracy" : "passive",
+    adapterMode: input.hasReliableStatsSummary || input.hasVerifiedWrapperEvents ? "accuracy" : "passive",
     confidenceExplanation: explainProviderConfidence({
       providerId: "gemini",
       confidence: input.confidence,
-      source: input.hasReliableStatsSummary ? "stats-summary" : "local-sessions"
+      source: input.hasReliableStatsSummary
+        ? "stats-summary"
+        : input.hasVerifiedWrapperEvents
+          ? "verified-wrapper-events"
+          : "local-sessions"
     }),
     actions: ["refresh", "diagnostics"]
   };
@@ -210,13 +274,14 @@ function deriveStatus(input: {
 function deriveConfidence(
   status: ProviderCard["status"],
   summary: GeminiSessionSummary,
-  hasReliableStatsSummary: boolean
+  hasReliableStatsSummary: boolean,
+  hasVerifiedWrapperEvents: boolean
 ): ProviderCard["confidence"] {
   if (status === "degraded" || status === "missing_configuration") {
     return "observed_only";
   }
 
-  if (hasReliableStatsSummary) {
+  if (hasReliableStatsSummary || hasVerifiedWrapperEvents) {
     return "high_confidence";
   }
 
@@ -268,6 +333,60 @@ function detailForStatus(
   return `${hasReliableStatsSummary ? "High confidence from Gemini /stats." : "Estimated from local Gemini activity."}${modelText}`;
 }
 
+function summarizeWrapperEvents(wrapperEvents: GeminiWrapperEventReadResult, now: Date): GeminiWrapperSummary {
+  if (!wrapperEvents.verified) {
+    return {
+      dailyRequestCount: 0,
+      diagnostics: sanitizeDiagnostics(wrapperEvents.diagnostics ?? []),
+      lastObservedAt: null,
+      limitHitCount: 0,
+      model: null,
+      requestsPerMinute: 0,
+      verified: false
+    };
+  }
+
+  const events = wrapperEvents.events.filter((event) => event.providerId === "gemini");
+  const dayStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const nowMs = now.getTime();
+  let dailyRequestCount = 0;
+  let latestMs: number | null = null;
+  let latestModel: string | null = null;
+  let requestsPerMinute = 0;
+
+  for (const event of events) {
+    const startedMs = Date.parse(event.startedAt);
+    if (!Number.isFinite(startedMs)) {
+      continue;
+    }
+
+    if (startedMs >= dayStart && startedMs <= nowMs) {
+      dailyRequestCount += 1;
+    }
+
+    if (startedMs <= nowMs && nowMs - startedMs <= 60 * 1000) {
+      requestsPerMinute += 1;
+    }
+
+    if (latestMs === null || startedMs > latestMs) {
+      latestMs = startedMs;
+      latestModel = typeof event.model === "string" && event.model.trim() ? event.model.trim() : latestModel;
+    } else if (event.model && latestModel === null) {
+      latestModel = event.model.trim();
+    }
+  }
+
+  return {
+    dailyRequestCount,
+    diagnostics: sanitizeDiagnostics(wrapperEvents.diagnostics ?? []),
+    lastObservedAt: latestMs === null ? null : new Date(latestMs).toISOString(),
+    limitHitCount: events.filter((event) => event.limitHit === true).length,
+    model: latestModel,
+    requestsPerMinute,
+    verified: true
+  };
+}
+
 function normalizeSummary(summary: Partial<GeminiSessionSummary> | undefined): GeminiSessionSummary {
   return {
     dailyRequestCount: readNonNegativeNumber(summary?.dailyRequestCount) ?? 0,
@@ -291,6 +410,23 @@ function emptySummary(): GeminiSessionSummary {
 function latestOccurredAt(events: readonly GeminiDerivedEvent[]): string | null {
   const latestMs = events.reduce<number | null>((latest, event) => {
     const next = Date.parse(event.occurredAt);
+    if (!Number.isFinite(next)) {
+      return latest;
+    }
+
+    return latest === null || next > latest ? next : latest;
+  }, null);
+
+  return latestMs === null ? null : new Date(latestMs).toISOString();
+}
+
+function latestOccurredAtFromCandidates(candidates: readonly (string | null)[]): string | null {
+  const latestMs = candidates.reduce<number | null>((latest, value) => {
+    if (!value) {
+      return latest;
+    }
+
+    const next = Date.parse(value);
     if (!Number.isFinite(next)) {
       return latest;
     }

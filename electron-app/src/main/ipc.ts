@@ -773,6 +773,7 @@ function createProviderDiagnosticsExport(usageState: UsageState): DiagnosticsExp
       sanitizeDiagnosticsEntry(
         [
           `${provider.displayName}: ${provider.status}, ${provider.confidence}`,
+          `${provider.adapterMode === "accuracy" ? "Accuracy Mode" : "Passive mode"}`,
           provider.headline,
           provider.detailText ?? "",
           provider.confidenceExplanation,
