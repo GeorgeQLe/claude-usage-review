@@ -1,5 +1,16 @@
 # ClaudeUsage — Session History
 
+## 2026-04-19 - Step 5.8: Accuracy Mode Verification
+
+Completed the Phase 5 verification gate for Electron Accuracy Mode wrappers. Standalone typecheck, full Vitest, aggregate production build, and Electron smoke validation all passed from `electron-app/`. Phase 5 is archived in `tasks/phases/phase-5-electron-accuracy-mode-wrappers.md`, `tasks/roadmap.md` now marks Phase 5 complete, `tasks/todo.md` now starts Phase 6 with a just-in-time tests-after plan for migration, diagnostics, and packaging, and `tasks/manual-todo.md` tracks the Phase 6 real-credential and real-platform package validation follow-ups.
+
+Validation:
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm test -- --run` in `electron-app/`: 31 files and 132 tests passed.
+- `npm run build` in `electron-app/`: passed, including nested typecheck, full Vitest, main build, preload build, and renderer build.
+- `npm run smoke:electron` in `electron-app/`: passed with route-level mocked local usage state for popover GitHub states, settings, onboarding, overlay layouts, and settings error retry.
+- Accepted warning: Node's experimental SQLite warning during storage/integration tests. No unexpected warnings were emitted.
+
 ## 2026-04-19 - Step 5.7: Accuracy Mode Green Integration Coverage
 
 Completed the Phase 5 green-suite step for Electron Accuracy Mode wrappers. Added regression coverage for reversible wrapper setup commands, missing native CLI setup results, PowerShell setup command path rendering, provider/time bounded wrapper event reads, unverified-wrapper passive fallback for Codex and Gemini, and diagnostics export redaction for Accuracy Mode entries. Fixed wrapper generation to use platform-specific path joins for Windows wrapper paths and setup commands, and tightened Vitest discovery so generated `dist/` and `dist-electron/` test files are not collected alongside source tests.
