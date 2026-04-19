@@ -5,3 +5,4 @@ export * from "./history.js";
 export * from "./redaction.js";
 export * from "./secrets.js";
 export * from "./wrapperEvents.js";
+export * from "./migrationRecords.js";
