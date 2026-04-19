@@ -1,5 +1,14 @@
 # ClaudeUsage — Session History
 
+## 2026-04-19 - Step 6.2: Electron Migration UI
+
+Implemented the Electron migration UI and IPC bridge for Swift/Tauri metadata imports. The preload contract now exposes migration source scanning, selected import execution, and migration record reads through typed, Zod-validated IPC. The main process wires these commands to the existing migration discovery/import service and SQLite migration records while keeping raw source paths and file contents out of renderer state. Settings and onboarding now show migration candidates, metadata counts, skipped secret categories, recent import records, and clear re-entry prompts for Claude session keys, GitHub tokens, provider auth tokens, API keys, cookies, raw provider sessions, prompts, and output.
+
+Validation:
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm test -- --run` in `electron-app/`: 32 files and 136 tests passed.
+- Accepted warning: Node's experimental SQLite warning during storage/integration/migration tests.
+
 ## 2026-04-19 - Step 6.1: Electron Non-Secret Migration
 
 Implemented the Electron main-process migration foundation for Swift and Tauri sources. The new migration service discovers legacy Swift preferences/application-support files and Tauri config files, builds import plans, imports account labels, org IDs, active account state, app display settings, provider settings, overlay settings, compatible Swift history snapshots, and records each migration attempt in SQLite. Secrets remain skipped and recorded by category, including Claude session keys, GitHub tokens, provider auth tokens, API keys, cookies, raw prompts, raw provider sessions, and raw output.

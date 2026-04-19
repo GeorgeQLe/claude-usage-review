@@ -25,7 +25,7 @@
   - Add focused implementation tests after the import path exists, likely `electron-app/src/main/migration/*.test.ts` and storage coverage in `electron-app/src/foundation-storage.test.ts`, using temporary fixture directories only.
   - Validate with focused migration/storage tests, then `npm run typecheck` from `electron-app/`.
 
-- [ ] Step 6.2: [automated] Implement migration UI in onboarding/settings that clearly reports imported metadata and prompts users to re-enter Claude session keys, GitHub tokens, and any future provider secrets.
+- [x] Step 6.2: [automated] Implement migration UI in onboarding/settings that clearly reports imported metadata and prompts users to re-enter Claude session keys, GitHub tokens, and any future provider secrets.
 
   **Implementation plan for Step 6.2:**
   - Add typed IPC/preload contracts for scanning migration candidates, running a selected migration, and reading migration records. Expected files: `electron-app/src/shared/types/ipc.ts`, `electron-app/src/shared/schemas/ipc.ts`, `electron-app/src/main/ipc.ts`, `electron-app/src/preload/api.ts`.
