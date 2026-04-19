@@ -113,3 +113,8 @@
 - Deviations from plan: none for automated Phase 6 scope. Real Windows/Linux target-machine validation was not run on this macOS host and remains a manual follow-up.
 - Tech debt / follow-ups: live Claude credential smoke test; Windows NSIS/portable target-machine validation; Linux AppImage/`deb` target-desktop validation.
 - Ready for next phase: no further roadmap phases remain; run the documentation/research queue to choose the next action.
+
+## Manual Follow-Ups Archived With Phase
+- [ ] Run a live Claude credential smoke test with a real session key and org ID, then confirm the Electron app stores secrets only through the secret store and does not render them back in Settings. _(after: Step 6.7)_
+- [ ] Validate the Windows NSIS installer and portable build on a real Windows machine, including tray behavior, launch at login, notifications, and packaged app startup. _(after: Step 6.7)_
+- [ ] Validate the Linux AppImage and `deb` package on the selected target desktop environments, including tray fallback behavior, notifications, `safeStorage` backend warning, and packaged app startup. _(after: Step 6.7)_

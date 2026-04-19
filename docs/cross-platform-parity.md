@@ -1,6 +1,8 @@
 # Cross-Platform Parity: Swift macOS and Electron
 
-Last updated: 2026-04-19 (Phase 6 packaging documentation)
+Last updated: 2026-04-19 (Phase 6 final verification)
+
+Current status: Electron is the active Windows/Linux path and has passed the automated and host-available Phase 6 verification gate. Release readiness still depends on the manual live-credential, Windows, and Linux target-machine checks tracked below.
 
 Status key: **Current** = intended supported path | **Development** = useful for local parity checks only | **Legacy** = retained for reference or migration | **Manual** = requires validation on real target machines
 
@@ -34,6 +36,19 @@ Electron is intended to carry the Windows/Linux product path for:
 | `npm run package:config` | Validate packaging config expectations | Does not create installers |
 
 Artifacts are written under `electron-app/release/`.
+
+## Automated Verification Status
+
+The Phase 6 final gate passed from `electron-app/` on 2026-04-19:
+
+- `npm run typecheck`
+- `npm test -- --run` with 34 test files and 146 tests
+- `npm run build`
+- `npm run smoke:electron`
+- `npm run package:config` with 3 package-config tests
+- `npm run package:mac:dir` on macOS arm64, producing unsigned development/parity output under `electron-app/release/mac-arm64`
+
+Accepted warnings were limited to Node's experimental SQLite warning during SQLite-backed tests, Electron Builder's Node `DEP0190` warning from the packaging toolchain, and expected unsigned macOS code-signing messages for the explicit `identity: null` parity target.
 
 ## Manual Validation Still Required
 

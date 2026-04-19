@@ -1,5 +1,12 @@
 # ClaudeUsage — Session History
 
+## 2026-04-19 - Step 6.8: Electron Plan And Status Documentation
+
+Updated the final Phase 6 documentation and task state now that Electron reached the migration, diagnostics, and packaging gate. The root README and cross-platform parity doc now state the current automated status: Electron is the Windows/Linux path, typecheck/full tests/build/smoke/package-config/host macOS package validation passed, and real Windows/Linux package validation plus live credential smoke testing remain human follow-ups. Phase 6 is archived in `tasks/phases/phase-6-migration-diagnostics-packaging.md`, and `tasks/roadmap.md` now marks the migration, diagnostics, and packaging phase complete.
+
+Validation:
+- `git diff --check`: passed.
+
 ## 2026-04-19 - Step 6.6: Electron Final Regression Gates
 
 Added final Phase 6 Electron regression coverage for migration fixtures, diagnostics redaction, storage backend warnings, packaging scripts, and renderer smoke flows. Migration tests now cover nested Swift/Tauri secret-like metadata across all skipped-secret categories without importing credential values. Diagnostics tests now cover provider state and diagnostics metadata redaction for tokens, cookies, prompts, raw stdout/stderr, and chat/session-like payloads; this found and fixed a redaction gap for chat/response/output/stderr-style metadata keys. Renderer coverage now asserts migration summaries, Linux `basic_text` safeStorage warnings, diagnostics export output, and package script contracts remain secret-free. The Electron smoke suite now exercises Settings migration scan, migration import, and diagnostics export states with route-level markers.

@@ -141,6 +141,8 @@ The app will be at:
 
 The Electron implementation lives in `electron-app/`.
 
+Current automated status as of 2026-04-19: the Electron path has passed typecheck, full Vitest, production build, route-level smoke coverage, packaging config validation, and the host-available unsigned macOS directory package. Windows and Linux release readiness still requires the manual target-machine checks below.
+
 ```bash
 cd electron-app
 npm install
