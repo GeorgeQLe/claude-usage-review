@@ -2,7 +2,12 @@ import { app } from "electron";
 import { AppWindowManager } from "./windows.js";
 import { runElectronSmokeSuite } from "./smoke.js";
 import { syncLaunchAtLogin, TrayController, type TrayFallbackStatus } from "./tray.js";
-import { registerIpcHandlers, type IpcMigrationDependencies, type IpcRegistration } from "./ipc.js";
+import {
+  registerIpcHandlers,
+  type IpcDiagnosticsDependencies,
+  type IpcMigrationDependencies,
+  type IpcRegistration
+} from "./ipc.js";
 import { createLocalNotificationService, type LocalNotificationService } from "./services/notifications.js";
 import { getSecretStorageStatus } from "./storage/secrets.js";
 import { openAppDatabase, createMigrationRecordStore, type OpenedAppDatabase } from "./storage/index.js";
@@ -117,8 +122,8 @@ async function startApp(): Promise<void> {
       generateWrapper: wrapperGenerationService.generateWrapper,
       verifyWrapper: wrapperVerificationService.verifyWrapper
     },
-    migration: createMigrationIpcDependencies(),
-    diagnostics: createDiagnosticsIpcDependencies(),
+    migration: isSmokeMode ? createSmokeMigrationIpcDependencies() : createMigrationIpcDependencies(),
+    diagnostics: isSmokeMode ? createSmokeDiagnosticsIpcDependencies() : createDiagnosticsIpcDependencies(),
     windows: {
       openPopover: () => {
         void windowManager?.showPopover();
@@ -173,6 +178,93 @@ async function startApp(): Promise<void> {
   }
 
   await windowManager.showPopover();
+}
+
+function createSmokeMigrationIpcDependencies(): IpcMigrationDependencies {
+  let records: MigrationRecordsResult["records"] = [];
+  const skippedSecretCategories: MigrationCandidateSummary["skippedSecretCategories"] = [
+    "claude-session-key",
+    "github-token",
+    "provider-auth-token",
+    "api-key",
+    "cookie",
+    "raw-provider-session",
+    "raw-provider-prompt",
+    "raw-provider-output"
+  ];
+  const metadataCounts = {
+    accounts: 1,
+    appSettings: 1,
+    historySnapshots: 2,
+    providerSettings: 2
+  };
+
+  return {
+    scanSources: (): MigrationScanResult => ({
+      scannedAt: "2026-04-19T12:00:00.000Z",
+      candidates: [
+        {
+          candidateId: "swift-smoke-1",
+          displayName: "Swift ClaudeUsage app",
+          error: null,
+          metadataCounts,
+          skippedSecretCategories,
+          sourceKind: "swift",
+          status: "ready",
+          warnings: []
+        }
+      ]
+    }),
+    runImport: (candidateId: string): MigrationImportUiResult => {
+      if (candidateId !== "swift-smoke-1") {
+        throw new Error("Unknown smoke migration source.");
+      }
+
+      const record: MigrationRecordUiSummary = {
+        displayName: "Swift ClaudeUsage app",
+        failures: [],
+        id: "migration-smoke-1",
+        importedAt: "2026-04-19T12:01:00.000Z",
+        metadataCounts,
+        skippedSecretCategories,
+        sourceKind: "swift",
+        status: "imported",
+        warnings: []
+      };
+      records = [record];
+
+      return {
+        displayName: "Swift ClaudeUsage app",
+        failures: [],
+        importedAt: record.importedAt,
+        metadataCounts,
+        record,
+        skippedSecretCategories,
+        sourceKind: "swift",
+        status: "imported",
+        warnings: []
+      };
+    },
+    listRecords: (): MigrationRecordsResult => ({
+      generatedAt: "2026-04-19T12:02:00.000Z",
+      records
+    })
+  };
+}
+
+function createSmokeDiagnosticsIpcDependencies(): IpcDiagnosticsDependencies {
+  return {
+    exportDiagnostics: () => ({
+      entries: [
+        "App: ClaudeUsage 0.1.0; platform smoke.",
+        "Storage: claude-usage.sqlite3; safeStorage available; backend native.",
+        "Provider: Codex configured; redacted diagnostics only.",
+        "Recent log: provider redacted diagnostics."
+      ],
+      generatedAt: "2026-04-19T12:03:00.000Z",
+      summary: "ClaudeUsage diagnostics export: 3 providers, 1 warnings or failures, 1 recent log events."
+    })
+  };
 }
 
 function createMigrationIpcDependencies(): IpcMigrationDependencies {

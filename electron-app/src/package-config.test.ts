@@ -72,9 +72,21 @@ type BuilderConfig = {
   };
 };
 
+type PackageJson = {
+  readonly scripts?: Record<string, string>;
+  readonly build?: {
+    readonly extends?: string;
+  };
+};
+
 function readBuilderConfig(): BuilderConfig {
   const configPath = resolve(__dirname, "../electron-builder.yml");
   return yaml.load(readFileSync(configPath, "utf8")) as BuilderConfig;
+}
+
+function readPackageJson(): PackageJson {
+  const packageJsonPath = resolve(__dirname, "../package.json");
+  return JSON.parse(readFileSync(packageJsonPath, "utf8")) as PackageJson;
 }
 
 describe("Electron Builder packaging config", () => {
@@ -152,5 +164,20 @@ describe("Electron Builder packaging config", () => {
       config.appImage?.publish,
       config.deb?.publish
     ]).toEqual([undefined, undefined, undefined, undefined, undefined, undefined, undefined]);
+  });
+
+  it("keeps package scripts aligned with the Windows and Linux packaging gate contract", () => {
+    const packageJson = readPackageJson();
+
+    expect(packageJson.build).toEqual({ extends: "./electron-builder.yml" });
+    expect(packageJson.scripts).toMatchObject({
+      build: "npm run typecheck && npm test -- --run && npm run build:main && npm run build:preload && npm run build:renderer",
+      "package:config": "vitest run src/package-config.test.ts",
+      "package:host": "npm run build && electron-builder",
+      "package:mac:dir": "npm run build && electron-builder --mac dir",
+      "package:win": "npm run build && electron-builder --win nsis portable",
+      "package:linux": "npm run build && electron-builder --linux AppImage deb",
+      "smoke:electron": "node scripts/smoke-electron.mjs"
+    });
   });
 });

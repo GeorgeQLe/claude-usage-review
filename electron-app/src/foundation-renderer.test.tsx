@@ -236,6 +236,9 @@ describe("foundation renderer routes", () => {
     expect(document.body.textContent).toContain("Swift ClaudeUsage app");
     expect(document.body.textContent).toContain("1 account");
     expect(document.body.textContent).toContain("Re-enter Claude session keys, GitHub tokens");
+    expect(document.body.textContent).toContain("provider auth tokens");
+    expect(document.body.textContent).toContain("API keys");
+    expect(document.body.textContent).toContain("raw provider output");
     expect(document.body.textContent).not.toContain("sk-ant");
     expect(document.body.textContent).not.toContain("ghp_");
     expect(document.body.textContent).not.toContain("config.json");
@@ -250,7 +253,21 @@ describe("foundation renderer routes", () => {
 
     expect(window.claudeUsage.runMigrationImport).toHaveBeenCalledWith("swift-1");
     expect(document.body.textContent).toContain("Swift ClaudeUsage app imported");
-    expect(document.body.textContent).not.toMatch(/session[_-]?key|access[_-]?token|cookie|ghp_|sk-ant/iu);
+    expect(document.body.textContent).not.toMatch(/sk-ant|ghp_|provider-secret|private prompt|raw stdout|raw stderr/iu);
+  });
+
+  it("renders Linux safeStorage backend warnings without exposing stored secrets", async () => {
+    window.claudeUsage.getUsageState = vi.fn(async () => ({
+      ...mockUsageState,
+      warning:
+        "Electron safeStorage is using the Linux basic_text backend. Secrets are stored with weaker local protection on this desktop session."
+    }));
+
+    await renderRoute(<SettingsRoute />);
+
+    expect(document.body.textContent).toContain("Linux basic_text backend");
+    expect(document.body.textContent).toContain("weaker local protection");
+    expect(document.body.textContent).not.toMatch(/sk-ant|ghp_|provider-secret|private prompt|raw stdout|raw stderr/iu);
   });
 
   it("renders provider settings rows from derived status only and exposes refresh/diagnostics actions", async () => {
@@ -273,7 +290,8 @@ describe("foundation renderer routes", () => {
       entries: [
         "App: ClaudeUsage 0.1.0; platform darwin.",
         "Storage: claude-usage.sqlite3; safeStorage available.",
-        "Recent log: provider redacted diagnostics."
+        "Recent log: provider redacted diagnostics.",
+        "Provider: Codex redacted redacted redacted."
       ],
       generatedAt: "2026-04-18T12:04:00.000Z",
       summary: "ClaudeUsage diagnostics export: 3 providers, 1 warnings or failures, 1 recent log events."
@@ -295,7 +313,7 @@ describe("foundation renderer routes", () => {
     expect(window.claudeUsage.exportDiagnostics).toHaveBeenCalled();
     expect(document.body.textContent).toContain("ClaudeUsage diagnostics export");
     expect(document.body.textContent).toContain("platform darwin");
-    expect(document.body.textContent).not.toMatch(/session[_-]?key|access[_-]?token|cookie|prompt|raw stderr|ghp_|sk-ant/iu);
+    expect(document.body.textContent).not.toMatch(/sk-ant|ghp_|provider-secret|private prompt|raw stdout|raw stderr/iu);
   });
 
   it("renders Accuracy Mode setup and verification controls without secret-bearing renderer state", async () => {
@@ -334,7 +352,7 @@ describe("foundation renderer routes", () => {
       await Promise.resolve();
     });
     expect(window.claudeUsage.verifyWrapper).toHaveBeenCalledWith("codex");
-    expect(document.body.textContent).not.toMatch(/prompt|stdout|raw stderr|access[_-]?token|session[_-]?key|cookie|ghp_|sk-ant/iu);
+    expect(document.body.textContent).not.toMatch(/sk-ant|ghp_|provider-secret|private prompt|raw stdout|raw stderr/iu);
   });
 
   it("keeps Accuracy Mode onboarding copy optional and privacy scoped", async () => {
@@ -717,6 +735,17 @@ const configuredGitHubHeatmap: GitHubHeatmapResult = {
   ]
 };
 
+const allSkippedSecretCategories = [
+  "claude-session-key",
+  "github-token",
+  "provider-auth-token",
+  "api-key",
+  "cookie",
+  "raw-provider-session",
+  "raw-provider-prompt",
+  "raw-provider-output"
+] as const;
+
 const mockMigrationScan = {
   scannedAt: "2026-04-15T12:00:00.000Z",
   candidates: [
@@ -730,7 +759,7 @@ const mockMigrationScan = {
         historySnapshots: 2,
         providerSettings: 1
       },
-      skippedSecretCategories: ["claude-session-key", "github-token"],
+      skippedSecretCategories: allSkippedSecretCategories,
       sourceKind: "swift",
       status: "ready",
       warnings: []
@@ -759,12 +788,12 @@ const mockMigrationImportResult = {
       historySnapshots: 2,
       providerSettings: 1
     },
-    skippedSecretCategories: ["claude-session-key", "github-token"],
+    skippedSecretCategories: allSkippedSecretCategories,
     sourceKind: "swift",
     status: "imported",
     warnings: []
   },
-  skippedSecretCategories: ["claude-session-key", "github-token"],
+  skippedSecretCategories: allSkippedSecretCategories,
   sourceKind: "swift",
   status: "imported",
   warnings: []

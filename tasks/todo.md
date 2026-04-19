@@ -59,7 +59,7 @@
   - Update root `README.md` and `docs/cross-platform-parity.md` so they describe the Electron Windows/Linux path accurately, distinguish it from the older Tauri implementation, and keep Swift as the premium public macOS app.
   - Validate docs and scripts with `npm run typecheck` or the relevant package script dry-run when practical.
 
-- [ ] Step 6.6: [automated] Add final regression gates for package creation, migration fixtures, diagnostics redaction, storage backend warnings, and renderer smoke flows.
+- [x] Step 6.6: [automated] Add final regression gates for package creation, migration fixtures, diagnostics redaction, storage backend warnings, and renderer smoke flows.
 
   **Implementation plan for Step 6.6:**
   - Add or tighten focused regression tests in `electron-app/src/main/migration/service.test.ts`, `electron-app/src/main/diagnostics/service.test.ts`, `electron-app/src/main/storage/secrets.test.ts`, `electron-app/src/package-config.test.ts`, and renderer smoke coverage where needed. Cover Swift/Tauri migration fixtures, skipped-secret reporting, migration records, diagnostics redaction, Linux `basic_text` storage warning presentation, and the Step 6.5 package script/target contract.

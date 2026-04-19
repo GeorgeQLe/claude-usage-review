@@ -1,5 +1,17 @@
 # ClaudeUsage — Session History
 
+## 2026-04-19 - Step 6.6: Electron Final Regression Gates
+
+Added final Phase 6 Electron regression coverage for migration fixtures, diagnostics redaction, storage backend warnings, packaging scripts, and renderer smoke flows. Migration tests now cover nested Swift/Tauri secret-like metadata across all skipped-secret categories without importing credential values. Diagnostics tests now cover provider state and diagnostics metadata redaction for tokens, cookies, prompts, raw stdout/stderr, and chat/session-like payloads; this found and fixed a redaction gap for chat/response/output/stderr-style metadata keys. Renderer coverage now asserts migration summaries, Linux `basic_text` safeStorage warnings, diagnostics export output, and package script contracts remain secret-free. The Electron smoke suite now exercises Settings migration scan, migration import, and diagnostics export states with route-level markers.
+
+Validation:
+- Focused Step 6.6 suite `npm test -- --run src/main/migration/service.test.ts src/main/diagnostics/service.test.ts src/main/storage/secrets.test.ts src/package-config.test.ts src/foundation-renderer.test.tsx` in `electron-app/`: 5 files and 26 tests passed.
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm test -- --run` in `electron-app/`: 34 files and 146 tests passed.
+- `npm run build:main`, `npm run build:preload`, and `npm run build:renderer` in `electron-app/`: passed.
+- `npm run smoke:electron` in `electron-app/`: passed with route-level mocked local usage state, including migration scan/import and diagnostics export markers.
+- Accepted warning: Node's experimental SQLite warning during storage/integration/migration/diagnostics tests and Electron smoke startup.
+
 ## 2026-04-19 - Step 6.5: Electron Packaging Scripts And Documentation
 
 Added repeatable Electron packaging commands for host builds, unsigned macOS parity output, Windows NSIS/portable artifacts, Linux AppImage/`deb` artifacts, and package-config validation. Created `electron-app/README.md` with development, verification, packaging, migration, diagnostics, privacy, and platform-split notes. Updated the root README and cross-platform parity docs to state that Swift remains the public premium macOS app, Electron is the Windows/Linux path, and Tauri is legacy context plus a non-secret migration source.

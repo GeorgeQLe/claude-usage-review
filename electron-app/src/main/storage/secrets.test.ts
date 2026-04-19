@@ -32,6 +32,27 @@ interface SecretsModule {
     readonly persistence: CredentialPersistence;
     readonly platform?: NodeJS.Platform;
   }) => ClaudeCredentialStore;
+  readonly createGitHubCredentialStore: (options: {
+    readonly safeStorage: SafeStorageAdapter;
+    readonly persistence: CredentialPersistence;
+    readonly platform?: NodeJS.Platform;
+  }) => {
+    readonly writeGitHubToken: (token: string) => void;
+    readonly readGitHubToken: () => string | null;
+    readonly deleteGitHubToken: () => void;
+    readonly getCredentialStatus: () => {
+      readonly hasGitHubToken: boolean;
+      readonly storageWarning: string | null;
+    };
+  };
+  readonly getSecretStorageStatus: (
+    storage: SafeStorageAdapter,
+    platform?: NodeJS.Platform
+  ) => {
+    readonly available: boolean;
+    readonly backend: string | null;
+    readonly warning: string | null;
+  };
 }
 
 interface SafeStorageAdapter {
@@ -93,6 +114,33 @@ describe("Claude credential secret storage contract", () => {
         "Electron safeStorage is using the Linux basic_text backend. Secrets are stored with weaker local protection on this desktop session."
     });
     expect(JSON.stringify(store.getCredentialStatus("account-1"))).not.toContain("sk-ant-sid01-secret");
+  });
+
+  it("applies the same Linux basic_text warning contract to GitHub token storage", async () => {
+    const persistence = new MemoryCredentialPersistence();
+    const { createGitHubCredentialStore, getSecretStorageStatus } = await loadSecretsModule();
+    const safeStorage = createFakeSafeStorage({ backend: "basic_text" });
+    const store = createGitHubCredentialStore({
+      persistence,
+      platform: "linux",
+      safeStorage
+    });
+
+    store.writeGitHubToken(`ghp_${"4".repeat(36)}`);
+
+    expect(getSecretStorageStatus(safeStorage, "linux")).toEqual({
+      available: true,
+      backend: "basic_text",
+      warning:
+        "Electron safeStorage is using the Linux basic_text backend. Secrets are stored with weaker local protection on this desktop session."
+    });
+    expect(store.getCredentialStatus()).toEqual({
+      hasGitHubToken: true,
+      storageWarning:
+        "Electron safeStorage is using the Linux basic_text backend. Secrets are stored with weaker local protection on this desktop session."
+    });
+    expect(JSON.stringify(persistence.snapshot())).not.toContain("ghp_");
+    expect(JSON.stringify(store.getCredentialStatus())).not.toContain("ghp_");
   });
 });
 

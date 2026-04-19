@@ -8,6 +8,9 @@ export const smokeRouteMarkers = [
   "popover-configured-github",
   "popover-ready-github",
   "settings",
+  "settings-migration-scan",
+  "settings-migration-import",
+  "settings-diagnostics-export",
   "onboarding",
   "overlay-compact",
   "overlay-minimal",
@@ -40,6 +43,14 @@ interface SmokeDomExpectation {
 const smokeTimeoutMs = 7_500;
 const smokeGitHubToken = "ghp_smoke_secret_should_not_render";
 const smokeClaudeSessionKey = "sk-ant-smoke-secret-should-not-render";
+const smokeForbiddenDiagnosticsText = [
+  smokeGitHubToken,
+  smokeClaudeSessionKey,
+  "provider-secret",
+  "private prompt text",
+  "raw stdout",
+  "raw stderr"
+] as const;
 
 const smokeExpectations = {
   popoverDisabledGitHub: {
@@ -75,7 +86,38 @@ const smokeExpectations = {
       "Notifications",
       "Save GitHub"
     ],
-    forbiddenText: [smokeGitHubToken, smokeClaudeSessionKey]
+    forbiddenText: smokeForbiddenDiagnosticsText
+  },
+  settingsMigrationScan: {
+    marker: "settings-migration-scan",
+    expectedText: [
+      "Swift ClaudeUsage app",
+      "1 account",
+      "2 history snapshots",
+      "2 provider settings",
+      "Re-enter Claude session keys, GitHub tokens",
+      "provider auth tokens",
+      "raw provider output"
+    ],
+    forbiddenText: smokeForbiddenDiagnosticsText
+  },
+  settingsMigrationImport: {
+    marker: "settings-migration-import",
+    expectedText: [
+      "Swift ClaudeUsage app",
+      "Swift ClaudeUsage app imported"
+    ],
+    forbiddenText: smokeForbiddenDiagnosticsText
+  },
+  settingsDiagnosticsExport: {
+    marker: "settings-diagnostics-export",
+    expectedText: [
+      "ClaudeUsage diagnostics export",
+      "Storage: claude-usage.sqlite3",
+      "Provider: Codex configured",
+      "Recent log: provider redacted diagnostics"
+    ],
+    forbiddenText: smokeForbiddenDiagnosticsText
   },
   onboarding: {
     marker: "onboarding",
@@ -129,6 +171,17 @@ export async function runElectronSmokeSuite({
   const settings = await showFreshWindow(windowManager, "settings");
   await assertWindowEventuallyMatches(settings, smokeExpectations.settings, timeoutMs);
   reportSmokeRouteOk(smokeExpectations.settings.marker);
+
+  await clickButton(settings, "Scan for app data");
+  await assertWindowEventuallyMatches(settings, smokeExpectations.settingsMigrationScan, timeoutMs);
+  reportSmokeRouteOk(smokeExpectations.settingsMigrationScan.marker);
+  await clickButton(settings, "Import metadata");
+  await assertWindowEventuallyMatches(settings, smokeExpectations.settingsMigrationImport, timeoutMs);
+  reportSmokeRouteOk(smokeExpectations.settingsMigrationImport.marker);
+
+  await clickButton(settings, "Generate diagnostics");
+  await assertWindowEventuallyMatches(settings, smokeExpectations.settingsDiagnosticsExport, timeoutMs);
+  reportSmokeRouteOk(smokeExpectations.settingsDiagnosticsExport.marker);
 
   const onboarding = await showFreshWindow(windowManager, "onboarding");
   await assertWindowEventuallyMatches(onboarding, smokeExpectations.onboarding, timeoutMs);

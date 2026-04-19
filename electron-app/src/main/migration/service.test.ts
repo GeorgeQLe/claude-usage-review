@@ -207,6 +207,70 @@ describe("legacy app migration service", () => {
     });
     expect(JSON.stringify(result.record)).not.toContain("sk-ant-sid01-tauri-secret");
   });
+
+  it("records every skipped secret category from nested Swift and Tauri metadata without importing values", () => {
+    const homeDir = createTempHome();
+    const preferencesDir = join(homeDir, "Library", "Preferences");
+    const configDir = join(homeDir, ".config", "ClaudeUsage");
+    mkdirSync(preferencesDir, { recursive: true });
+    mkdirSync(configDir, { recursive: true });
+
+    writeJson(join(preferencesDir, "com.claudeusage.app.json"), {
+      claude_org_id: "org_swift",
+      nested: {
+        sessionKey: "sk-ant-sid01-swift-secret",
+        githubToken: `ghp_${"2".repeat(36)}`,
+        provider: {
+          access_token: "provider-access-secret",
+          api_key: "provider-api-secret",
+          cookie: "session-cookie-secret",
+          chat: "private chat transcript",
+          prompt: "private prompt text",
+          stderr: "raw stderr with token"
+        }
+      }
+    });
+    writeJson(join(configDir, "config.json"), {
+      accounts: [{ id: "linux", name: "Linux", org_id: "org_linux" }],
+      active_account_id: "linux",
+      auth: {
+        refresh_token: "provider-refresh-secret",
+        response: "raw provider response"
+      }
+    });
+
+    opened = openAppDatabase({ inMemory: true });
+    const migrationService = createMigrationService({
+      database: opened.database,
+      idFactory: createSequentialIdFactory(),
+      now: () => "2026-04-19T12:00:00.000Z"
+    });
+    const results = discoverMigrationSources({ homeDir }).map((candidate) => migrationService.importSource(candidate));
+
+    const skipped = new Set(results.flatMap((result) => result.skippedSecretCategories));
+    expect(skipped).toEqual(
+      new Set([
+        "api-key",
+        "claude-session-key",
+        "cookie",
+        "github-token",
+        "provider-auth-token",
+        "raw-provider-output",
+        "raw-provider-prompt",
+        "raw-provider-session"
+      ])
+    );
+
+    const serializedState = JSON.stringify({
+      results,
+      accounts: opened.database.prepare("SELECT id, label, org_id, auth_status FROM accounts ORDER BY id;").all(),
+      settings: opened.database.prepare("SELECT value_json FROM app_settings;").all(),
+      providerSettings: opened.database.prepare("SELECT settings_json FROM provider_settings;").all()
+    });
+    expect(serializedState).not.toMatch(
+      /sk-ant-sid01-swift-secret|ghp_|provider-access-secret|provider-refresh-secret|provider-api-secret|session-cookie-secret|private chat transcript|private prompt text|raw stderr with token|raw provider response/iu
+    );
+  });
 });
 
 function createTempHome(): string {
