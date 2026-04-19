@@ -68,19 +68,31 @@
   - Validate with focused regression suites, `npm run typecheck`, and `npm test -- --run` from `electron-app/`. Accept only the known Node experimental SQLite warning if it appears during storage/integration tests; fix or report any migration, diagnostics, renderer, or package warnings.
 
 ## Green
-- [ ] Step 6.7: [automated] Run full Electron verification: `npm run typecheck`, `npm test`, `npm run build`, Electron smoke tests, and available package builds for the current host.
+- [x] Step 6.7: [automated] Run full Electron verification: `npm run typecheck`, `npm test`, `npm run build`, Electron smoke tests, and available package builds for the current host.
 
   **Implementation plan for Step 6.7:**
   - Run `npm run typecheck`, `npm test -- --run`, `npm run build`, and `npm run smoke:electron` from `electron-app/`.
   - Run host-available Electron Builder package commands or dry-runs for the configured targets. Clearly distinguish package config validation from real Windows/Linux machine validation.
   - Inspect all warnings. Accept only known Node experimental SQLite warnings if they appear during storage/integration tests; fix or report any Electron startup/preload/security, migration, diagnostics, package, or renderer warnings.
 
+  **Completed result for Step 6.7:**
+  - `npm run typecheck`: passed.
+  - `npm test -- --run`: passed, 34 test files and 146 tests.
+  - `npm run build`: passed, including typecheck, full Vitest suite, main build, preload build, and renderer build.
+  - `npm run smoke:electron`: passed route-level smoke coverage for popover, settings, migration scan/import, diagnostics export, onboarding, overlays, and retry state.
+  - `npm run package:config`: passed, 3 package-config tests.
+  - `npm run package:mac:dir`: passed on macOS arm64 with unsigned `dir` output in `electron-app/release/mac-arm64`.
+  - Fixed package validation warning: added Electron package icon resources and configured macOS, Windows, and Linux icon paths so the host package no longer falls back to the default Electron icon.
+  - Accepted warnings: Node's experimental SQLite warning during storage/integration tests; Electron Builder's Node `DEP0190` deprecation warning during package creation, which comes from the packaging toolchain under the current Node runtime. Unsigned macOS code-signing messages are expected because the dev/parity target sets `identity: null`.
+  - Not run locally: real Windows NSIS/portable and Linux AppImage/`deb` target-machine validation; those remain manual post-Step 6.7 tasks.
+
 - [ ] Step 6.8: [automated] Update `tasks/history.md`, `README.md`, and `docs/cross-platform-parity.md` to reflect the Electron plan/status once implementation reaches this gate.
 
   **Implementation plan for Step 6.8:**
   - Record Phase 6 completion in `tasks/history.md` with validation and package-build details.
   - Update `README.md` and `docs/cross-platform-parity.md` so the project no longer presents Tauri as the current Windows/Linux path when Electron has reached the final gate.
-  - Confirm the docs state manual Windows/Linux installer validation remains a human follow-up unless it has been completed on real target machines.
+  - Incorporate the Step 6.7 validation status: typecheck, full tests, build, smoke, package config, and host macOS unsigned package directory passed; real Windows and Linux installer/package validation remains a human follow-up on target machines.
+  - Confirm the docs state manual Windows/Linux installer validation remains a human follow-up unless it has been completed on real target machines, and mention the accepted Electron Builder `DEP0190` package-tool warning only if the docs include a troubleshooting or verification-notes section.
   - If all Phase 6 acceptance criteria are satisfied, archive Phase 6, check off the Phase 6 milestone in `tasks/roadmap.md`, and determine the next roadmap action.
 
 ## Milestone

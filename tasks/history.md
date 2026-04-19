@@ -1106,3 +1106,18 @@ Validation:
 - `npm test -- --run src/foundation-schemas.test.ts src/main/providers/gemini/stats.test.ts src/main/providers/gemini/adapter.test.ts` in `electron-app/`: 10 tests passed.
 - `npm run build` in `electron-app/`: typecheck, full Vitest suite, main build, preload build, and renderer build passed.
 - Accepted existing environment warning: Node emitted `ExperimentalWarning: SQLite is an experimental feature` during SQLite-backed storage and integration tests.
+
+## 2026-04-19 — Step 6.7: Electron Final Verification Gate
+
+Ran the full Electron verification gate for Phase 6. The Electron app now passes typecheck, full Vitest coverage, production build, route-level smoke coverage, package config tests, and the host-available unsigned macOS directory package build. The package build surfaced a default Electron icon warning, so Electron now has tracked package icon resources under `electron-app/build/` and explicit macOS, Windows, and Linux icon paths in `electron-app/electron-builder.yml`.
+
+Windows NSIS/portable and Linux AppImage/`deb` target-machine validation was not run on this macOS host and remains a manual post-Step 6.7 follow-up.
+
+Validation:
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm test -- --run` in `electron-app/`: 34 test files passed, 146 tests passed.
+- `npm run build` in `electron-app/`: typecheck, full Vitest suite, main build, preload build, and renderer build passed.
+- `npm run smoke:electron` in `electron-app/`: passed route-level smoke markers for popover, settings, migration scan/import, diagnostics export, onboarding, overlays, and settings error retry.
+- `npm run package:config` in `electron-app/`: 3 package-config tests passed.
+- `npm run package:mac:dir` in `electron-app/`: passed on macOS arm64 with unsigned `dir` output at `electron-app/release/mac-arm64`.
+- Accepted warnings: Node emitted `ExperimentalWarning: SQLite is an experimental feature` during SQLite-backed storage/integration tests; Electron Builder emitted Node `DEP0190` from the packaging toolchain under the current Node runtime; unsigned macOS code-signing messages are expected for the dev/parity package target because `identity` is explicitly `null`.
