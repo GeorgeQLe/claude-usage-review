@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { chmod } from "node:fs/promises";
-import { dirname, delimiter, join } from "node:path";
+import { dirname, delimiter, join, win32 } from "node:path";
 import type { ProviderId } from "../../shared/types/provider.js";
 import type { WrapperSetupResult } from "../../shared/types/ipc.js";
 
@@ -89,9 +89,9 @@ export interface WrapperGenerationService {
 export function generateProviderWrapper(input: GenerateProviderWrapperInput): GeneratedWrapperSetup {
   const provider = getSupportedProvider(input.providerId);
   const platform = input.platform ?? process.platform;
-  const wrapperDir = join(input.appUserDataDir, "wrappers", input.providerId);
+  const wrapperDir = joinForPlatform(platform, input.appUserDataDir, "wrappers", input.providerId);
   const executableName = platform === "win32" ? `${provider.executableName}.cmd` : provider.executableName;
-  const wrapperPath = join(wrapperDir, executableName);
+  const wrapperPath = joinForPlatform(platform, wrapperDir, executableName);
   const setupCommands = createSetupCommands({
     platform,
     shell: input.shell,
@@ -207,8 +207,12 @@ function createMissingNativeCommandResult(input: {
   readonly shell?: WrapperShell;
 }): GeneratedWrapperSetup {
   const provider = getSupportedProvider(input.providerId);
-  const wrapperDir = join(input.appUserDataDir, "wrappers", input.providerId);
-  const wrapperPath = join(wrapperDir, input.platform === "win32" ? `${provider.executableName}.cmd` : provider.executableName);
+  const wrapperDir = joinForPlatform(input.platform, input.appUserDataDir, "wrappers", input.providerId);
+  const wrapperPath = joinForPlatform(
+    input.platform,
+    wrapperDir,
+    input.platform === "win32" ? `${provider.executableName}.cmd` : provider.executableName
+  );
   const setupCommands = createSetupCommands({
     platform: input.platform,
     shell: input.shell,
@@ -352,13 +356,13 @@ function resolveNativeCommandPath(
   const executableNames = input.platform === "win32" ? createWindowsExecutableNames(executableName, input.env) : [executableName];
   const wrapperRoot = normalizePathForComparison(input.wrapperRoot);
 
-  for (const dir of pathValue.split(delimiter).filter(Boolean)) {
+  for (const dir of pathValue.split(pathDelimiterForPlatform(input.platform)).filter(Boolean)) {
     if (normalizePathForComparison(dir).startsWith(wrapperRoot)) {
       continue;
     }
 
     for (const candidateName of executableNames) {
-      const candidate = join(dir, candidateName);
+      const candidate = joinForPlatform(input.platform, dir, candidateName);
       if (existsSync(candidate)) {
         return candidate;
       }
@@ -405,6 +409,14 @@ function escapeShellAssignment(value: string): string {
 
 function quotePathForInstruction(value: string): string {
   return `'${escapeSingleQuoted(value)}'`;
+}
+
+function joinForPlatform(platform: WrapperPlatform, ...parts: readonly string[]): string {
+  return platform === "win32" ? win32.join(...parts) : join(...parts);
+}
+
+function pathDelimiterForPlatform(platform: WrapperPlatform): string {
+  return platform === "win32" ? ";" : delimiter;
 }
 
 function normalizePathForComparison(value: string): string {

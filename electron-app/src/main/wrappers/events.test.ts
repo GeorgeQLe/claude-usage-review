@@ -83,15 +83,48 @@ describe("Phase 5 wrapper event ledger contract", () => {
     });
     expect(JSON.stringify(summary)).not.toMatch(/prompt|stdout|stderr|oauth|token|cookie/iu);
   });
+
+  it("bounds recent-event reads while preserving provider and time-window filters", async () => {
+    let nextId = 0;
+    const store = await createStore({ idFactory: () => `event-${++nextId}` });
+
+    for (const event of [
+      { invocationId: "codex-early", providerId: "codex", startedAt: "2026-04-17T13:00:00.000Z" },
+      { invocationId: "codex-mid", providerId: "codex", startedAt: "2026-04-17T14:30:00.000Z" },
+      { invocationId: "gemini-mid", providerId: "gemini", startedAt: "2026-04-17T14:45:00.000Z" },
+      { invocationId: "codex-late", providerId: "codex", startedAt: "2026-04-17T14:59:00.000Z" }
+    ] as const) {
+      store.recordWrapperInvocationStarted({
+        commandMode: "chat",
+        invocationId: event.invocationId,
+        providerId: event.providerId,
+        startedAt: event.startedAt,
+        wrapperVersion: "5.0.0"
+      });
+    }
+
+    const recentCodex = store.listRecentWrapperEvents({
+      limit: 2,
+      providerId: "codex",
+      since: "2026-04-17T14:00:00.000Z"
+    });
+
+    expect(recentCodex.map((event: { readonly invocationId: string }) => event.invocationId)).toEqual([
+      "codex-late",
+      "codex-mid"
+    ]);
+    expect(JSON.stringify(recentCodex)).not.toContain("gemini-mid");
+    expect(JSON.stringify(recentCodex)).not.toContain("codex-early");
+  });
 });
 
-async function createStore(): Promise<Record<string, any>> {
+async function createStore(options: { readonly idFactory?: () => string } = {}): Promise<Record<string, any>> {
   opened = openAppDatabase({ path: ":memory:" });
   const modulePath = "../storage/wrapperEvents.js";
   const module = (await import(modulePath)) as Record<string, any>;
   return module.createWrapperEventStore({
     database: opened.database,
-    idFactory: () => "event-1",
+    idFactory: options.idFactory ?? (() => "event-1"),
     now: () => "2026-04-17T14:00:00.000Z"
   });
 }

@@ -268,6 +268,47 @@ describe("Phase 2 IPC command contract", () => {
     expect(JSON.stringify(diagnostics)).not.toContain("prompt");
     expect(JSON.stringify(diagnostics)).not.toContain("raw chat");
   });
+
+  it("redacts unsafe terms from Accuracy Mode diagnostics export entries", async () => {
+    const { ipcChannelNames, registerIpcHandlers } = await import("./ipc.js");
+
+    registerIpcHandlers({
+      usageState: {
+        getUsageState: () => ({
+          activeProviderId: "codex",
+          lastUpdatedAt: "2026-04-17T15:00:00.000Z",
+          providers: [
+            {
+              actions: ["refresh", "diagnostics"],
+              adapterMode: "accuracy",
+              confidence: "high_confidence",
+              confidenceExplanation: "High confidence from prompt and access_token signals.",
+              dailyRequestCount: 3,
+              detailText: "raw chat and cookie metadata must not leave diagnostics.",
+              displayName: "Codex",
+              enabled: true,
+              headline: "Codex wrapper observed session_key state",
+              lastUpdatedAt: "2026-04-17T14:59:00.000Z",
+              providerId: "codex",
+              requestsPerMinute: 1,
+              resetAt: null,
+              sessionUtilization: null,
+              status: "configured",
+              weeklyUtilization: null
+            }
+          ],
+          warning: null
+        })
+      }
+    });
+
+    const diagnostics = await invoke(ipcChannelNames.exportDiagnostics);
+    const serialized = JSON.stringify(diagnostics);
+
+    expect(serialized).toContain("Accuracy Mode");
+    expect(serialized).toContain("redacted");
+    expect(serialized).not.toMatch(/prompt|access[_-]?token|raw chat|cookie|session[_-]?key/iu);
+  });
 });
 
 async function invoke(channel: string, payload?: unknown): Promise<unknown> {

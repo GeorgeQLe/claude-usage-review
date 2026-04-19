@@ -58,6 +58,43 @@ describe("Phase 5 wrapper generation contract", () => {
     expect(serialized).not.toContain("ghp_");
     expect(serialized).not.toContain("sk-ant");
   });
+
+  it("renders reversible setup commands for supported shells without writing when native CLIs are missing", async () => {
+    const generator = await loadGenerator();
+
+    const missingNative = await generator.generateAndWriteProviderWrapper({
+      appUserDataDir: "/tmp/ClaudeUsage",
+      nativeCommandPath: null,
+      platform: "darwin",
+      providerId: "codex",
+      shell: "fish"
+    });
+    const powershell = generator.generateProviderWrapper({
+      appUserDataDir: "C:\\Users\\Example\\AppData\\Roaming\\ClaudeUsage",
+      nativeCommandPath: "C:\\Program Files\\Gemini\\gemini.cmd",
+      platform: "win32",
+      providerId: "gemini",
+      shell: "powershell"
+    });
+
+    expect(missingNative).toMatchObject({
+      command: null,
+      files: [],
+      mutatesShellProfiles: false,
+      setupCommands: ["fish_add_path '/tmp/ClaudeUsage/wrappers/codex'"],
+      shellProfilesTouched: [],
+      verified: false
+    });
+    expect(missingNative.instructions.join("\n")).toContain("Install the native Codex CLI first");
+    expect(missingNative.removalInstructions.join("\n")).toContain("No generated wrapper was written");
+
+    expect(powershell.setupCommands).toEqual([
+      "$env:Path = 'C:\\Users\\Example\\AppData\\Roaming\\ClaudeUsage\\wrappers\\gemini;' + $env:Path"
+    ]);
+    expect(powershell.removalInstructions.join("\n")).toContain("wrappers\\gemini");
+    expect(powershell.mutatesShellProfiles).toBe(false);
+    expect(powershell.shellProfilesTouched).toEqual([]);
+  });
 });
 
 async function loadGenerator(): Promise<Record<string, any>> {

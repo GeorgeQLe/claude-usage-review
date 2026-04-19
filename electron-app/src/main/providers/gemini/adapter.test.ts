@@ -148,6 +148,50 @@ describe("Phase 4 Gemini adapter red tests", () => {
     expect(snapshot.card.confidenceExplanation).toContain("Accuracy Mode");
     expect(JSON.stringify(snapshot)).not.toMatch(/oauth|access[_-]?token|api[_-]?key|prompt text|stdout|raw stderr/iu);
   });
+
+  it("does not count unverified wrapper events or force Accuracy Mode over passive Gemini data", async () => {
+    const adapter = await loadAdapter();
+    const snapshot = await adapter.refreshGeminiProviderSnapshot({
+      detector: async () => ({ auth: { mode: "oauth-personal" }, detected: true }),
+      now: new Date("2026-04-17T15:00:00.000Z"),
+      profile: { dailyRequestLimit: 1000, label: "Personal" },
+      sessionReader: async () => ({
+        summary: {
+          dailyRequestCount: 4,
+          lastObservedAt: "2026-04-17T14:58:00.000Z",
+          model: "gemini-2.5-pro",
+          requestsPerMinute: 1,
+          tokenCount: 256
+        }
+      }),
+      staleAfterMs: 30 * 60 * 1000,
+      wrapperEventReader: async () => ({
+        diagnostics: ["Wrapper verification is incomplete."],
+        events: [
+          {
+            invocationId: "gemini-unverified-1",
+            limitHit: true,
+            model: "gemini-2.5-pro",
+            providerId: "gemini",
+            startedAt: "2026-04-17T14:59:00.000Z",
+            wrapperVersion: "5.0.0"
+          }
+        ],
+        verified: false
+      })
+    });
+
+    expect(snapshot.card).toMatchObject({
+      adapterMode: "passive",
+      confidence: "estimated",
+      dailyRequestCount: 4,
+      requestsPerMinute: 1,
+      status: "configured"
+    });
+    expect(snapshot.dailyHeadroom).toBe(996);
+    expect(snapshot.card.confidenceExplanation).not.toContain("Accuracy Mode");
+    expect(JSON.stringify(snapshot)).not.toMatch(/oauth|access[_-]?token|api[_-]?key|prompt|stdout|raw stderr/iu);
+  });
 });
 
 async function loadAdapter(): Promise<Record<string, any>> {

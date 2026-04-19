@@ -93,6 +93,41 @@ describe("Phase 4 Codex adapter red tests", () => {
     expect(snapshot.card.confidenceExplanation).toContain("Accuracy Mode");
     expect(JSON.stringify(snapshot)).not.toMatch(/prompt|stdout|raw stderr|access[_-]?token|session[_-]?key/iu);
   });
+
+  it("keeps passive Codex fallback when wrapper events are unverified", async () => {
+    const adapter = await loadAdapter();
+    const snapshot = await adapter.refreshCodexProviderSnapshot({
+      detector: async () => ({ accountLabel: "user@example.com", detected: true }),
+      historyReader: async () => ({ bookmark: { byteOffset: 256 }, events: [] }),
+      now: new Date("2026-04-17T15:00:00.000Z"),
+      sessionReader: async () => ({
+        events: [{ occurredAt: "2026-04-17T14:57:00.000Z", model: "gpt-5.4", tokenCount: 512 }]
+      }),
+      staleAfterMs: 30 * 60 * 1000,
+      wrapperEventReader: async () => ({
+        diagnostics: ["Wrapper verification is incomplete."],
+        events: [
+          {
+            invocationId: "codex-unverified-1",
+            limitHit: true,
+            providerId: "codex",
+            startedAt: "2026-04-17T14:59:00.000Z",
+            wrapperVersion: "5.0.0"
+          }
+        ],
+        verified: false
+      })
+    });
+
+    expect(snapshot.card).toMatchObject({
+      adapterMode: "passive",
+      confidence: "estimated",
+      dailyRequestCount: 1,
+      status: "configured"
+    });
+    expect(snapshot.card.confidenceExplanation).not.toContain("Accuracy Mode");
+    expect(JSON.stringify(snapshot)).not.toMatch(/prompt|stdout|raw stderr|access[_-]?token|session[_-]?key/iu);
+  });
 });
 
 async function loadAdapter(): Promise<Record<string, any>> {
