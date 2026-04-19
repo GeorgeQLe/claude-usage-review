@@ -1,116 +1,50 @@
-# Cross-Platform Parity: macOS ↔ Tauri
+# Cross-Platform Parity: Swift macOS and Electron
 
-Last updated: 2026-04-11 (after Step 7.4)
+Last updated: 2026-04-19 (Phase 6 packaging documentation)
 
-Status key: **Ported** = feature-complete in Tauri | **Gap** = macOS-only, not yet in Tauri | **Deferred** = types exist but adapter/logic not implemented | **N/A** = platform-specific, no equivalent needed
+Status key: **Current** = intended supported path | **Development** = useful for local parity checks only | **Legacy** = retained for reference or migration | **Manual** = requires validation on real target machines
 
----
+## Platform Ownership
 
-## Feature Matrix
+| Platform | Current app path | Status | Notes |
+|----------|------------------|--------|-------|
+| macOS | Swift app in repository root | Current | Public premium app and canonical macOS menu-bar experience |
+| Windows | `electron-app/` | Current | Electron Builder targets NSIS and portable artifacts |
+| Linux | `electron-app/` | Current | Electron Builder targets AppImage and `deb` artifacts |
+| macOS Electron | `electron-app/` | Development | Unsigned `dir` build for parity and local verification only |
+| Tauri | `tauri-app/` | Legacy | Older cross-platform implementation, retained as migration source and historical reference |
 
-### Auth
+## Electron Scope
 
-| Feature | macOS | Tauri | Status | Notes |
-|---------|-------|-------|--------|-------|
-| Keychain/keyring storage | ✅ | ✅ | Ported | macOS Keychain → `keytar` via Tauri plugin |
-| Session key rotation | ✅ | ✅ | Ported | |
-| Multi-account | ✅ | ✅ | Ported | |
-| Test connection | ✅ | ✅ | Ported | |
+Electron is intended to carry the Windows/Linux product path for:
 
-### Polling
+- Claude exact usage, account management, polling, secure secret storage, and session-key rotation.
+- Usage history, pace guidance, reset timing, provider rotation, Codex/Gemini monitoring, and Accuracy Mode wrappers where cross-platform APIs allow it.
+- GitHub heatmap, overlay windows, local notifications, onboarding, settings, migration UI, diagnostics export, and packaged Windows/Linux artifacts.
+- Non-secret migration from Swift and legacy Tauri sources. Session keys, GitHub tokens, provider auth tokens, cookies, API keys, prompts, and raw provider responses remain excluded and require re-entry.
 
-| Feature | macOS | Tauri | Status | Notes |
-|---------|-------|-------|--------|-------|
-| 5-min interval + backoff | ✅ | ✅ | Ported | |
-| Auto-fetch at reset time | ✅ | ❌ | Gap | macOS schedules a fetch when the usage window resets |
+## Packaging Contract
 
-### Usage Display
+| Command | Purpose | Notes |
+|---------|---------|-------|
+| `npm run package:host` | Build the current host target with Electron Builder | Uses `electron-builder.yml` |
+| `npm run package:mac:dir` | Create unsigned macOS Electron directory output | Development/parity only |
+| `npm run package:win` | Build Windows NSIS and portable artifacts | Requires target-machine validation before release |
+| `npm run package:linux` | Build Linux AppImage and `deb` artifacts | Requires target-desktop validation before release |
+| `npm run package:config` | Validate packaging config expectations | Does not create installers |
 
-| Feature | macOS | Tauri | Status | Notes |
-|---------|-------|-------|--------|-------|
-| Session/Weekly limits | ✅ | ✅ | Ported | |
-| Optional limits (Sonnet/Opus/etc) | ✅ | ✅ | Ported | |
-| Pace indicators (▲/▼) | ✅ | ✅ | Ported | |
-| Budget per day | ✅ | ✅ | Ported | |
-| Reset time + remaining time | ✅ | ✅ | Ported | |
-| Live countdown timer (1s tick) | ✅ | ❌ | Gap | macOS has `h:mm:ss` live tick via Timer |
-| Usage history snapshots | ✅ | ❌ | Gap | macOS persists periodic snapshots for trend view |
-| 24h sparklines | ✅ | ❌ | Gap | macOS renders inline sparkline charts |
+Artifacts are written under `electron-app/release/`.
 
-### Menu Bar / Tray
+## Manual Validation Still Required
 
-| Feature | macOS | Tauri | Status | Notes |
-|---------|-------|-------|--------|-------|
-| Tray icon 3-color | ✅ | ✅ | Ported | Green/yellow/red based on usage % |
-| Dynamic tooltip text | ✅ | ✅ | Ported | |
-| Popover on click | ✅ | ✅ | Ported | |
-| Context menu (Refresh/Settings/Overlay/Quit) | ✅ | ✅ | Ported | |
-| Circular progress ring | ✅ | ❌ | Gap | macOS-only SwiftUI ring in popover |
-| Pace emoji themes (Running/Racecar/F1) | ✅ | ❌ | Gap | macOS-only theme picker |
-| Hover tooltip (floating) | ✅ | ❌ | Gap | macOS-only NSWindow floating tooltip |
+Automated and host-available package builds do not replace manual verification on the release platforms. Before treating Windows/Linux Electron packages as release-ready, validate:
 
-### Overlay
+- Windows NSIS install, portable launch, tray behavior, launch-at-login behavior, notifications, and packaged startup.
+- Linux AppImage and `deb` launch, tray fallback behavior, notifications, `safeStorage` backend warning, and packaged startup on selected desktop environments.
+- A live Claude credential smoke test that confirms secrets are stored only through the secret store and are never rendered back in Settings.
 
-| Feature | macOS | Tauri | Status | Notes |
-|---------|-------|-------|--------|-------|
-| 3 layouts (Compact/Minimal/Sidebar) | ✅ | ✅ | Ported | |
-| Always-on-top, drag-to-move | ✅ | ✅ | Ported | |
-| Position persistence | ✅ | ✅ | Ported | |
-| Opacity control | ✅ | ✅ | Ported | |
-| Double-click → popover | ✅ | ✅ | Ported | |
+These manual items are tracked in `tasks/manual-todo.md` for Phase 6.
 
-### Settings
+## Legacy Tauri Notes
 
-| Feature | macOS | Tauri | Status | Notes |
-|---------|-------|-------|--------|-------|
-| Account management | ✅ | ✅ | Ported | |
-| Time display format | ✅ | ✅ | Ported | |
-| Launch at login | ✅ | ✅ | Ported | |
-| Overlay config | ✅ | ✅ | Ported | |
-| Pace theme picker | ✅ | ❌ | Gap | macOS-only preference |
-| Weekly bar color mode | ✅ | ❌ | Gap | macOS-only preference |
-| GitHub integration (PAT + heatmap) | ✅ | ❌ | Gap | macOS-only feature |
-
-### Multi-Provider
-
-| Feature | macOS | Tauri | Status | Notes |
-|---------|-------|-------|--------|-------|
-| Provider types + cards | ✅ | ✅ | Ported | TypeScript types + React card rendering |
-| Codex CLI adapter (history.jsonl) | ✅ | ❌ | Deferred | Types defined, adapter logic not implemented |
-| Gemini CLI adapter (session files) | ✅ | ❌ | Deferred | Types defined, adapter logic not implemented |
-| Accuracy Mode wrapper | ✅ | ❌ | Deferred | |
-| Plan profiles | ✅ | ❌ | Deferred | |
-| Provider toggles in Settings | ✅ | ❌ | Deferred | |
-| Tray rotation policy | ✅ | ❌ | Deferred | |
-
-### Notifications
-
-| Feature | macOS | Tauri | Status | Notes |
-|---------|-------|-------|--------|-------|
-| Session reset notification | ✅ | ❌ | Gap | macOS uses `UNUserNotificationCenter` |
-
-### Platform-Specific
-
-| Feature | macOS | Tauri | Status | Notes |
-|---------|-------|-------|--------|-------|
-| No dock icon (LSUIElement) | ✅ | — | N/A | Tauri handles via window config |
-| Windows fallback dialog | — | ✅ | Tauri-only | Auth dialog for platforms without keyring |
-| DPI-aware positioning | ✅ | ✅ | Ported | |
-
----
-
-## Summary
-
-- **Ported**: 25 features fully working in both platforms
-- **Gap**: 11 features present in macOS but missing from Tauri
-- **Deferred**: 6 multi-provider features with types only (no adapter logic)
-- **Tauri-only**: 1 (Windows fallback dialog)
-- **N/A**: 1 (LSUIElement — platform-specific)
-
-## Priority Gaps for Future Work
-
-1. **Live countdown timer** — high-visibility UX feature
-2. **Session reset notification** — important for power users
-3. **Auto-fetch at reset time** — ensures fresh data at the right moment
-4. **Usage history / sparklines** — trend visibility
-5. **Multi-provider adapters** — Codex + Gemini adapter logic
+The Tauri app is no longer the active Windows/Linux packaging path. It remains useful for comparing historical behavior and for importing non-secret metadata into Electron. New cross-platform packaging, diagnostics, migration UI, and regression-gate work should target `electron-app/`.

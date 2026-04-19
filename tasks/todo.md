@@ -51,7 +51,7 @@
   - Avoid adding signing, notarization, auto-update, or production publishing unless a later release contract explicitly requests them.
   - Validate with config-focused tests or package dry-run commands available on the current host, plus `npm run typecheck` where applicable.
 
-- [ ] Step 6.5: [automated] Add packaging scripts and documentation in `electron-app/package.json`, `electron-app/README.md`, and root docs as needed, explicitly stating Swift remains the public premium macOS app and Electron is the Windows/Linux path.
+- [x] Step 6.5: [automated] Add packaging scripts and documentation in `electron-app/package.json`, `electron-app/README.md`, and root docs as needed, explicitly stating Swift remains the public premium macOS app and Electron is the Windows/Linux path.
 
   **Implementation plan for Step 6.5:**
   - Extend `electron-app/package.json` scripts only where they improve repeatable local verification, such as host package commands or package dry-runs.
@@ -62,10 +62,10 @@
 - [ ] Step 6.6: [automated] Add final regression gates for package creation, migration fixtures, diagnostics redaction, storage backend warnings, and renderer smoke flows.
 
   **Implementation plan for Step 6.6:**
-  - Add regression tests for Swift/Tauri migration fixtures, skipped-secret reporting, migration records, diagnostics redaction, Linux `basic_text` storage warning presentation, and package config expectations.
-  - Extend `electron-app/scripts/smoke-electron.mjs` and renderer smoke fixtures as needed to cover migration summaries and diagnostics/export states.
-  - Keep package builds host-aware so macOS verification does not pretend to validate Windows/Linux runtime behavior beyond available builder outputs.
-  - Validate with focused regression suites, `npm run typecheck`, and `npm test -- --run` from `electron-app/`.
+  - Add or tighten focused regression tests in `electron-app/src/main/migration/service.test.ts`, `electron-app/src/main/diagnostics/service.test.ts`, `electron-app/src/main/storage/secrets.test.ts`, `electron-app/src/package-config.test.ts`, and renderer smoke coverage where needed. Cover Swift/Tauri migration fixtures, skipped-secret reporting, migration records, diagnostics redaction, Linux `basic_text` storage warning presentation, and the Step 6.5 package script/target contract.
+  - Extend `electron-app/scripts/smoke-electron.mjs`, `electron-app/src/main/smoke.ts`, and renderer test fixtures as needed so the smoke suite proves migration summaries and diagnostics/export states render without session keys, GitHub tokens, provider auth tokens, raw prompts, or raw stderr.
+  - Keep package checks host-aware: `npm run package:config` can assert config/scripts everywhere; real `package:win` and `package:linux` outputs still require platform-specific or host-capable builder validation and manual target-machine verification.
+  - Validate with focused regression suites, `npm run typecheck`, and `npm test -- --run` from `electron-app/`. Accept only the known Node experimental SQLite warning if it appears during storage/integration tests; fix or report any migration, diagnostics, renderer, or package warnings.
 
 ## Green
 - [ ] Step 6.7: [automated] Run full Electron verification: `npm run typecheck`, `npm test`, `npm run build`, Electron smoke tests, and available package builds for the current host.

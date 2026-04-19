@@ -6,6 +6,12 @@ Forked from [linuxlewis/claude-usage](https://github.com/linuxlewis/claude-usage
 
 ![Screenshot](screenshot.png)
 
+## Platform strategy
+
+The Swift app in this repository remains the public premium macOS app. The Electron app in `electron-app/` is the Windows/Linux path for cross-platform ClaudeUsage packaging and parity work. Electron macOS builds are unsigned development/parity artifacts only unless a later release decision changes public distribution.
+
+The older Tauri implementation in `tauri-app/` is kept as legacy context and as a non-secret migration source for Electron; it is not the current Windows/Linux app path.
+
 ## What's different from the original
 
 | Feature | Original | This fork |
@@ -130,6 +136,29 @@ The app will be at:
 ```
 ~/Library/Developer/Xcode/DerivedData/ClaudeUsage-*/Build/Products/Release/ClaudeUsage.app
 ```
+
+### Electron Windows/Linux app
+
+The Electron implementation lives in `electron-app/`.
+
+```bash
+cd electron-app
+npm install
+npm run typecheck
+npm test -- --run
+npm run build
+npm run smoke:electron
+```
+
+Packaging commands:
+
+```bash
+npm run package:host
+npm run package:win
+npm run package:linux
+```
+
+See `electron-app/README.md` for development, packaging, migration, diagnostics, and privacy notes. Windows and Linux installer artifacts require manual validation on real target machines before release.
 
 ## Notes
 

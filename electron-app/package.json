@@ -13,7 +13,12 @@
     "build:preload": "vite build --config vite.preload.config.ts",
     "build:renderer": "vite build",
     "smoke:electron": "node scripts/smoke-electron.mjs",
-    "package": "npm run build && electron-builder",
+    "package": "npm run package:host",
+    "package:config": "vitest run src/package-config.test.ts",
+    "package:host": "npm run build && electron-builder",
+    "package:mac:dir": "npm run build && electron-builder --mac dir",
+    "package:win": "npm run build && electron-builder --win nsis portable",
+    "package:linux": "npm run build && electron-builder --linux AppImage deb",
     "test": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
   },

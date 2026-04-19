@@ -1,5 +1,13 @@
 # ClaudeUsage — Session History
 
+## 2026-04-19 - Step 6.5: Electron Packaging Scripts And Documentation
+
+Added repeatable Electron packaging commands for host builds, unsigned macOS parity output, Windows NSIS/portable artifacts, Linux AppImage/`deb` artifacts, and package-config validation. Created `electron-app/README.md` with development, verification, packaging, migration, diagnostics, privacy, and platform-split notes. Updated the root README and cross-platform parity docs to state that Swift remains the public premium macOS app, Electron is the Windows/Linux path, and Tauri is legacy context plus a non-secret migration source.
+
+Validation:
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm run package:config` in `electron-app/`: 2 tests passed.
+
 ## 2026-04-19 - Step 6.4: Electron Packaging Config
 
 Configured Electron Builder packaging metadata for the Electron Windows/Linux path. The builder config now keeps Windows NSIS and portable targets, Linux AppImage and `deb` targets, and an unsigned macOS `dir` parity target with explicit artifact names, package metadata, Linux desktop metadata, Debian dependencies, Windows installer settings, and publishing disabled. The Electron package metadata now declares the package author so builder output no longer warns about a missing author.
