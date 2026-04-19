@@ -6,6 +6,28 @@
 > Test strategy: tests-after
 > Status: complete on 2026-04-19
 
+## Priority Documentation Todo
+- [ ] `$icp` - create/update `research/icp.md` because it is missing; `.agents/project.json` enables the `business-app` pack and the 2026-04-19 scan found no canonical `research/` outputs.
+- [ ] `$competitive-analysis` - create/update `research/competitive-analysis.md` after `$icp`; currently blocked because `research/icp.md` is missing.
+- [ ] `$positioning` - create/update `research/positioning.md` after `$competitive-analysis`; currently blocked because `research/competitive-analysis.md` is missing.
+- [ ] `$journey-map` - create/update `research/journey-map.md` after `$positioning`; currently blocked because `research/positioning.md` is missing, while specs exist under `specs/` and need a journey contract.
+- [ ] `$metrics` - create/update `research/metrics.md` after `$journey-map`; currently blocked because `research/journey-map.md` is missing.
+- [ ] `$gtm` - create/update `research/gtm.md` after `$positioning` and `$journey-map`; currently blocked because `research/positioning.md` and `research/journey-map.md` are missing.
+- [ ] `$monetization` - create/update `research/monetization.md` after `$metrics` and `$gtm`; currently blocked because `research/metrics.md` and `research/gtm.md` are missing.
+- [ ] `$landing-copy` - create/update `research/landing-copy.md` after `$positioning`, `$journey-map`, and `$monetization`; currently blocked because those upstream research outputs are missing.
+- [ ] `$risk-register` - create/update `research/risk-register.md` after `$icp` and `$journey-map`; currently blocked because `research/icp.md` and `research/journey-map.md` are missing.
+- [ ] `$assumption-tracker` - create/update `research/assumption-tracker.md` after at least three foundational research docs exist; currently blocked because no primary `research/*.md` files exist.
+- [ ] `$experiment` - create/update `research/experiments/<experiment>.md` after `$assumption-tracker`; currently blocked because `research/assumption-tracker.md` is missing.
+- [ ] `$reconcile-research fix all` - create/update `research/reconciliation-report.md` after multiple research docs exist; currently blocked because no primary `research/*.md` files exist.
+- [ ] `$enterprise-icp` - create/update `research/enterprise-icp.md` after `$icp`; currently blocked because `research/icp.md` is missing.
+- [ ] `$scale-audit` - create/update `specs/scale-audit.md` after `$enterprise-icp`; currently blocked because `research/enterprise-icp.md` is missing.
+- [ ] `$spec-drift fix all` - update stale specs because source commit `92697d2` from 2026-04-19 14:10:46 -0400 is newer than the newest spec timestamp, `specs/provider-telemetry-endpoints.md` at 2026-04-16 14:14:00 -0400.
+- [ ] `$mvp-gap` - create/update `specs/mvp-gap.md` after `$spec-drift fix all`; currently blocked because the stale-spec audit has not been completed.
+- [ ] `$plan-interview --ideas` - create/update `specs/*.md` for unspecced backlog candidates because `tasks/ideas.md` was last modified on 2026-03-23 09:07:26 -0400 and still lists feature candidates without matching current specs.
+- [ ] `$platform-strategy` - create/update `research/platform-strategy.md` after `$gtm` and `$monetization`; currently blocked because `research/gtm.md` and `research/monetization.md` are missing.
+- [ ] `$roadmap` - update `tasks/roadmap.md` and `tasks/todo.md` after the missing research and spec work lands because `tasks/roadmap.md` shows all phases complete as of 2026-04-19 14:16:55 -0400 and has no post-research execution plan.
+- [ ] `$reconcile-dev-docs fix all` - reconcile `tasks/`, `specs/`, and phase archives because `tasks/roadmap.md` shows all phases complete at 2026-04-19 14:16:55 -0400 while `tasks/todo.md` still carries the Phase 6 working document updated at 2026-04-19 14:41:57 -0400.
+
 ## Priority Task Queue
 - [x] `$ship-end --no-deploy` - commit and push uncommitted changes before continuing task work because `git status --short --branch --untracked-files=all` on 2026-04-19 showed untracked `.agents/project.json`, `.claude/skills/*`, and `.codex/skills/*` project-pack files while `main` was even with `upstream/main`.
 - [ ] `$research-roadmap` - scan documentation and research health because all roadmap phases 1-7 are marked complete in `tasks/roadmap.md` as of 2026-04-19 14:16:55, while `tasks/todo.md` still contains the completed Phase 6 working document from 2026-04-19 14:18:56.
