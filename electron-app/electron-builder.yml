@@ -13,6 +13,7 @@ publish: null
 mac:
   artifactName: ${productName}-${version}-mac-${arch}.${ext}
   category: public.app-category.productivity
+  icon: build/icon.png
   identity: null
   hardenedRuntime: false
   gatekeeperAssess: false
@@ -22,6 +23,7 @@ mac:
 win:
   artifactName: ${productName}-${version}-windows-${arch}.${ext}
   executableName: ClaudeUsage
+  icon: build/icon.ico
   requestedExecutionLevel: asInvoker
   target:
     - nsis
@@ -40,6 +42,7 @@ portable:
 linux:
   artifactName: ${productName}-${version}-linux-${arch}.${ext}
   executableName: claude-usage
+  icon: build/icon.png
   target:
     - AppImage
     - deb

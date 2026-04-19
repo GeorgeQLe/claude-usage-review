@@ -11,6 +11,7 @@ type BuilderConfig = {
   readonly mac?: {
     readonly artifactName?: string;
     readonly category?: string;
+    readonly icon?: string;
     readonly identity?: unknown;
     readonly hardenedRuntime?: boolean;
     readonly gatekeeperAssess?: boolean;
@@ -20,6 +21,7 @@ type BuilderConfig = {
   readonly win?: {
     readonly artifactName?: string;
     readonly executableName?: string;
+    readonly icon?: string;
     readonly requestedExecutionLevel?: string;
     readonly publish?: unknown;
     readonly target?: readonly string[];
@@ -42,6 +44,7 @@ type BuilderConfig = {
   readonly linux?: {
     readonly artifactName?: string;
     readonly executableName?: string;
+    readonly icon?: string;
     readonly target?: readonly string[];
     readonly category?: string;
     readonly packageCategory?: string;
@@ -97,6 +100,7 @@ describe("Electron Builder packaging config", () => {
     expect(config.mac).toMatchObject({
       artifactName: "${productName}-${version}-mac-${arch}.${ext}",
       category: "public.app-category.productivity",
+      icon: "build/icon.png",
       identity: null,
       hardenedRuntime: false,
       gatekeeperAssess: false,
@@ -105,12 +109,14 @@ describe("Electron Builder packaging config", () => {
     expect(config.win).toMatchObject({
       artifactName: "${productName}-${version}-windows-${arch}.${ext}",
       executableName: "ClaudeUsage",
+      icon: "build/icon.ico",
       requestedExecutionLevel: "asInvoker",
       target: ["nsis", "portable"]
     });
     expect(config.linux).toMatchObject({
       artifactName: "${productName}-${version}-linux-${arch}.${ext}",
       executableName: "claude-usage",
+      icon: "build/icon.png",
       target: ["AppImage", "deb"],
       category: "Utility",
       packageCategory: "utils"

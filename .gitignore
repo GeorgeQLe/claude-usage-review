@@ -1,5 +1,8 @@
 # Xcode
 build/
+!electron-app/build/
+!electron-app/build/icon.ico
+!electron-app/build/icon.png
 DerivedData/
 *.xcuserdata
 *.xcworkspace
