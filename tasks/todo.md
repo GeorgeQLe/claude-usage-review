@@ -6,9 +6,13 @@
 > Test strategy: tests-after
 > Status: complete on 2026-04-19
 
-## Priority Documentation Todo
-- [ ] `$pack install business-app` - enable the business-app research pack because this repository is a user-facing productivity/menu-bar app and no `.agents/project.json` or project-local pack skills are installed.
-- [ ] `$spec-drift fix all` - reconcile specs with implementation because `specs/electron-cross-platform-ai-usage-monitor.md` was last modified on 2026-04-15, `specs/provider-telemetry-endpoints.md` was last modified on 2026-04-16, and implementation/task history now reflects completed Electron Phase 6 and Swift Provider Telemetry work through 2026-04-19.
+## Priority Task Queue
+- [ ] `$ship-end --no-deploy` - commit and push uncommitted changes before continuing task work because `git status --short --branch` on 2026-04-19 showed untracked `.agents/`, `.claude/`, and `.codex/` directories while `main` was even with `upstream/main`.
+- [ ] `$research-roadmap` - scan documentation and research health because all roadmap phases 1-7 are marked complete in `tasks/roadmap.md` as of 2026-04-19 14:16:55, while `tasks/todo.md` still contains the completed Phase 6 working document from 2026-04-19 14:18:56.
+- [ ] Complete or explicitly defer manual task: "Run a live Claude credential smoke test with a real session key and org ID, then confirm the Electron app stores secrets only through the secret store and does not render them back in Settings." because `tasks/manual-todo.md` still has this unchecked post-Phase 6 item from 2026-04-19 01:01:02, and Phase 6 was archived at `tasks/phases/phase-6-migration-diagnostics-packaging.md` on 2026-04-19 14:17:16.
+- [ ] Complete or explicitly defer manual task: "Validate the Windows NSIS installer and portable build on a real Windows machine, including tray behavior, launch at login, notifications, and packaged app startup." because `tasks/manual-todo.md` still has this unchecked post-Phase 6 item from 2026-04-19 01:01:02, and Phase 6 was archived at `tasks/phases/phase-6-migration-diagnostics-packaging.md` on 2026-04-19 14:17:16.
+- [ ] Complete or explicitly defer manual task: "Validate the Linux AppImage and `deb` package on the selected target desktop environments, including tray fallback behavior, notifications, `safeStorage` backend warning, and packaged app startup." because `tasks/manual-todo.md` still has this unchecked post-Phase 6 item from 2026-04-19 01:01:02, and Phase 6 was archived at `tasks/phases/phase-6-migration-diagnostics-packaging.md` on 2026-04-19 14:17:16.
+- [ ] `$plan-interview --ideas` - triage unspecced ideas because `tasks/ideas.md` was last modified on 2026-03-23 and still lists feature candidates that do not correspond to the current specs under `specs/`.
 
 ### Execution Profile
 **Parallel mode:** serial
