@@ -110,6 +110,77 @@ describe("Phase 6 diagnostics export service", () => {
       /\/Users\/example|provider-secret|private prompt text|access[_-]?token|session[_-]?key|raw prompt|prompt|cookie|raw stderr|stderr/iu
     );
   });
+
+  it("redacts secret-like provider state and diagnostics metadata before export", () => {
+    opened = openAppDatabase({ inMemory: true });
+    const database = opened.database;
+    createDiagnosticsEventStore({
+      database,
+      now: () => "2026-04-18T13:00:00.000Z"
+    }).recordDiagnosticsEvent({
+      level: "error",
+      source: "provider-output",
+      message:
+        "Bearer abcdefghijklmnopqrstuvwxyz access_token=provider-secret cookie=session-cookie raw stdout raw stderr prompt",
+      metadata: {
+        authorization: "Bearer provider-secret",
+        cookie: "session-cookie-secret",
+        github_token: `ghp_${"3".repeat(36)}`,
+        nested: {
+          api_key: "provider-api-secret",
+          prompt: "private prompt",
+          stdout: "raw stdout",
+          stderr: "raw stderr",
+          chatBody: "private chat"
+        }
+      }
+    });
+
+    const result = createDiagnosticsService({
+      appName: "ClaudeUsage",
+      appVersion: "0.1.0",
+      database,
+      getSecretStorageStatus: () => ({
+        available: true,
+        backend: "gnome_libsecret",
+        warning: null
+      }),
+      getSettings: () => createDefaultAppSettings(),
+      getUsageState: () => ({
+        activeProviderId: "codex",
+        lastUpdatedAt: "2026-04-18T12:00:00.000Z",
+        providers: [
+          {
+            actions: ["diagnostics"],
+            adapterMode: "accuracy",
+            confidence: "high_confidence",
+            confidenceExplanation: "High confidence from access_token and prompt signals.",
+            dailyRequestCount: 2,
+            detailText: "raw chat cookie stdout stderr details must be redacted.",
+            displayName: "Codex",
+            enabled: true,
+            headline: "Codex wrapper observed session_key state",
+            lastUpdatedAt: "2026-04-18T12:00:00.000Z",
+            providerId: "codex",
+            requestsPerMinute: 1,
+            resetAt: null,
+            sessionUtilization: null,
+            status: "configured",
+            weeklyUtilization: null
+          }
+        ],
+        warning: null
+      }),
+      now: () => "2026-04-18T13:01:00.000Z",
+      platform: "linux"
+    }).exportDiagnostics();
+
+    const serialized = JSON.stringify(result);
+    expect(serialized).toContain("redacted");
+    expect(serialized).not.toMatch(
+      /provider-secret|session-cookie-secret|ghp_|provider-api-secret|private prompt|raw stdout|raw stderr|private chat|access[_-]?token|session[_-]?key|cookie|prompt|stdout|stderr|raw chat|chat body/iu
+    );
+  });
 });
 
 function createUsageState(): UsageState {

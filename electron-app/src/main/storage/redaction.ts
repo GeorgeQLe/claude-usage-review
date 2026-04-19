@@ -1,7 +1,7 @@
 const redactedValue = "[REDACTED]";
 
 const secretKeyPattern =
-  /(^|[_\-\s.])(authorization|bearer|cookie|session|sessionkey|session_key|token|secret|password|api[_-]?key|github[_-]?token|stdout|prompt)([_\-\s.]|$)/i;
+  /(^|[_\-\s.])(authorization|bearer|cookie|session|sessionkey|session_key|token|secret|password|api[_-]?key|github[_-]?token|stdout|stderr|output|response|prompt|chat|chatbody)([_\-\s.]|$)/i;
 
 const textRedactionPatterns: readonly [RegExp, string][] = [
   [/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}\b/gi, `Bearer ${redactedValue}`],
