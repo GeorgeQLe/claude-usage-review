@@ -96,6 +96,13 @@ h3 {
   line-height: 1.25;
 }
 
+h4,
+h5 {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
 .window-frame {
   min-height: 100vh;
   display: grid;
@@ -443,6 +450,34 @@ h3 {
 .settings-fieldset {
   display: grid;
   gap: 10px;
+}
+
+.accuracy-mode-panel,
+.accuracy-mode-details {
+  display: grid;
+  gap: 10px;
+}
+
+.accuracy-mode-panel {
+  border: 1px solid #d6ddd6;
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.instruction-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: #515a61;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.instruction-list code {
+  overflow-wrap: anywhere;
+  color: #15191f;
 }
 
 .form-grid,

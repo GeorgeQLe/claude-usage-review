@@ -504,6 +504,7 @@ const mockSettings: AppSettings = {
     codex: {
       enabled: false,
       setupPromptDismissed: false,
+      accuracyModeEnabled: false,
       adapterMode: "passive",
       authMode: "unknown",
       plan: "unknown",
@@ -514,6 +515,7 @@ const mockSettings: AppSettings = {
     gemini: {
       enabled: false,
       setupPromptDismissed: false,
+      accuracyModeEnabled: false,
       adapterMode: "passive",
       authMode: "unknown",
       plan: "unknown",

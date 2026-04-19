@@ -14,6 +14,7 @@ export function createDefaultProviderSettings(): ProviderPlaceholderSettings {
   return {
     enabled: false,
     setupPromptDismissed: false,
+    accuracyModeEnabled: false,
     adapterMode: "passive",
     authMode: "unknown",
     plan: "unknown",

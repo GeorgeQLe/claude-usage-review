@@ -24,6 +24,7 @@ export interface OverlaySettings {
 export interface ProviderPlaceholderSettings {
   readonly enabled: boolean;
   readonly setupPromptDismissed: boolean;
+  readonly accuracyModeEnabled: boolean;
   readonly adapterMode: "passive" | "accuracy";
   readonly authMode: "unknown" | "oauth-personal" | "api-key" | "session-cookie" | "none";
   readonly plan: "unknown" | "free" | "pro" | "team" | "enterprise";

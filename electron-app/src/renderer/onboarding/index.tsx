@@ -77,6 +77,16 @@ export function OnboardingRoute(): React.JSX.Element {
         <article className="setup-step">
           <span className="step-number">5</span>
           <div>
+            <h2>Optional Accuracy Mode</h2>
+            <p className="muted">
+              Accuracy Mode uses manual setup for Codex and Gemini wrappers, does not edit shell profiles, and does
+              not store prompts or stdout.
+            </p>
+          </div>
+        </article>
+        <article className="setup-step">
+          <span className="step-number">6</span>
+          <div>
             <h2>Review provider status</h2>
             <ProviderList
               activeAccount={activeAccount}

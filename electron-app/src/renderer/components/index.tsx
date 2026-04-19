@@ -6,7 +6,9 @@ import type {
   GitHubHeatmapResult,
   SaveGitHubSettingsPayload,
   UsageHistoryPoint,
-  UsageHistoryResult
+  UsageHistoryResult,
+  WrapperSetupResult,
+  WrapperVerificationResult
 } from "../../shared/types/ipc.js";
 import type { ProviderCard } from "../../shared/types/provider.js";
 import type { AppSettings, AppSettingsPatch } from "../../shared/types/settings.js";
@@ -1250,6 +1252,47 @@ function ProviderSettingsField({
   readonly name: "codex" | "gemini";
   readonly onChange: (patch: Partial<AppSettings["providers"]["codex"]>) => void;
 }): React.JSX.Element {
+  const [setupResult, setSetupResult] = useState<WrapperSetupResult | null>(null);
+  const [verificationResult, setVerificationResult] = useState<WrapperVerificationResult | null>(null);
+  const [accuracyStatus, setAccuracyStatus] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<"generate" | "verify" | null>(null);
+
+  const generateWrapper = async () => {
+    try {
+      setBusyAction("generate");
+      const result = await window.claudeUsage.generateWrapper(name);
+      setSetupResult(result);
+      setAccuracyStatus(`${label} wrapper generated. Run the setup command manually.`);
+    } catch (error) {
+      setAccuracyStatus(getErrorMessage(error));
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const verifyWrapper = async () => {
+    try {
+      setBusyAction("verify");
+      const result = await window.claudeUsage.verifyWrapper(name);
+      setVerificationResult(result);
+      setAccuracyStatus(result.message);
+    } catch (error) {
+      setAccuracyStatus(getErrorMessage(error));
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const setupCommands = setupResult?.setupCommands?.length
+    ? setupResult.setupCommands
+    : setupResult?.command
+      ? [setupResult.command]
+      : [];
+  const setupInstructions = setupResult?.instructions ?? [];
+  const removalInstructions = setupResult?.removalInstructions?.length
+    ? setupResult.removalInstructions
+    : [`Removal: remove the generated ${label} wrapper directory from PATH when you no longer want Accuracy Mode.`];
+
   return (
     <fieldset className="settings-fieldset">
       <legend>{label}</legend>
@@ -1277,8 +1320,89 @@ function ProviderSettingsField({
           onChange={(event) => onChange({ setupPromptDismissed: event.target.checked })}
           type="checkbox"
         />
-        Hide setup prompt
+        Hide setup notice
       </label>
+      <section className="accuracy-mode-panel" aria-label={`${label} Accuracy Mode`}>
+        <div className="provider-title-row">
+          <div>
+            <h4>Accuracy Mode</h4>
+            <p className="muted">
+              Optional wrapper setup records invocation timing and derived limit signals for better confidence.
+            </p>
+          </div>
+          <StatusPill tone={settings.accuracyModeEnabled ? "active" : "muted"}>
+            {settings.accuracyModeEnabled ? "On" : "Off"}
+          </StatusPill>
+        </div>
+        <label className="checkbox-label">
+          <input
+            checked={settings.accuracyModeEnabled}
+            name={`${name}-accuracy-mode-enabled`}
+            onChange={(event) => onChange({ accuracyModeEnabled: event.target.checked })}
+            type="checkbox"
+          />
+          Enable Accuracy Mode setup
+        </label>
+        <p className="muted">
+          Wrappers are manual and reversible. ClaudeUsage does not edit shell profiles or PATH automatically, and it
+          keeps only derived wrapper events.
+        </p>
+        <div className="inline-actions">
+          <button disabled={busyAction !== null} onClick={() => void generateWrapper()} type="button">
+            {busyAction === "generate" ? "Generating" : `Generate ${label} wrapper`}
+          </button>
+          <button disabled={busyAction !== null} onClick={() => void verifyWrapper()} type="button">
+            {busyAction === "verify" ? "Verifying" : `Verify ${label} wrapper`}
+          </button>
+        </div>
+        <div className="accuracy-mode-details">
+          <div>
+            <h5>Setup commands</h5>
+            {setupCommands.length > 0 ? (
+              <ul className="instruction-list">
+                {setupCommands.map((command) => (
+                  <li key={command}>
+                    <code>{command}</code>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted">Generate the wrapper to get the command for your shell.</p>
+            )}
+            {setupInstructions.length > 0 ? (
+              <ul className="instruction-list">
+                {setupInstructions.map((instruction) => (
+                  <li key={instruction}>{instruction}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+          <div>
+            <h5>Verification status</h5>
+            <p className="muted">
+              {verificationResult
+                ? `${verificationResult.verified ? "Verified" : "Needs attention"}: ${verificationResult.message}`
+                : "Run verification after manual setup."}
+            </p>
+          </div>
+          <div>
+            <h5>Troubleshooting</h5>
+            <p className="muted">
+              If verification does not pass, put the generated wrapper directory before the native CLI directory in
+              PATH, restart open terminals, then verify again.
+            </p>
+          </div>
+          <div>
+            <h5>Removal</h5>
+            <ul className="instruction-list">
+              {removalInstructions.map((instruction) => (
+                <li key={instruction}>{instruction}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        {accuracyStatus ? <p className="form-status">{accuracyStatus}</p> : null}
+      </section>
       <label>
         Plan
         <select
@@ -1305,7 +1429,7 @@ function ProviderSettingsField({
           <option value="unknown">Unknown</option>
           <option value="oauth-personal">OAuth personal</option>
           <option value="api-key">API key</option>
-          <option value="session-cookie">Session cookie</option>
+          <option value="session-cookie">Browser session</option>
           <option value="none">None</option>
         </select>
       </label>

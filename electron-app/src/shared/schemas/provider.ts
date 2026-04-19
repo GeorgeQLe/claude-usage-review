@@ -45,6 +45,7 @@ export const providerCardSchema = z.object({
 export const providerSettingsSchema = z.object({
   enabled: z.boolean(),
   setupPromptDismissed: z.boolean().default(false),
+  accuracyModeEnabled: z.boolean().default(false),
   adapterMode: providerAdapterModeSchema.default("passive"),
   authMode: providerAuthModeSchema.default("unknown"),
   plan: providerPlanSchema.default("unknown"),
@@ -56,6 +57,7 @@ export const providerSettingsSchema = z.object({
 export const providerSettingsPatchSchema = z.object({
   enabled: z.boolean().optional(),
   setupPromptDismissed: z.boolean().optional(),
+  accuracyModeEnabled: z.boolean().optional(),
   adapterMode: providerAdapterModeSchema.optional(),
   authMode: providerAuthModeSchema.optional(),
   plan: providerPlanSchema.optional(),
