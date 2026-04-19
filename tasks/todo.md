@@ -34,7 +34,7 @@
   - Keep secret fields write-only. Renderer state may include "needs re-entry" flags but must not include secret values or raw imported file contents.
   - Validate with focused IPC/schema/renderer tests and `npm run typecheck` from `electron-app/`.
 
-- [ ] Step 6.3: [automated] Implement diagnostics view/export under `electron-app/src/main/diagnostics/` and `electron-app/src/renderer/settings/`: platform, app version, storage backend, provider detection, refresh times, failure counts, parse bookmarks, wrapper status, and redacted recent logs.
+- [x] Step 6.3: [automated] Implement diagnostics view/export under `electron-app/src/main/diagnostics/` and `electron-app/src/renderer/settings/`: platform, app version, storage backend, provider detection, refresh times, failure counts, parse bookmarks, wrapper status, and redacted recent logs.
 
   **Implementation plan for Step 6.3:**
   - Create `electron-app/src/main/diagnostics/` for assembling diagnostics exports from app metadata, secret-storage status, settings, provider diagnostics, parse bookmarks, wrapper verification summaries, migration records, and recent diagnostics events.

@@ -1,5 +1,17 @@
 # ClaudeUsage — Session History
 
+## 2026-04-19 - Step 6.3: Electron Diagnostics Export
+
+Implemented the Electron diagnostics export path and Settings diagnostics view. The new main-process diagnostics service assembles app/platform/version metadata, safeStorage backend status, provider state, refresh timestamps, wrapper summaries, parse bookmarks, migration records, and recent diagnostics events from local state and SQLite. Diagnostics output keeps raw paths out of renderer state by using source basenames, and all export strings are redacted for Claude session keys, GitHub tokens, provider auth tokens, API keys, cookies, raw prompts, raw stdout, raw stderr, and raw chat bodies before crossing IPC.
+
+Settings now exposes a diagnostics section that generates the redacted export and can copy the JSON result. IPC now routes `diagnostics:export` through a dedicated diagnostics dependency when the runtime service is wired, while preserving the provider-derived fallback for foundation tests.
+
+Validation:
+- `npm test -- --run src/main/diagnostics/service.test.ts src/main/ipc.test.ts src/foundation-renderer.test.tsx` in `electron-app/`: 3 files and 26 tests passed.
+- `npm run typecheck` in `electron-app/`: passed.
+- `npm run build` in `electron-app/`: passed, including nested typecheck, all 33 Vitest files / 139 tests, main build, preload build, and renderer build.
+- Accepted warning: Node's experimental SQLite warning during storage/integration/diagnostics tests.
+
 ## 2026-04-19 - Step 6.2: Electron Migration UI
 
 Implemented the Electron migration UI and IPC bridge for Swift/Tauri metadata imports. The preload contract now exposes migration source scanning, selected import execution, and migration record reads through typed, Zod-validated IPC. The main process wires these commands to the existing migration discovery/import service and SQLite migration records while keeping raw source paths and file contents out of renderer state. Settings and onboarding now show migration candidates, metadata counts, skipped secret categories, recent import records, and clear re-entry prompts for Claude session keys, GitHub tokens, provider auth tokens, API keys, cookies, raw provider sessions, prompts, and output.
