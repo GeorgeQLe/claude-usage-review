@@ -358,6 +358,27 @@ describe("Phase 2 IPC command contract", () => {
     expect(JSON.stringify(diagnostics)).not.toContain("raw chat");
   });
 
+  it("routes diagnostics export through a dedicated redacted diagnostics dependency", async () => {
+    const { ipcChannelNames, registerIpcHandlers } = await import("./ipc.js");
+    const diagnostics = {
+      exportDiagnostics: vi.fn(() => ({
+        generatedAt: "2026-04-18T12:00:00.000Z",
+        summary: "ClaudeUsage diagnostics export: 3 providers, 1 warnings or failures, 1 recent log events.",
+        entries: ["App: ClaudeUsage 0.1.0; platform darwin.", "Recent log: provider redacted diagnostics."]
+      }))
+    };
+
+    (registerIpcHandlers as (dependencies: unknown) => unknown)({ diagnostics });
+
+    const result = await invoke(ipcChannelNames.exportDiagnostics);
+
+    expect(diagnostics.exportDiagnostics).toHaveBeenCalled();
+    expect(result).toMatchObject({
+      summary: "ClaudeUsage diagnostics export: 3 providers, 1 warnings or failures, 1 recent log events."
+    });
+    expect(JSON.stringify(result)).not.toMatch(/session[_-]?key|access[_-]?token|cookie|prompt|raw stderr|ghp_|sk-ant/iu);
+  });
+
   it("redacts unsafe terms from Accuracy Mode diagnostics export entries", async () => {
     const { ipcChannelNames, registerIpcHandlers } = await import("./ipc.js");
 

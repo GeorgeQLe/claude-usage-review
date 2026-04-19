@@ -6,3 +6,5 @@ export * from "./redaction.js";
 export * from "./secrets.js";
 export * from "./wrapperEvents.js";
 export * from "./migrationRecords.js";
+export * from "./diagnosticsEvents.js";
+export * from "./parseBookmarks.js";

@@ -1,6 +1,7 @@
 import {
   AccountManager,
   ClaudeCredentialForm,
+  DiagnosticsPanel,
   ErrorState,
   GitHubSettingsForm,
   LoadingState,
@@ -72,6 +73,9 @@ export function SettingsRoute(): React.JSX.Element {
           onRunImport={resource.runMigrationImport}
           onScanSources={resource.scanMigrationSources}
         />
+      </section>
+      <section className="panel">
+        <DiagnosticsPanel onExportDiagnostics={resource.exportDiagnostics} />
       </section>
     </WindowFrame>
   );

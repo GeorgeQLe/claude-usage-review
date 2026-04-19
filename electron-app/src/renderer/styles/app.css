@@ -529,10 +529,12 @@ h5 {
 }
 
 .migration-panel,
+.diagnostics-panel,
 .migration-copy,
 .migration-candidates,
 .migration-records,
-.migration-row-main {
+.migration-row-main,
+.diagnostics-summary {
   display: grid;
   gap: 10px;
 }
@@ -566,6 +568,31 @@ h5 {
   color: #1c6b5d;
   font-size: 13px;
   line-height: 1.4;
+}
+
+.diagnostics-entry-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+  color: #515a61;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.diagnostics-output {
+  max-height: 220px;
+  margin: 0;
+  overflow: auto;
+  border: 1px solid #d6ddd6;
+  border-radius: 8px;
+  padding: 10px;
+  color: #15191f;
+  background: #ffffff;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .setup-step {

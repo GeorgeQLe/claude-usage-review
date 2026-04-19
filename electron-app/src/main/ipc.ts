@@ -122,6 +122,10 @@ export interface IpcMigrationDependencies {
   readonly listRecords?: () => MaybePromise<MigrationRecordsResult>;
 }
 
+export interface IpcDiagnosticsDependencies {
+  readonly exportDiagnostics?: () => MaybePromise<DiagnosticsExportResult>;
+}
+
 export interface IpcWindowDependencies {
   readonly openPopover?: () => MaybePromise<void>;
   readonly hideOverlay?: () => MaybePromise<void>;
@@ -139,6 +143,7 @@ export interface IpcHandlerDependencies {
   readonly providers?: IpcProviderDependencies;
   readonly wrappers?: IpcWrapperDependencies;
   readonly migration?: IpcMigrationDependencies;
+  readonly diagnostics?: IpcDiagnosticsDependencies;
   readonly windows?: IpcWindowDependencies;
 }
 
@@ -463,6 +468,10 @@ function createIpcState(dependencies: IpcHandlerDependencies) {
       return placeholder.getMigrationRecords();
     },
     exportDiagnostics: async (): Promise<DiagnosticsExportResult> => {
+      if (dependencies.diagnostics?.exportDiagnostics) {
+        return validateDiagnosticsExportResult(await dependencies.diagnostics.exportDiagnostics());
+      }
+
       if (dependencies.usageState?.getUsageState) {
         return validateDiagnosticsExportResult(
           createProviderDiagnosticsExport(validateUsageState(await dependencies.usageState.getUsageState()))

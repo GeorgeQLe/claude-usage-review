@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNo
 import type { AccountId, AccountSummary } from "../../shared/types/accounts.js";
 import type {
   ClaudeConnectionTestResult,
+  DiagnosticsExportResult,
   GitHubContributionDay,
   GitHubHeatmapResult,
   MigrationCandidateSummary,
@@ -48,6 +49,7 @@ export type RendererSnapshotResource = SnapshotState & {
   readonly updateSettings: (patch: AppSettingsPatch) => Promise<void>;
   readonly scanMigrationSources: () => Promise<MigrationScanResult>;
   readonly runMigrationImport: (candidateId: string) => Promise<MigrationImportUiResult>;
+  readonly exportDiagnostics: () => Promise<DiagnosticsExportResult>;
   readonly isRefreshing: boolean;
 };
 
@@ -269,6 +271,8 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
     [loadUsageHistory]
   );
 
+  const exportDiagnostics = useCallback(() => window.claudeUsage.exportDiagnostics(), []);
+
   useEffect(() => {
     void reload();
   }, [reload]);
@@ -317,6 +321,7 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
       updateSettings,
       scanMigrationSources,
       runMigrationImport,
+      exportDiagnostics,
       isRefreshing
     }),
     [
@@ -334,6 +339,7 @@ export function useRendererSnapshot(options: { readonly subscribeToUsage?: boole
       state,
       testClaudeConnection,
       runMigrationImport,
+      exportDiagnostics,
       updateSettings
     ]
   );
@@ -1276,6 +1282,81 @@ export function MigrationPanel({
           <MigrationSecretList categories={latestRecord.skippedSecretCategories} />
           <MigrationMessageList messages={latestRecord.failures} tone="warning" />
         </section>
+      ) : null}
+      {status ? <p className="form-status">{status}</p> : null}
+    </section>
+  );
+}
+
+export function DiagnosticsPanel({
+  onExportDiagnostics
+}: {
+  readonly onExportDiagnostics: () => Promise<DiagnosticsExportResult>;
+}): React.JSX.Element {
+  const [diagnostics, setDiagnostics] = useState<DiagnosticsExportResult | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<"export" | "copy" | null>(null);
+
+  const exportDiagnostics = async () => {
+    try {
+      setBusyAction("export");
+      const result = await onExportDiagnostics();
+      setDiagnostics(result);
+      setStatus(`Diagnostics generated at ${formatDateTime(result.generatedAt)}.`);
+    } catch (error) {
+      setStatus(getErrorMessage(error));
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const copyDiagnostics = async () => {
+    if (!diagnostics) {
+      return;
+    }
+
+    try {
+      setBusyAction("copy");
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard is unavailable.");
+      }
+
+      await navigator.clipboard.writeText(JSON.stringify(diagnostics, null, 2));
+      setStatus("Diagnostics JSON copied.");
+    } catch (error) {
+      setStatus(getErrorMessage(error));
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  return (
+    <section className="diagnostics-panel" aria-label="Diagnostics">
+      <div className="migration-copy">
+        <h2>Diagnostics</h2>
+        <p className="muted">
+          Platform, storage, provider, migration, wrapper, bookmark, and recent log details are exported with secrets
+          redacted.
+        </p>
+      </div>
+      <div className="button-row">
+        <button disabled={busyAction !== null} onClick={() => void exportDiagnostics()} type="button">
+          {busyAction === "export" ? "Generating" : "Generate diagnostics"}
+        </button>
+        <button disabled={busyAction !== null || !diagnostics} onClick={() => void copyDiagnostics()} type="button">
+          {busyAction === "copy" ? "Copying" : "Copy diagnostics JSON"}
+        </button>
+      </div>
+      {diagnostics ? (
+        <div className="diagnostics-summary">
+          <p className="muted">{diagnostics.summary}</p>
+          <ul className="diagnostics-entry-list">
+            {diagnostics.entries.slice(0, 6).map((entry) => (
+              <li key={entry}>{entry}</li>
+            ))}
+          </ul>
+          <pre className="diagnostics-output">{JSON.stringify(diagnostics, null, 2)}</pre>
+        </div>
       ) : null}
       {status ? <p className="form-status">{status}</p> : null}
     </section>

@@ -13,6 +13,7 @@ import {
   type MigrationImportResult,
   type MigrationSourceCandidate
 } from "./migration/index.js";
+import { createDiagnosticsService } from "./diagnostics/service.js";
 import { createWrapperGenerationService } from "./wrappers/generator.js";
 import { createWrapperVerificationService } from "./wrappers/verification.js";
 import { createDefaultAppSettings, mergeAppSettings } from "../shared/settings/defaults.js";
@@ -117,6 +118,7 @@ async function startApp(): Promise<void> {
       verifyWrapper: wrapperVerificationService.verifyWrapper
     },
     migration: createMigrationIpcDependencies(),
+    diagnostics: createDiagnosticsIpcDependencies(),
     windows: {
       openPopover: () => {
         void windowManager?.showPopover();
@@ -235,6 +237,27 @@ function createMigrationIpcDependencies(): IpcMigrationDependencies {
       generatedAt: new Date().toISOString(),
       records: recordStore.listMigrationRecords().map(createMigrationRecordUiSummary)
     })
+  };
+}
+
+function createDiagnosticsIpcDependencies() {
+  if (!openedDatabase) {
+    throw new Error("Database must be open before diagnostics IPC is registered.");
+  }
+
+  const diagnosticsService = createDiagnosticsService({
+    appName: app.getName(),
+    appVersion: app.getVersion(),
+    database: openedDatabase.database,
+    databasePath: openedDatabase.path,
+    getSecretStorageStatus,
+    getSettings: () => settings,
+    getUsageState: () => usageState,
+    platform: process.platform
+  });
+
+  return {
+    exportDiagnostics: diagnosticsService.exportDiagnostics
   };
 }
 

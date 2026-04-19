@@ -268,6 +268,36 @@ describe("foundation renderer routes", () => {
     expect(document.body.textContent).not.toContain("gemini-secret-token");
   });
 
+  it("exports redacted diagnostics from Settings without secret-bearing renderer output", async () => {
+    window.claudeUsage.exportDiagnostics = vi.fn(async () => ({
+      entries: [
+        "App: ClaudeUsage 0.1.0; platform darwin.",
+        "Storage: claude-usage.sqlite3; safeStorage available.",
+        "Recent log: provider redacted diagnostics."
+      ],
+      generatedAt: "2026-04-18T12:04:00.000Z",
+      summary: "ClaudeUsage diagnostics export: 3 providers, 1 warnings or failures, 1 recent log events."
+    }));
+
+    const { container } = await renderRoute(<SettingsRoute />);
+
+    expect(document.body.textContent).toContain("Diagnostics");
+    expect(findButton(container, "Generate diagnostics")).not.toBeNull();
+
+    await act(async () => {
+      findButton(container, "Generate diagnostics")?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(window.claudeUsage.exportDiagnostics).toHaveBeenCalled();
+    expect(document.body.textContent).toContain("ClaudeUsage diagnostics export");
+    expect(document.body.textContent).toContain("platform darwin");
+    expect(document.body.textContent).not.toMatch(/session[_-]?key|access[_-]?token|cookie|prompt|raw stderr|ghp_|sk-ant/iu);
+  });
+
   it("renders Accuracy Mode setup and verification controls without secret-bearing renderer state", async () => {
     window.claudeUsage.generateWrapper = vi.fn(async () => ({
       command: "export PATH='/tmp/ClaudeUsage/wrappers/codex':$PATH",
