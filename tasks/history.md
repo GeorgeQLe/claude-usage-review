@@ -1,5 +1,14 @@
 # ClaudeUsage — Session History
 
+## 2026-04-19 - Step 6.1: Electron Non-Secret Migration
+
+Implemented the Electron main-process migration foundation for Swift and Tauri sources. The new migration service discovers legacy Swift preferences/application-support files and Tauri config files, builds import plans, imports account labels, org IDs, active account state, app display settings, provider settings, overlay settings, compatible Swift history snapshots, and records each migration attempt in SQLite. Secrets remain skipped and recorded by category, including Claude session keys, GitHub tokens, provider auth tokens, API keys, cookies, raw prompts, raw provider sessions, and raw output.
+
+Validation:
+- `npm test -- --run src/main/migration/service.test.ts` in `electron-app/`: 2 tests passed.
+- `npm run typecheck` in `electron-app/`: passed.
+- Accepted warning: Node's experimental SQLite warning during the focused migration storage test.
+
 ## 2026-04-19 - Step 5.8: Accuracy Mode Verification
 
 Completed the Phase 5 verification gate for Electron Accuracy Mode wrappers. Standalone typecheck, full Vitest, aggregate production build, and Electron smoke validation all passed from `electron-app/`. Phase 5 is archived in `tasks/phases/phase-5-electron-accuracy-mode-wrappers.md`, `tasks/roadmap.md` now marks Phase 5 complete, `tasks/todo.md` now starts Phase 6 with a just-in-time tests-after plan for migration, diagnostics, and packaging, and `tasks/manual-todo.md` tracks the Phase 6 real-credential and real-platform package validation follow-ups.

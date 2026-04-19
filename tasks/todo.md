@@ -15,7 +15,7 @@
 **Subagent lanes:** none
 
 ## Implementation
-- [ ] Step 6.1: [automated] Implement non-secret migration from Swift and Tauri sources under `electron-app/src/main/migration/`: account labels, org IDs, active account, display settings, provider settings, overlay settings, compatible history snapshots, and migration records.
+- [x] Step 6.1: [automated] Implement non-secret migration from Swift and Tauri sources under `electron-app/src/main/migration/`: account labels, org IDs, active account, display settings, provider settings, overlay settings, compatible history snapshots, and migration records.
 
   **Implementation plan for Step 6.1:**
   - Create `electron-app/src/main/migration/` with source discovery, parsers, import planning, and import execution modules. Keep filesystem access in the main process only and expose no raw paths or file contents directly to renderers.
