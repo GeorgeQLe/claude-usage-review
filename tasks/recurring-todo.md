@@ -38,8 +38,8 @@
   - Owner/agent: `$research-roadmap`
   - Scope: `research/`, `specs/`, and `tasks/` documentation contract.
   - Trigger: A phase completes, source code materially changes after specs, or new research/spec artifacts are added.
-  - Last run: 2026-04-19
-  - Next due: Next phase completion, release, or 2026-05-19, whichever comes first.
+  - Last run: 2026-04-20
+  - Next due: Next phase completion, release, or 2026-05-20, whichever comes first.
   - Command/skill: `$research-roadmap`
   - Evidence/output path: `tasks/todo.md`, `tasks/record-todo.md`, and `tasks/recurring-todo.md`
   - Escalation conditions: Promote stale or missing documentation findings into `tasks/todo.md` when they are immediately actionable.

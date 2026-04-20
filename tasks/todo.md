@@ -7,7 +7,7 @@
 > Status: complete on 2026-04-19
 
 ## Priority Documentation Todo
-- [ ] `$icp` - create/update `research/icp.md` because it is missing; `.agents/project.json` enables the `business-app` pack and the 2026-04-19 scan found no canonical `research/` outputs.
+- [ ] `$icp` - create/update `research/icp.md` because it is missing; `.agents/project.json` enables the `business-app` pack and the 2026-04-20 scan found no canonical `research/` directory or primary `research/*.md` outputs.
 - [ ] `$competitive-analysis` - create/update `research/competitive-analysis.md` after `$icp`; currently blocked because `research/icp.md` is missing.
 - [ ] `$positioning` - create/update `research/positioning.md` after `$competitive-analysis`; currently blocked because `research/competitive-analysis.md` is missing.
 - [ ] `$journey-map` - create/update `research/journey-map.md` after `$positioning`; currently blocked because `research/positioning.md` is missing, while specs exist under `specs/` and need a journey contract.
@@ -21,16 +21,16 @@
 - [ ] `$reconcile-research fix all` - create/update `research/reconciliation-report.md` after multiple research docs exist; currently blocked because no primary `research/*.md` files exist.
 - [ ] `$enterprise-icp` - create/update `research/enterprise-icp.md` after `$icp`; currently blocked because `research/icp.md` is missing.
 - [ ] `$scale-audit` - create/update `specs/scale-audit.md` after `$enterprise-icp`; currently blocked because `research/enterprise-icp.md` is missing.
-- [ ] `$spec-drift fix all` - update stale specs because source commit `92697d2` from 2026-04-19 14:10:46 -0400 is newer than the newest spec timestamp, `specs/provider-telemetry-endpoints.md` at 2026-04-16 14:14:00 -0400.
+- [ ] `$spec-drift fix all` - update stale specs because source/docs commit `99691b7` from 2026-04-19 14:17:52 -0400 is newer than the newest spec timestamp, `specs/provider-telemetry-endpoints.md` at 2026-04-16 14:14:35 -0400.
 - [ ] `$mvp-gap` - create/update `specs/mvp-gap.md` after `$spec-drift fix all`; currently blocked because the stale-spec audit has not been completed.
-- [ ] `$plan-interview --ideas` - create/update `specs/*.md` for unspecced backlog candidates because `tasks/ideas.md` was last modified on 2026-03-23 09:07:26 -0400 and still lists feature candidates without matching current specs.
+- [ ] `$plan-interview --ideas` - create/update `specs/*.md` for unspecced backlog candidates because `tasks/ideas.md` was last modified on 2026-03-20 22:47:09 -0400 and still lists feature candidates without matching current specs.
 - [ ] `$platform-strategy` - create/update `research/platform-strategy.md` after `$gtm` and `$monetization`; currently blocked because `research/gtm.md` and `research/monetization.md` are missing.
-- [ ] `$roadmap` - update `tasks/roadmap.md` and `tasks/todo.md` after the missing research and spec work lands because `tasks/roadmap.md` shows all phases complete as of 2026-04-19 14:16:55 -0400 and has no post-research execution plan.
-- [ ] `$reconcile-dev-docs fix all` - reconcile `tasks/`, `specs/`, and phase archives because `tasks/roadmap.md` shows all phases complete at 2026-04-19 14:16:55 -0400 while `tasks/todo.md` still carries the Phase 6 working document updated at 2026-04-19 14:41:57 -0400.
+- [ ] `$roadmap` - update `tasks/roadmap.md` and `tasks/todo.md` after the missing research and spec work lands because `tasks/roadmap.md` shows all phases complete as of 2026-04-19 14:17:52 -0400 and has no post-research execution plan.
+- [ ] `$reconcile-dev-docs fix all` - reconcile `tasks/`, `specs/`, and phase archives because `tasks/roadmap.md` shows all phases complete at 2026-04-19 14:17:52 -0400 while `tasks/todo.md` still carries the Phase 6 working document updated at 2026-04-19 14:48:51 -0400.
 
 ## Priority Task Queue
 - [x] `$ship-end --no-deploy` - commit and push uncommitted changes before continuing task work because `git status --short --branch --untracked-files=all` on 2026-04-19 showed untracked `.agents/project.json`, `.claude/skills/*`, and `.codex/skills/*` project-pack files while `main` was even with `upstream/main`.
-- [ ] `$research-roadmap` - scan documentation and research health because all roadmap phases 1-7 are marked complete in `tasks/roadmap.md` as of 2026-04-19 14:16:55, while `tasks/todo.md` still contains the completed Phase 6 working document from 2026-04-19 14:18:56.
+- [x] `$research-roadmap` - scanned documentation and research health on 2026-04-20 because all roadmap phases 1-7 are marked complete in `tasks/roadmap.md` as of 2026-04-19 14:17:52, while `tasks/todo.md` still contains the completed Phase 6 working document from 2026-04-19 14:48:51.
 - [ ] Complete or explicitly defer manual task: "Run a live Claude credential smoke test with a real session key and org ID, then confirm the Electron app stores secrets only through the secret store and does not render them back in Settings." because `tasks/manual-todo.md` still has this unchecked post-Phase 6 item from 2026-04-19 01:01:02, and Phase 6 was archived at `tasks/phases/phase-6-migration-diagnostics-packaging.md` on 2026-04-19 14:17:16.
 - [ ] Complete or explicitly defer manual task: "Validate the Windows NSIS installer and portable build on a real Windows machine, including tray behavior, launch at login, notifications, and packaged app startup." because `tasks/manual-todo.md` still has this unchecked post-Phase 6 item from 2026-04-19 01:01:02, and Phase 6 was archived at `tasks/phases/phase-6-migration-diagnostics-packaging.md` on 2026-04-19 14:17:16.
 - [ ] Complete or explicitly defer manual task: "Validate the Linux AppImage and `deb` package on the selected target desktop environments, including tray fallback behavior, notifications, `safeStorage` backend warning, and packaged app startup." because `tasks/manual-todo.md` still has this unchecked post-Phase 6 item from 2026-04-19 01:01:02, and Phase 6 was archived at `tasks/phases/phase-6-migration-diagnostics-packaging.md` on 2026-04-19 14:17:16.

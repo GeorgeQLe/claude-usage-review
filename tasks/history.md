@@ -1,5 +1,13 @@
 # ClaudeUsage — Session History
 
+## 2026-04-20 - Research Roadmap Refresh
+
+Refreshed the documentation and research queue after all implementation phases were marked complete. The scan confirmed the project is still configured as a `business-app`, no canonical `research/` directory or primary research outputs exist yet, and the existing foundational research queue remains the next executable documentation path. Updated stale evidence for spec drift using the latest source/docs commit and the newest spec timestamp, marked the `$research-roadmap` priority queue item complete, and advanced the recurring documentation-health run date.
+
+Validation:
+- `git diff --check`: passed.
+- Product test/build suites were not rerun because this was a task-documentation-only queue refresh.
+
 ## 2026-04-19 - Ship-End: Business-App Pack Registration
 
 Wrapped the roadmap session with `--no-deploy`. The remaining dirty tree was the project-local business-app pack registration: `.agents/project.json` plus Claude and Codex skill symlinks under `.claude/skills/` and `.codex/skills/`. No secret-looking values were found in the pack registration scan. Marked the `$ship-end --no-deploy` queue item complete in `tasks/todo.md`; the documentation scan, manual validation follow-ups, and unspecced idea triage remain queued.
