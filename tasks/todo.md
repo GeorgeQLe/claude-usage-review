@@ -7,19 +7,19 @@
 > Status: complete on 2026-04-19
 
 ## Priority Documentation Todo
-- [ ] `$icp` - create/update `research/icp.md` because it is missing; `.agents/project.json` enables the `business-app` pack and the 2026-04-20 scan found no canonical `research/` directory or primary `research/*.md` outputs.
-- [ ] `$competitive-analysis` - create/update `research/competitive-analysis.md` after `$icp`; currently blocked because `research/icp.md` is missing.
+- [x] `$icp` - created `research/icp.md` and `research/icp-search-log.md` for Pitwall, powered by calcLLM, on 2026-04-21. Primary beachhead ICP is solo AI coding power users; strategic expansion ICP is engineering/platform leaders managing AI coding budget governance.
+- [ ] `$competitive-analysis` - create/update `research/competitive-analysis.md` after `$icp`; `research/icp.md` now exists and positions Pitwall as a multi-provider AI coding usage strategy product.
 - [ ] `$positioning` - create/update `research/positioning.md` after `$competitive-analysis`; currently blocked because `research/competitive-analysis.md` is missing.
 - [ ] `$journey-map` - create/update `research/journey-map.md` after `$positioning`; currently blocked because `research/positioning.md` is missing, while specs exist under `specs/` and need a journey contract.
 - [ ] `$metrics` - create/update `research/metrics.md` after `$journey-map`; currently blocked because `research/journey-map.md` is missing.
 - [ ] `$gtm` - create/update `research/gtm.md` after `$positioning` and `$journey-map`; currently blocked because `research/positioning.md` and `research/journey-map.md` are missing.
 - [ ] `$monetization` - create/update `research/monetization.md` after `$metrics` and `$gtm`; currently blocked because `research/metrics.md` and `research/gtm.md` are missing.
 - [ ] `$landing-copy` - create/update `research/landing-copy.md` after `$positioning`, `$journey-map`, and `$monetization`; currently blocked because those upstream research outputs are missing.
-- [ ] `$risk-register` - create/update `research/risk-register.md` after `$icp` and `$journey-map`; currently blocked because `research/icp.md` and `research/journey-map.md` are missing.
+- [ ] `$risk-register` - create/update `research/risk-register.md` after `$icp` and `$journey-map`; currently blocked because `research/journey-map.md` is missing.
 - [ ] `$assumption-tracker` - create/update `research/assumption-tracker.md` after at least three foundational research docs exist; currently blocked because no primary `research/*.md` files exist.
 - [ ] `$experiment` - create/update `research/experiments/<experiment>.md` after `$assumption-tracker`; currently blocked because `research/assumption-tracker.md` is missing.
 - [ ] `$reconcile-research fix all` - create/update `research/reconciliation-report.md` after multiple research docs exist; currently blocked because no primary `research/*.md` files exist.
-- [ ] `$enterprise-icp` - create/update `research/enterprise-icp.md` after `$icp`; currently blocked because `research/icp.md` is missing.
+- [ ] `$enterprise-icp` - create/update `research/enterprise-icp.md` after `$icp`; `research/icp.md` now identifies engineering/platform leaders as the strategic enterprise expansion path.
 - [ ] `$scale-audit` - create/update `specs/scale-audit.md` after `$enterprise-icp`; currently blocked because `research/enterprise-icp.md` is missing.
 - [ ] `$spec-drift fix all` - update stale specs because source/docs commit `99691b7` from 2026-04-19 14:17:52 -0400 is newer than the newest spec timestamp, `specs/provider-telemetry-endpoints.md` at 2026-04-16 14:14:35 -0400.
 - [ ] `$mvp-gap` - create/update `specs/mvp-gap.md` after `$spec-drift fix all`; currently blocked because the stale-spec audit has not been completed.

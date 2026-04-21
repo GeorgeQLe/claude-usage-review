@@ -1066,6 +1066,16 @@ Validation:
 - `npm run build` in `electron-app/`: typecheck, full tests, main build, preload build, and renderer build passed.
 - Accepted existing environment warning: Node emitted `ExperimentalWarning: SQLite is an experimental feature` during SQLite-backed storage tests.
 
+## 2026-04-21 - Pitwall ICP Research
+
+Created the first canonical ICP research package for the rebranded multi-provider usage strategy product, **Pitwall, powered by calcLLM**. The research selects solo AI coding power users as the beachhead ICP because they have the clearest current pain and easiest self-serve GTM, while preserving engineering/platform leaders as the strategic enterprise expansion ICP because AI coding adoption is becoming a budget governance problem.
+
+The search log records source-backed evidence for developer AI adoption, official Claude/Codex/Gemini usage limits, individual limit pain, Claude-specific monitor competitors, the Uber Claude Code budget-overrun signal, and enterprise AI engineering adoption. The task queue now marks `$icp` complete and unblocks `$competitive-analysis`.
+
+Validation:
+- Documentation structure checked manually against the `$icp` required sections.
+- No code validation run; this change only adds research docs and task/history updates.
+
 ## 2026-04-16 — Step 7.1: Swift Provider Telemetry Contract Tests
 
 Added the red-phase Provider Telemetry contract tests for the Swift macOS app. The new `ProviderTelemetryContractTests.swift` covers telemetry settings default-off behavior separate from Accuracy Mode, Codex and Gemini telemetry payload decoding fixtures, injected HTTP client behavior, passive-to-provider-supplied confidence transitions and fallback, refresh/backoff state, diagnostics redaction, raw-response/prompt persistence guards, and adapter fallback hooks. The tests use static fixtures and fake clients only; no live Codex, ChatGPT, Gemini, Google, or Vertex requests are made.
